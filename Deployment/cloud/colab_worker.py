@@ -115,6 +115,7 @@ class ColabWorkerDaemon:
         ws_url: str,
         worker_id: str,
         auth_token: str = "",
+        enrollment_token: str = "",
         heartbeat_interval: int = 15,
         poll_interval: int = 3,
     ) -> None:
@@ -131,7 +132,9 @@ class ColabWorkerDaemon:
 
         self.worker_id = worker_id
         self.auth_token = auth_token
+        self.enrollment_token = enrollment_token
         self.session_token = ""
+        self.worker_token = ""
         self.heartbeat_interval = heartbeat_interval
         self.poll_interval = poll_interval
         self.gpu = get_colab_gpu()
@@ -163,6 +166,8 @@ class ColabWorkerDaemon:
         self.req_counter += 1
         req_id = self.req_counter
         p = dict(params)
+        if self.worker_token:
+            p["workerToken"] = self.worker_token
         if self.auth_token:
             p["authToken"] = self.auth_token
         elif self.session_token:
@@ -202,22 +207,24 @@ class ColabWorkerDaemon:
 
     async def register(self, ws: Any) -> dict[str, Any]:
         LOG.info("Registering worker node '%s' with capabilities=%s...", self.worker_id, self.capabilities)
-        res = await self._call_rpc(
-            ws,
-            "RegisterWorker",
-            {
-                "workerId": self.worker_id,
-                "capabilities": self.capabilities,
-                "gpuVendor": self.gpu["gpuVendor"],
-                "gpuModel": self.gpu["gpuModel"],
-                "vramMb": self.gpu["vramMb"],
-                "cudaVersion": self.gpu["cudaVersion"],
-                "availableMemoryMb": self.gpu["availableMemoryMb"],
-                "supportedModels": self.gpu["supportedModels"],
-                "latencyMs": 18.5,
-                "status": "ONLINE",
-            },
-        )
+        reg_params = {
+            "workerId": self.worker_id,
+            "capabilities": self.capabilities,
+            "gpuVendor": self.gpu["gpuVendor"],
+            "gpuModel": self.gpu["gpuModel"],
+            "vramMb": self.gpu["vramMb"],
+            "cudaVersion": self.gpu["cudaVersion"],
+            "availableMemoryMb": self.gpu["availableMemoryMb"],
+            "supportedModels": self.gpu["supportedModels"],
+            "latencyMs": 18.5,
+            "status": "ONLINE",
+        }
+        if self.enrollment_token:
+            reg_params["enrollmentToken"] = self.enrollment_token
+        res = await self._call_rpc(ws, "RegisterWorker", reg_params)
+        if isinstance(res, dict) and res.get("workerToken"):
+            self.worker_token = res["workerToken"]
+            LOG.info("Acquired authentic worker security token.")
         LOG.info("Worker registration confirmed: %s", res)
         return res
 
@@ -375,6 +382,7 @@ def main() -> None:
     parser.add_argument("--ws-url", default="wss://sarembok.com", help="Sarembok WebSocket URL")
     parser.add_argument("--worker-id", default=f"colab-t4-{uuid.uuid4().hex[:6]}", help="Unique Worker ID")
     parser.add_argument("--auth-token", default="", help="Runtime Auth Token (if enabled)")
+    parser.add_argument("--enrollment-token", default="", help="Worker Enrollment Token (if configured)")
     parser.add_argument("--heartbeat-interval", type=int, default=15, help="Heartbeat interval in seconds")
     parser.add_argument("--poll-interval", type=int, default=3, help="Task poll interval in seconds")
     args = parser.parse_args()
@@ -383,6 +391,7 @@ def main() -> None:
         ws_url=args.ws_url,
         worker_id=args.worker_id,
         auth_token=args.auth_token,
+        enrollment_token=args.enrollment_token,
         heartbeat_interval=args.heartbeat_interval,
         poll_interval=args.poll_interval,
     )

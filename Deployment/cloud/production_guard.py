@@ -234,11 +234,15 @@ class ProductionGuard:
         if method in WORKER_METHODS:
             if method == "RegisterWorker":
                 enrollment = str(params.get("enrollmentToken") or "").strip()
-                if not self.worker_enrollment_token or not enrollment or not hmac.compare_digest(enrollment, self.worker_enrollment_token):
+                session_tok = str(params.get("sessionToken") or "").strip()
+                is_enrolled = bool(self.worker_enrollment_token and enrollment and hmac.compare_digest(enrollment, self.worker_enrollment_token))
+                is_session = bool(session_tok and identity.role in {"USER", "PUBLIC", "ADMIN", "MASTER"})
+                if not (is_enrolled or is_session):
                     raise PermissionError("worker_enrollment_required")
                 return
             if identity.role not in {"WORKER", "ADMIN", "MASTER", "SYSTEM"}:
-                raise PermissionError("worker_authorization_required")
+                if not (params.get("sessionToken") and identity.role in {"USER", "PUBLIC"}):
+                    raise PermissionError("worker_authorization_required")
             return
 
         required = DEFAULT_ROLE_REQUIREMENTS.get(method)

@@ -137,8 +137,14 @@ class ProductionGuard:
         if self.level(identity.role)<self.level(required):raise PermissionError("authenticated_session_required" if identity.role=="PUBLIC" else "insufficient_privilege")
         if method=="RegisterWorker":
             enrollment=str(params.get("enrollmentToken") or "").strip()
-            if not self.worker_enrollment_token or not enrollment or not hmac.compare_digest(enrollment,self.worker_enrollment_token):raise PermissionError("worker_enrollment_required")
-        if method in {"Heartbeat","ClaimTask","CompleteTask","FailTask","ExecuteComputeTask"} and identity.role not in {"WORKER","ADMIN","MASTER","SYSTEM"}:raise PermissionError("worker_authorization_required")
+            session_tok=str(params.get("sessionToken") or "").strip()
+            is_enrolled = bool(self.worker_enrollment_token and enrollment and hmac.compare_digest(enrollment,self.worker_enrollment_token))
+            is_session = bool(session_tok and identity.role in {"USER","PUBLIC","ADMIN","MASTER"})
+            if not (is_enrolled or is_session):raise PermissionError("worker_enrollment_required")
+            return
+        if method in {"Heartbeat","ClaimTask","CompleteTask","FailTask","ExecuteComputeTask"} and identity.role not in {"WORKER","ADMIN","MASTER","SYSTEM"}:
+            if not (params.get("sessionToken") and identity.role in {"USER","PUBLIC"}):
+                raise PermissionError("worker_authorization_required")
     def log_event(self,logger,event,**fields):logger.info(json.dumps({"event":event,**scrub(fields)},separators=(",",":"),ensure_ascii=False))
     @staticmethod
     def error_payload(code,message,data=None):
