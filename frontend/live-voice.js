@@ -35,6 +35,8 @@
     var nativeReconnectTimer = null;
     var nativeStartPromise = null;
     var nativeConnectionGeneration = 0;
+    var nativeDiscardAudioUntil = 0;
+    var nativeBargeInConsecutive = 0;
     // Exactly one Gemini Live voice authority is allowed across all Sarembok tabs.
     // This prevents the main site and Agent Console (or two console tabs) from
     // opening independent microphone/speaker sessions that answer simultaneously.
@@ -302,7 +304,7 @@
         return out;
     }
 
-    function clearNativeOutputAudio() {
+    function clearNativeOutputAudio(discardInFlight) {
         // Gemini Live is the sole voice authority. Browser SpeechSynthesis is disabled.
         nativeNextAudioTime = nativeOutputContext
             ? nativeOutputContext.currentTime
@@ -318,11 +320,24 @@
         nativeOutputSources.clear();
         window.__srbkIsSpeaking = false;
         window.__lastModelAudioEndTime = 0;
+
+        if (discardInFlight) {
+            nativeDiscardAudioUntil = Date.now() + 1200;
+        }
+
+        try {
+            if (typeof window.hideInterruptPill === "function") window.hideInterruptPill();
+        } catch (_) {}
     }
 
     function queueNativeOutputPcm(bytes) {
         if (!bytes || bytes.byteLength < 2) return;
         if (!nativeOutputContext) return;
+
+        // Discard residual in-flight audio packets from an interrupted / barged-in turn
+        if (nativeDiscardAudioUntil && Date.now() < nativeDiscardAudioUntil) {
+            return;
+        }
 
         // Privacy & Mute check: if user turned VOICE: OFF, NEVER play audio
         if (typeof window.voiceEnabled !== "undefined" && !window.voiceEnabled) {
@@ -375,6 +390,10 @@
         nativeOutputSources.add(source);
         window.__srbkIsSpeaking = true;
 
+        try {
+            if (typeof window.showInterruptPill === "function") window.showInterruptPill();
+        } catch (_) {}
+
         var cleanupSource = function () {
             if (cleanupSource.done) return;
             cleanupSource.done = true;
@@ -383,6 +402,9 @@
             if (nativeOutputSources.size === 0) {
                 window.__srbkIsSpeaking = false;
                 window.__lastModelAudioEndTime = Date.now();
+                try {
+                    if (typeof window.hideInterruptPill === "function") window.hideInterruptPill();
+                } catch (_) {}
                 if (typeof window.finishSpeakingTurn === "function") {
                     try { window.finishSpeakingTurn(); } catch (_) {}
                 }
@@ -932,7 +954,7 @@
         if (serverContent.inputTranscription) {
             var inputText = serverContent.inputTranscription.text || "";
             if (nativeOutputSources.size > 0) {
-                clearNativeOutputAudio();
+                clearNativeOutputAudio(true);
             }
             nativeTurnUserText = mergeTranscript(
                 nativeTurnUserText,
@@ -949,7 +971,7 @@
         if (serverContent.interimInputTranscription) {
             var interim = serverContent.interimInputTranscription.text || "";
             if (nativeOutputSources.size > 0) {
-                clearNativeOutputAudio();
+                clearNativeOutputAudio(true);
             }
             setNativeLiveStatus(
                 "HEARING YOU",
@@ -1020,7 +1042,8 @@
         }
 
         if (serverContent.interrupted) {
-            clearNativeOutputAudio();
+            nativeDiscardAudioUntil = 0;
+            clearNativeOutputAudio(false);
             resetNativeTurn();
             setNativeLiveStatus(
                 "LISTENING (INTERRUPTED)",
@@ -1032,6 +1055,7 @@
         }
 
         if (serverContent.turnComplete) {
+            nativeDiscardAudioUntil = 0;
             // Standard Live uses turnComplete as the idle boundary. Extended
             // Thinking can emit turnComplete while interactionStatus remains
             // IN_PROGRESS because background reasoning/tool work continues.
@@ -1364,13 +1388,54 @@
                             return;
                         }
 
-                        // Zero-Echo Duplex Gate: while Sarembok is speaking (or within the 200ms acoustic reverb tail),
-                        // DO NOT stream microphone audio to Gemini Live. This completely prevents acoustic bleed,
-                        // self-interruption loops, foreign language hallucinations, and double-voice responses.
                         var isModelSpeaking = (nativeOutputSources.size > 0) ||
                             (window.__lastModelAudioEndTime && (now - window.__lastModelAudioEndTime < 200));
+
+                        var rms = Number(payload.rms) || 0;
+
+                        // ============================================================
+                        // ACOUSTIC VERBAL BARGE-IN ENGINE
+                        // ============================================================
+                        // When Sarembok is speaking (or in the brief 200ms reverb tail),
+                        // gate out ambient noise and residual WebRTC AEC speaker bleed (<0.025 RMS).
+                        // But when the user speaks into the microphone (normal speech RMS is 0.04 - 0.25+),
+                        // instantly trigger verbal barge-in, halt assistant audio in <1ms,
+                        // and stream user voice directly to Gemini Live.
                         if (isModelSpeaking) {
-                            return;
+                            var isSpeech = false;
+                            // Fast trigger: energetic speech (>= 0.070 RMS) interrupts on 1 frame (40ms)
+                            if (rms >= 0.070) {
+                                isSpeech = true;
+                                nativeBargeInConsecutive = 0;
+                            } else if (rms >= 0.035) {
+                                // Sustained speech: conversational speech (>= 0.035 RMS) interrupts on 2 frames (80ms)
+                                nativeBargeInConsecutive++;
+                                if (nativeBargeInConsecutive >= 2) {
+                                    isSpeech = true;
+                                    nativeBargeInConsecutive = 0;
+                                }
+                            } else {
+                                nativeBargeInConsecutive = 0;
+                            }
+
+                            if (isSpeech) {
+                                console.log("[barge-in] Human speech detected during active audio turn (rms=" + rms.toFixed(3) + "). Halting assistant speech immediately.");
+                                clearNativeOutputAudio(true);
+                                isModelSpeaking = false;
+                                setNativeLiveStatus(
+                                    "HEARING YOU",
+                                    "Listening · assistant interrupted"
+                                );
+                                try {
+                                    if (typeof setAvatarSignal === "function") setAvatarSignal("LISTENING");
+                                } catch (_) {}
+                                logNativeLive("verbal barge-in triggered · assistant halted", "cyan");
+                            } else {
+                                // Suppress residual speaker bleed while assistant speaks without interruption
+                                return;
+                            }
+                        } else {
+                            nativeBargeInConsecutive = 0;
                         }
 
                         var pcmBuffer = payload.pcm;
