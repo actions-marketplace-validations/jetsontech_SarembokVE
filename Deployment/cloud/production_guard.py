@@ -36,6 +36,7 @@ USER_METHODS = READ_METHODS | {
     "SearchYouTube", "ResolveMediaStream", "ProcessVisionFrame",
     "SpatialVisualRecall", "GenerateImage", "RentGpuNode",
     "SaveUserChatSession", "ListUserChatSessions", "DeleteUserChatSession",
+    "GetSystemIntegrationsConfig", "TestMCPConnector", "ConfigureMCPConnector", "TriggerTestCDC",
 }
 
 WORKER_METHODS = {

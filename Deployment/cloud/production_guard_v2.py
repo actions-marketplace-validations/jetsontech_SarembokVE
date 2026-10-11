@@ -15,7 +15,7 @@ USER_METHODS = {
  "SarembokDialogue","BrowserNavigate","BrowserScreenshot","BrowserRender","BrowserSessionOpen","BrowserSessionInspect","BrowserAction","BrowserSessionClose","CallMcpTool","SubmitFeedback","StoreMemory",
  "DeleteMemory","CreateDigitalHumanSession","CloseDigitalHumanSession","SearchYouTube","SearchWeb","ResolveMediaStream",
  "ProcessVisionFrame","SpatialVisualRecall","GenerateImage","SaveUserChatSession","ListUserChatSessions",
- "DeleteUserChatSession"
+ "DeleteUserChatSession","GetSystemIntegrationsConfig","TestMCPConnector","ConfigureMCPConnector","TriggerTestCDC"
 }
 WORKER_METHODS = {"RegisterWorker","Heartbeat","ClaimTask","CompleteTask","FailTask","ExecuteComputeTask"}
 OPERATOR_METHODS = {"CreateAgent","CreateProject","CreateTask","ScheduleCompute","InjectPerception","EvaluateDecision","CreateDelegation","SendMessage","RestoreState","PruneWorkers","ScaleWorkers","RegisterMcpServer"}
