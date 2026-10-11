@@ -925,7 +925,7 @@ GPU_MARKETPLACE_TIERS = [
         "description": "100% Free 16GB GPU compute powered by Google Colab. Perfect for FP16 inference, conversational agents, and testing.",
         "capabilities": ["inference", "speech_synthesis", "web_research"],
         "setupType": "colab_1click",
-        "colabCommand": "!curl -sSL https://raw.githubusercontent.com/jetsontech/SarembokVE/runtime-authority-truth-boundary/Deployment/cloud/colab_worker.py | python3 - --ws-url wss://sarembok.com",
+        "colabCommand": "!curl -sSL https://raw.githubusercontent.com/jetsontech/SarembokVE/main/Deployment/cloud/colab_worker.py | python3 - --ws-url wss://sarembok.com",
     },
     {
         "tierId": "rtx-4090",
@@ -5482,14 +5482,14 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
 
     if method == "GetGpuMarketplace":
         ensure_scheduler_schema()
-        rental_count = store.db.execute("SELECT COUNT(*) FROM gpu_rentals WHERE status='ACTIVE'").fetchone()[0]
+        rental_count = store.db.execute("SELECT COUNT(*) FROM gpu_rentals WHERE status IN ('ACTIVE', 'PENDING_PROVIDER')").fetchone()[0]
         w_stats = get_worker_status_counts()
         return {
             "tiers": GPU_MARKETPLACE_TIERS,
             "activeRentals": rental_count,
             "onlineWorkers": w_stats["onlineWorkers"],
             "registeredWorkers": w_stats["registeredWorkers"],
-            "colabSetupCommand": "!curl -sSL https://raw.githubusercontent.com/jetsontech/SarembokVE/runtime-authority-truth-boundary/Deployment/cloud/colab_worker.py | python3 - --ws-url wss://sarembok.com",
+            "colabSetupCommand": "!curl -sSL https://raw.githubusercontent.com/jetsontech/SarembokVE/main/Deployment/cloud/colab_worker.py | python3 - --ws-url wss://sarembok.com",
         }
 
     if method == "RentGpuNode":
@@ -5576,7 +5576,7 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
         })
 
         return {
-            "success": status == "ACTIVE",
+            "success": status in {"ACTIVE", "PENDING_PROVIDER"},
             "leaseId": lease_id,
             "tier": tier,
             "durationHours": duration_hours,
@@ -5587,7 +5587,7 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
             "message": (
                 f"{tier['tierName']} provisioned and verified."
                 if status == "ACTIVE"
-                else "GPU rental request recorded; no active node is claimed until the configured provider reports provisioning."
+                else f"{tier['tierName']} lease recorded ({duration_hours}h). Pending provider allocation."
             ),
         }
 

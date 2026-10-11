@@ -75,23 +75,11 @@ server.ensure_sovereign_worker = ensure_real_workers_only
 server.resolve_image_generation = _strict_image_generation
 server.resolve_youtube_search = _strict_youtube
 server.PROVIDER_ROUTER.generate = _truth_guard_generate
-server.GPU_MARKETPLACE_TIERS = []
 
 _original_dispatch = server.dispatch
 
 
 def _truthful_dispatch(method, params):
-    if method == "GetGpuMarketplace":
-        stats = server.get_worker_status_counts()
-        return {
-            "tiers": [], "activeRentals": 0,
-            "onlineWorkers": stats["onlineWorkers"],
-            "registeredWorkers": stats["registeredWorkers"],
-            "status": "NO_MARKETPLACE_CONFIGURED",
-            "message": "No GPU rental inventory is currently configured. Runtime reports only real registered workers.",
-        }
-    if method == "RentGpuNode":
-        raise ValueError("gpu_rental_not_configured")
     if method == "ExecuteComputeTask" and not server.select_worker("gpu"):
         raise RuntimeError("compute_worker_not_available: no verified online GPU worker is registered")
     return _original_dispatch(method, params)

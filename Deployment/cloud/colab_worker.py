@@ -4,7 +4,7 @@ Run this in a Google Colab notebook with a GPU runtime (Runtime > Change runtime
 to provide a 100% free, authentic 16GB Tesla T4 GPU node to your Sarembok cluster.
 
 Usage in Colab:
-    !curl -sSL https://raw.githubusercontent.com/jetsontech/SarembokVE/runtime-authority-truth-boundary/Deployment/cloud/colab_worker.py -o colab_worker.py
+    !curl -sSL https://raw.githubusercontent.com/jetsontech/SarembokVE/main/Deployment/cloud/colab_worker.py -o colab_worker.py
     !python3 colab_worker.py --ws-url wss://sarembok.com --worker-id colab-t4-01
 """
 

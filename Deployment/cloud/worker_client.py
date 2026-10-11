@@ -20,6 +20,8 @@ import platform
 import signal
 import subprocess
 import sys
+import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -108,9 +110,20 @@ class SarembokWorker:
         heartbeat_interval: int = 15,
         poll_interval: int = 2,
     ):
-        self.ws_url = ws_url
+        raw_url = ws_url.strip()
+        if not raw_url.startswith(("ws://", "wss://")):
+            raw_url = f"wss://{raw_url}"
+        parsed = urllib.parse.urlparse(raw_url)
+        path = parsed.path
+        if not path or path == "/":
+            path = "/ws"
+        netloc = parsed.netloc or parsed.path.split("/")[0]
+        self.ws_url = f"{parsed.scheme}://{netloc}{path}"
+        self.http_base = f"https://{netloc}" if parsed.scheme == "wss" else f"http://{netloc}"
+
         self.auth_token = auth_token
         self.enrollment_token = enrollment_token
+        self.session_token = ""
         self.worker_token = ""
         self.worker_id = worker_id or f"worker-{platform.node().lower()}-{uuid.uuid4().hex[:6]}"
         self.heartbeat_interval = heartbeat_interval
@@ -126,6 +139,24 @@ class SarembokWorker:
         self.req_counter = 0
         self.pending_rpcs: dict[str, asyncio.Future[Any]] = {}
 
+    def fetch_session_token(self) -> str:
+        """Fetch a scoped session token from the cluster HTTP gateway."""
+        try:
+            req = urllib.request.Request(
+                f"{self.http_base}/session",
+                headers={"User-Agent": "Mozilla/5.0 (SarembokWorkerClient; Python)"},
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                token = str(data.get("sessionToken", "")).strip()
+                if token:
+                    LOG.info("Acquired dynamic session token from cluster gateway.")
+                    self.session_token = token
+                    return token
+        except Exception as exc:
+            LOG.debug("Session token fetch skipped/failed: %s", exc)
+        return ""
+
     def stop(self) -> None:
         """Signals the worker daemon to stop all loops gracefully."""
         self.stop_event.set()
@@ -137,9 +168,15 @@ class SarembokWorker:
         if method == "RegisterWorker":
             if self.enrollment_token:
                 p["enrollmentToken"] = self.enrollment_token
+            elif self.session_token:
+                p["sessionToken"] = self.session_token
+            elif self.auth_token:
+                p["authToken"] = self.auth_token
         elif self.worker_token:
             p["workerToken"] = self.worker_token
             p.setdefault("workerId", self.worker_id)
+        elif self.session_token:
+            p["sessionToken"] = self.session_token
         elif self.auth_token:
             p["authToken"] = self.auth_token
         payload = json.dumps({"jsonrpc": "2.0", "id": req_id, "method": method, "params": p})
@@ -157,6 +194,8 @@ class SarembokWorker:
             self.pending_rpcs.pop(req_id, None)
 
     async def register(self, ws: websockets.ClientConnection) -> None:
+        if not self.enrollment_token and not self.auth_token and not self.session_token:
+            self.fetch_session_token()
         LOG.info("Registering worker '%s' (capabilities=%s)...", self.worker_id, self.capabilities)
         res = await self._send_rpc(
             ws,

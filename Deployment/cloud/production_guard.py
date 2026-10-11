@@ -34,7 +34,7 @@ USER_METHODS = READ_METHODS | {
     "SubmitFeedback", "StoreMemory", "DeleteMemory",
     "CreateDigitalHumanSession", "CloseDigitalHumanSession",
     "SearchYouTube", "ResolveMediaStream", "ProcessVisionFrame",
-    "SpatialVisualRecall", "GenerateImage",
+    "SpatialVisualRecall", "GenerateImage", "RentGpuNode",
     "SaveUserChatSession", "ListUserChatSessions", "DeleteUserChatSession",
 }
 
@@ -50,7 +50,7 @@ OPERATOR_METHODS = {
 }
 
 ADMIN_METHODS = OPERATOR_METHODS | {
-    "AdminExecuteDirective", "RentGpuNode", "CancelActiveStream",
+    "AdminExecuteDirective", "CancelActiveStream",
     "RegisterMcpServer", "DeleteMemory", "CloseDigitalHumanSession",
 }
 

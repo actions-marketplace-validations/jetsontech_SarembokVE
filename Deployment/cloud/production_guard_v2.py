@@ -10,7 +10,7 @@ ROLE_LEVEL = {"PUBLIC":0,"USER":1,"WORKER":2,"OPERATOR":3,"ADMIN":4,"MASTER":5,"
 USER_METHODS = {
  "GetRuntimeInfo","GetProviderMetrics","GetVisualEngineStatus","ListWorkers","ListTasks","ListProjects",
  "GetCurrentUser","GetFeedbackSummary","ListMemories","SearchMemories","ListDigitalHumanSessions",
- "GetDigitalHumanSession","ListMcpServers","GetGpuMarketplace","ListGpuRentals","GetVisionStatus",
+ "GetDigitalHumanSession","ListMcpServers","GetGpuMarketplace","ListGpuRentals","RentGpuNode","GetVisionStatus",
  "GetAdminStatus","GetConversationHistory","GetRuntimeAuthority","GetRuntimeDiagnostics","GetEntropyMetrics","SarembokChat","Chat",
  "SarembokDialogue","BrowserNavigate","BrowserScreenshot","BrowserRender","BrowserSessionOpen","BrowserSessionInspect","BrowserAction","BrowserSessionClose","CallMcpTool","SubmitFeedback","StoreMemory",
  "DeleteMemory","CreateDigitalHumanSession","CloseDigitalHumanSession","SearchYouTube","SearchWeb","ResolveMediaStream",
@@ -19,7 +19,7 @@ USER_METHODS = {
 }
 WORKER_METHODS = {"RegisterWorker","Heartbeat","ClaimTask","CompleteTask","FailTask","ExecuteComputeTask"}
 OPERATOR_METHODS = {"CreateAgent","CreateProject","CreateTask","ScheduleCompute","InjectPerception","EvaluateDecision","CreateDelegation","SendMessage","RestoreState","PruneWorkers","ScaleWorkers","RegisterMcpServer"}
-ADMIN_METHODS = {"AdminExecuteDirective","RentGpuNode"}
+ADMIN_METHODS = {"AdminExecuteDirective"}
 LOGIN_METHODS = {"AuthenticateMaster","AuthenticateSocialUser","VerifyAdminPasscode"}
 CANCELLATION_METHODS = {"CancelActiveStream"}
 METHOD_REQUIREMENTS = {**{m:"USER" for m in USER_METHODS}, **{m:"WORKER" for m in WORKER_METHODS}, **{m:"OPERATOR" for m in OPERATOR_METHODS}, **{m:"ADMIN" for m in ADMIN_METHODS}}
