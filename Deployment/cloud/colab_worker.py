@@ -166,6 +166,8 @@ class ColabWorkerDaemon:
         self.req_counter += 1
         req_id = self.req_counter
         p = dict(params)
+        if "workerId" not in p and self.worker_id:
+            p["workerId"] = self.worker_id
         if self.worker_token:
             p["workerToken"] = self.worker_token
         if self.auth_token:
