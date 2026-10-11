@@ -21,7 +21,7 @@ git fetch origin main
 git checkout main
 git reset --hard origin/main
 
-docker compose -f Deployment/cloud/compose.yaml -f Deployment/cloud/compose.production.yaml up -d --build --force-recreate sarembok-runtime sarembok-edge
+docker compose -f Deployment/cloud/compose.yaml -f Deployment/cloud/compose.production.yaml up -d --build --force-recreate sarembok-runtime sarembok-edge sarembok-browser
 
 echo "[4/4] Verifying container health..."
 docker compose \

@@ -3876,7 +3876,7 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
             from Deployment.cloud.mcp_client import get_mcp_client_manager
         mgr = get_mcp_client_manager()
         for name in list(mgr.servers.keys()):
-            if name != "sarembok_browser" and getattr(mgr.servers[name], "enabled", True) and not mgr.servers[name].tools:
+            if getattr(mgr.servers[name], "enabled", True) and not mgr.servers[name].tools:
                 try:
                     mgr.sync_server_tools(name)
                 except Exception:

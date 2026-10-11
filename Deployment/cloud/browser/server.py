@@ -10,7 +10,10 @@ import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
-from playwright.sync_api import sync_playwright
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    sync_playwright = None
 
 PORT = int(os.getenv("SAREMBOK_BROWSER_PORT", "9100"))
 MAX_TEXT = max(1000, int(os.getenv("SAREMBOK_BROWSER_MAX_TEXT", "120000")))
@@ -107,6 +110,8 @@ class BrowserRuntime:
         self.session_ttl_seconds = max(300, int(os.getenv("SAREMBOK_BROWSER_SESSION_TTL_SECONDS", "1800")))
 
     def start(self) -> None:
+        if sync_playwright is None:
+            return
         self.playwright = sync_playwright().start()
         launch_args = [
             "--disable-dev-shm-usage",
@@ -423,6 +428,157 @@ class BrowserRuntime:
             context.close()
 
 
+BROWSER_MCP_TOOLS: list[dict[str, Any]] = [
+    {
+        "name": "browser_navigate",
+        "description": "Navigate to a verified public HTTP/HTTPS URL using headless Chromium, render dynamic JavaScript, and extract structured page text, markdown, and title.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The target HTTP or HTTPS URL to navigate to.",
+                },
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "browser_screenshot",
+        "description": "Capture a full-page or viewport screenshot of a web page using headless Chromium as base64 PNG.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "Target web page URL.",
+                },
+                "full_page": {
+                    "type": "boolean",
+                    "description": "Whether to capture the entire scrollable height.",
+                    "default": True,
+                },
+                "width": {
+                    "type": "integer",
+                    "description": "Viewport width in pixels.",
+                    "default": 1280,
+                },
+                "height": {
+                    "type": "integer",
+                    "description": "Viewport height in pixels.",
+                    "default": 800,
+                },
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "browser_render",
+        "description": "Render a dynamic JavaScript web page and extract raw HTML, DOM layout, and text content.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "Target URL to render.",
+                },
+                "width": {
+                    "type": "integer",
+                    "description": "Viewport width in pixels.",
+                    "default": 1280,
+                },
+                "height": {
+                    "type": "integer",
+                    "description": "Viewport height in pixels.",
+                    "default": 800,
+                },
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "browser_open_session",
+        "description": "Open a stateful interactive CDP browser session for multi-step navigation and form interaction.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sessionId": {
+                    "type": "string",
+                    "description": "Optional unique session ID (auto-generated if omitted).",
+                },
+            },
+        },
+    },
+    {
+        "name": "browser_inspect_session",
+        "description": "Inspect the active state, interactive DOM elements, title, and console messages of a stateful browser session.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sessionId": {
+                    "type": "string",
+                    "description": "Active session ID to inspect.",
+                },
+                "includeText": {
+                    "type": "boolean",
+                    "description": "Whether to include inner text of page elements.",
+                    "default": True,
+                },
+            },
+            "required": ["sessionId"],
+        },
+    },
+    {
+        "name": "browser_session_action",
+        "description": "Execute an action in an active stateful browser session: click, type, fill, evaluate JavaScript, scroll, press key, or navigate.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sessionId": {
+                    "type": "string",
+                    "description": "Active session ID.",
+                },
+                "action": {
+                    "type": "string",
+                    "description": "Action type: navigate, click, fill, type, press, select, hover.",
+                    "enum": ["navigate", "click", "fill", "type", "press", "select", "hover"],
+                },
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector or element locator target.",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Text value to fill, type, or select.",
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Target URL for navigate action.",
+                },
+                "key": {
+                    "type": "string",
+                    "description": "Keyboard key to press (e.g. Enter, Escape, Tab).",
+                },
+            },
+            "required": ["sessionId", "action"],
+        },
+    },
+    {
+        "name": "browser_close_session",
+        "description": "Close an active stateful browser session and release CDP resources.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sessionId": {
+                    "type": "string",
+                    "description": "Session ID to close.",
+                },
+            },
+            "required": ["sessionId"],
+        },
+    },
+]
+
 BROWSER = BrowserRuntime()
 
 
@@ -435,14 +591,143 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Authorization")
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Authorization")
+        self.end_headers()
 
     def do_GET(self) -> None:
         if self.path == "/health":
             self._send(200, BROWSER.health())
             return
+        if self.path in ("/mcp", "/mcp/"):
+            self._send(200, {
+                "name": "sarembok_browser",
+                "transport": "http",
+                "status": "CONNECTED",
+                "protocolVersion": "2026-07-28",
+                "serverInfo": {"name": "sarembok_browser", "version": "2.0.0"},
+                "tools": BROWSER_MCP_TOOLS,
+            })
+            return
         self._send(404, {"error": "not_found"})
+
+    def _handle_mcp(self, request: dict[str, Any]) -> None:
+        method = str(request.get("method") or "").strip()
+        req_id = request.get("id")
+        params = request.get("params") or {}
+
+        if method == "initialize":
+            self._send(200, {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": params.get("protocolVersion", "2026-07-28"),
+                    "capabilities": {
+                        "tools": {"listChanged": False}
+                    },
+                    "serverInfo": {
+                        "name": "sarembok_browser",
+                        "version": "2.0.0"
+                    }
+                }
+            })
+            return
+
+        if method in ("tools/list", "tools/list/"):
+            self._send(200, {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": BROWSER_MCP_TOOLS
+                }
+            })
+            return
+
+        if method == "tools/call":
+            tool_name = str(params.get("name") or "").strip()
+            args = params.get("arguments") or {}
+            try:
+                if tool_name == "browser_navigate":
+                    result_data = BROWSER.navigate(str(args.get("url") or ""))
+                elif tool_name == "browser_screenshot":
+                    result_data = BROWSER.screenshot(
+                        str(args.get("url") or ""),
+                        full_page=bool(args.get("full_page", True)),
+                        width=int(args.get("width", 1280)),
+                        height=int(args.get("height", 800)),
+                        image_format=str(args.get("format", "png")),
+                    )
+                elif tool_name == "browser_render":
+                    result_data = BROWSER.render(
+                        str(args.get("url") or ""),
+                        width=int(args.get("width", 1280)),
+                        height=int(args.get("height", 800)),
+                    )
+                elif tool_name == "browser_open_session":
+                    result_data = BROWSER.open_session(str(args.get("sessionId") or ""))
+                elif tool_name == "browser_inspect_session":
+                    result_data = BROWSER.inspect_session(
+                        str(args.get("sessionId") or ""),
+                        bool(args.get("includeText", True)),
+                    )
+                elif tool_name == "browser_session_action":
+                    result_data = BROWSER.action(args)
+                elif tool_name == "browser_close_session":
+                    result_data = BROWSER.close_session(str(args.get("sessionId") or ""))
+                else:
+                    self._send(200, {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
+                    })
+                    return
+
+                content = [{"type": "text", "text": json.dumps(result_data, ensure_ascii=False)}]
+                if isinstance(result_data, dict) and "data" in result_data and tool_name == "browser_screenshot":
+                    content.append({
+                        "type": "image",
+                        "data": result_data["data"],
+                        "mimeType": "image/png"
+                    })
+
+                self._send(200, {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": content,
+                        "isError": False
+                    }
+                })
+                return
+            except Exception as exc:
+                self._send(200, {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [{"type": "text", "text": f"Error executing {tool_name}: {str(exc)}"}],
+                        "isError": True
+                    }
+                })
+                return
+
+        if method == "ping":
+            self._send(200, {"jsonrpc": "2.0", "id": req_id, "result": {}})
+            return
+
+        self._send(200, {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32601, "message": f"Method '{method}' not found"}
+        })
 
     def do_POST(self) -> None:
         try:
@@ -454,7 +739,9 @@ class Handler(BaseHTTPRequestHandler):
             request = json.loads(raw.decode("utf-8"))
             url = str(request.get("url") or "")
 
-            if self.path == "/navigate":
+            if self.path in ("/mcp", "/mcp/"):
+                self._handle_mcp(request)
+            elif self.path == "/navigate":
                 result = BROWSER.navigate(url)
                 self._send(200, {"ok": True, **result})
             elif self.path in ("/screenshot", "/capture"):

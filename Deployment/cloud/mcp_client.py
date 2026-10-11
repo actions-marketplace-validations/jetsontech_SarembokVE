@@ -71,13 +71,21 @@ class MCPClientManager:
                     else:
                         resolved_env[k] = str(v)
 
+                server_url = os.path.expandvars(cfg.get("url", ""))
+                if name == "sarembok_browser":
+                    env_browser_url = os.getenv("SAREMBOK_BROWSER_URL", "")
+                    if env_browser_url:
+                        server_url = f"{env_browser_url.rstrip('/')}/mcp"
+                    elif not server_url:
+                        server_url = "http://sarembok-browser:9100/mcp"
+
                 server = ExternalMcpServer(
                     name=name,
                     transport=transport,
                     command=cfg.get("command", ""),
                     args=cfg.get("args", []),
                     env=resolved_env,
-                    url=os.path.expandvars(cfg.get("url", "")),
+                    url=server_url,
                     headers=cfg.get("headers", {}),
                     timeout_seconds=float(cfg.get("timeout", 15.0)),
                     enabled=bool(cfg.get("enabled", True)),
@@ -183,6 +191,8 @@ class MCPClientManager:
             raise ValueError(f"MCP server '{name}' not found")
         if env is not None:
             server.env.update(env)
+            if name == "sarembok_browser" and "BROWSER_URL" in env and env["BROWSER_URL"]:
+                server.url = env["BROWSER_URL"]
         if url is not None:
             server.url = url
         if headers is not None:
@@ -196,7 +206,7 @@ class MCPClientManager:
 
         self.save_configuration()
 
-        if getattr(server, "enabled", True) and name != "sarembok_browser":
+        if getattr(server, "enabled", True):
             try:
                 self.sync_server_tools(name)
             except Exception as exc:
@@ -368,7 +378,28 @@ class MCPClientManager:
                 if "text/event-stream" not in content_type:
                     return json.loads(body)
                 return self._parse_sse_jsonrpc(body)
-        except urllib.error.HTTPError as exc:
+        except urllib.error.URLError as uerr:
+            alt_url = None
+            if "sarembok-browser:9100" in url:
+                alt_url = url.replace("sarembok-browser:9100", "127.0.0.1:9100")
+            elif "127.0.0.1:9100" in url:
+                alt_url = url.replace("127.0.0.1:9100", "sarembok-browser:9100")
+            elif "localhost:9100" in url:
+                alt_url = url.replace("localhost:9100", "sarembok-browser:9100")
+            if alt_url:
+                try:
+                    alt_req = urllib.request.Request(alt_url, data=data, headers=all_headers)
+                    with urllib.request.urlopen(alt_req, timeout=timeout) as response:
+                        content_type = (response.headers.get("content-type") or "").lower()
+                        body = response.read().decode("utf-8", errors="replace")
+                        if "text/event-stream" not in content_type:
+                            return json.loads(body)
+                        return self._parse_sse_jsonrpc(body)
+                except Exception:
+                    pass
+            if not isinstance(uerr, urllib.error.HTTPError):
+                raise
+            exc = uerr
             if exc.code not in {400, 404, 405}:
                 raise
             # Backward-compatible retry for pre-2025 Streamable HTTP / HTTP+SSE servers.

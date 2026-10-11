@@ -80,7 +80,7 @@
     },
     "sarembok_browser": {
       "transport": "http",
-      "url": "http://127.0.0.1:9100/mcp",
+      "url": "http://sarembok-browser:9100/mcp",
       "timeout": 15.0
     }
   }
