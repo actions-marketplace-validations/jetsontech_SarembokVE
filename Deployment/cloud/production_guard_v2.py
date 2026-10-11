@@ -130,7 +130,8 @@ class ProductionGuard:
         if method=="VerifyAdminPasscode":
             configured=os.getenv("SAREMBOK_ADMIN_PASSCODE","").strip(); supplied=str(params.get("passcode") or "").strip()
             if not configured:raise PermissionError("admin_authentication_not_configured")
-            if not supplied or not hmac.compare_digest(supplied,configured):raise PermissionError("invalid_admin_credentials")
+            cfg_set={p.strip() for p in configured.split(",") if p.strip()}
+            if not supplied or not any(hmac.compare_digest(supplied,c) for c in cfg_set):raise PermissionError("invalid_admin_credentials")
             return
         required=METHOD_REQUIREMENTS.get(method,"ADMIN")
         if self.level(identity.role)<self.level(required):raise PermissionError("authenticated_session_required" if identity.role=="PUBLIC" else "insufficient_privilege")

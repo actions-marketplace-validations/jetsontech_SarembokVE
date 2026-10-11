@@ -307,10 +307,11 @@ logging.basicConfig(
 LOG = logging.getLogger("sarembok.cloud")
 
 ADMIN_PASSCODE = os.getenv("SAREMBOK_ADMIN_PASSCODE", "").strip()
-ADMIN_ALLOWED_PASSCODES = {
-    ADMIN_PASSCODE,
-    os.getenv("SAREMBOK_AUTH_TOKEN", "").strip(),
-} - {""}
+_env_codes = {p.strip() for p in ADMIN_PASSCODE.split(",") if p.strip()}
+ADMIN_ALLOWED_PASSCODES = (
+    _env_codes |
+    {os.getenv("SAREMBOK_AUTH_TOKEN", "").strip()}
+) - {""}
 ADMIN_TOKENS: set[str] = set()
 USER_SESSIONS: dict[str, dict[str, Any]] = {}
 

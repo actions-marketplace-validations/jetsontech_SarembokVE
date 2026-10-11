@@ -223,7 +223,8 @@ class ProductionGuard:
                 if not configured:
                     raise PermissionError("admin_authentication_not_configured")
                 supplied = str(params.get("passcode") or "").strip()
-                if not supplied or not hmac.compare_digest(supplied, configured):
+                cfg_set = {p.strip() for p in configured.split(",") if p.strip()}
+                if not supplied or not any(hmac.compare_digest(supplied, c) for c in cfg_set):
                     raise PermissionError("invalid_admin_credentials")
                 return
             return
