@@ -58,7 +58,10 @@ jobs:
 
       - name: Agent tool-calling evaluation harness and task distribution
         timeout-minutes: 3
-        run: python -m unittest Runtime/test_eval_harness.py
+        run: |
+          python -m unittest \
+            Runtime/test_eval_harness.py \
+            Runtime/test_stress_retrieval_and_quorum.py
 
       - name: Validate Compose specifications
         timeout-minutes: 2
