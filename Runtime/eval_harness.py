@@ -237,7 +237,12 @@ class IsolatedLoopTeardown:
     of active threads/subprocesses, and fail-safe teardown hooks.
     """
 
-    def __init__(self, session_id: str, timeout_seconds: float = 3.0) -> None:
+    def __init__(
+        self,
+        session_id: str,
+        timeout_seconds: float = 3.0,
+        export_target_dir: Optional[str] = None,
+    ) -> None:
         self.session_id = session_id
         self.timeout_seconds = timeout_seconds
         self.scratch_dir: Optional[str] = None
@@ -246,12 +251,17 @@ class IsolatedLoopTeardown:
         self._executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=2, thread_name_prefix=f"eval_teardown_{session_id[:6]}"
         )
+        # Target export directory for public web client downloads
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.export_target_dir = export_target_dir or os.path.join(repo_root, "public", "exports")
 
     def setup(self) -> str:
-        """Creates isolated scratch environment."""
+        """Creates isolated scratch environment with dedicated artifacts folder."""
         with self._lock:
             self._is_torn_down = False
             self.scratch_dir = tempfile.mkdtemp(prefix=f"srbk_eval_{self.session_id}_")
+            artifacts_sub = os.path.join(self.scratch_dir, "artifacts")
+            os.makedirs(artifacts_sub, exist_ok=True)
             return self.scratch_dir
 
     def run_isolated(
@@ -280,20 +290,54 @@ class IsolatedLoopTeardown:
                 f"Execution exceeded isolated timeout limit of {effective_timeout:.2f}s"
             ) from exc
 
+    def _persist_generated_artifacts(self) -> List[str]:
+        """Safely transfers generated artifacts to public exports before ephemeral cleanup."""
+        persisted = []
+        if not self.scratch_dir or not os.path.isdir(self.scratch_dir):
+            return persisted
+
+        os.makedirs(self.export_target_dir, exist_ok=True)
+        valid_exts = {".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".md", ".txt", ".py", ".js", ".json", ".yaml", ".tf"}
+
+        for root, _, files in os.walk(self.scratch_dir):
+            for file in files:
+                _, ext = os.path.splitext(file)
+                if ext.lower() in valid_exts or "artifacts" in root:
+                    src_file = os.path.join(root, file)
+                    dest_file = os.path.join(self.export_target_dir, file)
+                    try:
+                        shutil.copy2(src_file, dest_file)
+                        persisted.append(dest_file)
+                    except Exception as exc:
+                        logger.warning(f"[TEARDOWN_EXPORT_FAIL] Could not preserve {file}: {exc}")
+
+        if persisted:
+            logger.info(
+                f"[TEARDOWN_EXPORT] Preserved {len(persisted)} artifact(s) to '{self.export_target_dir}' "
+                f"before ephemeral container cleanup."
+            )
+        return persisted
+
     def teardown(self) -> None:
-        """Failsafe teardown that guarantees all temporary assets and processes are purged."""
+        """Failsafe teardown that guarantees artifact preservation and zero process leaks."""
         with self._lock:
             if self._is_torn_down:
                 return
             self._is_torn_down = True
 
-            # Shutdown thread pool immediately without blocking
+            # 1. Safely move generated artifacts to public export directory before cleanup
+            try:
+                self._persist_generated_artifacts()
+            except Exception as e:
+                logger.error(f"[TEARDOWN_FAIL] Failed during artifact preservation: {e}")
+
+            # 2. Shutdown thread pool immediately without blocking
             try:
                 self._executor.shutdown(wait=False, cancel_futures=True)
             except Exception as e:
                 logger.error(f"[TEARDOWN_FAIL] Failed to shutdown executor: {e}")
 
-            # Clean temporary scratch directory
+            # 3. Clean temporary scratch directory
             if self.scratch_dir and os.path.isdir(self.scratch_dir):
                 try:
                     shutil.rmtree(self.scratch_dir, ignore_errors=True)

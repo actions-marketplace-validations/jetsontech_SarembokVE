@@ -31,6 +31,15 @@ class MCPGateway:
         self.store = db_store
         self._custom_tool_handlers: dict[str, Callable[[dict[str, Any]], Any]] = {}
         self._custom_tool_metadata: dict[str, dict[str, Any]] = {}
+        self._init_artifact_factory_tools()
+
+    def _init_artifact_factory_tools(self) -> None:
+        """Auto-register multi-format artifact creation tools under MCP v2026.1."""
+        try:
+            from Runtime.handlers.artifact_factory import register_artifact_tools_in_gateway
+            register_artifact_tools_in_gateway(self)
+        except Exception as exc:
+            logger.debug("Artifact factory registration deferred: %s", exc)
 
     def register_tool_handler(self, tool_name: str, handler: Callable[[dict[str, Any]], Any]) -> None:
         """Register a handler for a tool by name."""
