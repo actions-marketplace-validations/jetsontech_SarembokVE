@@ -13,12 +13,89 @@ import os
 import queue
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("sarembok.sktb")
 
-DEFAULT_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092,localhost:9092")
+PRODUCTION_KAFKA_BROKERS = [
+    "kafka-cluster-node1.sarembok.internal:9092",
+    "kafka-cluster-node2.sarembok.internal:9092",
+    "kafka-cluster-node3.sarembok.internal:9092",
+    "kafka:9092",
+    "localhost:9092",
+]
+DEFAULT_BOOTSTRAP_SERVERS = os.getenv(
+    "KAFKA_BOOTSTRAP_SERVERS",
+    ",".join(PRODUCTION_KAFKA_BROKERS),
+)
+
+PRODUCTION_REDIS_ENDPOINTS = [
+    "redis-cluster-node1.sarembok.internal:6379",
+    "redis-cluster-node2.sarembok.internal:6379",
+    "redis-cluster-node3.sarembok.internal:6379",
+    "localhost:6379",
+]
+
+
+class RedisClusterPoolManager:
+    """Manages standalone and clustered Redis connection pools for high-throughput L1 episodic memory."""
+
+    _instance: Optional["RedisClusterPoolManager"] = None
+    _lock = threading.Lock()
+
+    def __init__(self, endpoints: Optional[List[str]] = None, max_connections: int = 50):
+        self.endpoints = endpoints or [
+            ep.strip()
+            for ep in os.getenv("REDIS_CLUSTER_ENDPOINTS", ",".join(PRODUCTION_REDIS_ENDPOINTS)).split(",")
+            if ep.strip()
+        ]
+        self.max_connections = max_connections
+        self._pool = None
+        self._client = None
+        self._init_pool()
+
+    def _init_pool(self) -> None:
+        try:
+            import redis
+            from redis.connection import ConnectionPool
+
+            primary = self.endpoints[0]
+            host, port = primary.split(":") if ":" in primary else (primary, "6379")
+            self._pool = ConnectionPool(
+                host=host,
+                port=int(port),
+                db=0,
+                max_connections=self.max_connections,
+                socket_connect_timeout=0.25,
+                socket_timeout=0.5,
+                decode_responses=True,
+            )
+            self._client = redis.Redis(connection_pool=self._pool)
+            self._client.ping()
+            logger.info(
+                f"[REDIS_POOL] Connection pool initialized for {self.endpoints} (max_conn={self.max_connections})"
+            )
+        except Exception as exc:
+            self._pool = None
+            self._client = None
+            logger.debug(f"[REDIS_POOL_FALLBACK] Redis cluster pool fallback: {exc}")
+
+    @classmethod
+    def get_pool(cls) -> "RedisClusterPoolManager":
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = cls()
+            return cls._instance
+
+    @property
+    def client(self) -> Optional[Any]:
+        return self._client
+
+    @property
+    def is_connected(self) -> bool:
+        return self._client is not None
 
 
 @dataclass
@@ -239,4 +316,10 @@ class SecureKernelTelemetryBus:
         return self._published_count
 
 
-__all__ = ["TelemetryEvent", "SecureKernelTelemetryBus"]
+__all__ = [
+    "TelemetryEvent",
+    "SecureKernelTelemetryBus",
+    "RedisClusterPoolManager",
+    "PRODUCTION_KAFKA_BROKERS",
+    "PRODUCTION_REDIS_ENDPOINTS",
+]

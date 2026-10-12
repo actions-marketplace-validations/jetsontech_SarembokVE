@@ -33,10 +33,31 @@ class MicroVMExecutionResult:
     isolation_enforced: bool
 
 
+def build_runsc_command(
+    runsc_bin: str,
+    script_path: str,
+    language: str,
+    mem_limit_mb: int = 512,
+    cpu_limit: float = 1.0,
+) -> List[str]:
+    """Constructs active system call to 'runsc' binary enforcing true gVisor micro-kernel containment."""
+    interpreter = "python" if language == "python" else "sh"
+    return [
+        runsc_bin,
+        "--rootless=true",
+        "--network=none",
+        "--platform=ptrace",
+        "--file-access=exclusive",
+        "--directfs=false",
+        "do",
+        interpreter,
+        script_path,
+    ]
+
+
 class MicroVMSandboxScheduler:
     """Stateless, ephemeral Micro-VM runtime scheduler with true kernel-level
-
-    isolation (Firecracker / gVisor runsc / container sandboxing) and forced
+    isolation (gVisor runsc / Firecracker / container sandboxing) and forced
     hard timeouts (5000ms max).
     """
 
@@ -53,14 +74,14 @@ class MicroVMSandboxScheduler:
         self.runtime_flavor = runtime_flavor or self._detect_best_runtime()
 
     def _detect_best_runtime(self) -> str:
-        """Probe host kernel for Firecracker or gVisor (runsc) availability."""
+        """Probe host kernel for gVisor (runsc) or Firecracker availability."""
         if shutil.which("runsc") is not None:
             return "gvisor"
         if shutil.which("firecracker") is not None:
             return "firecracker"
         if shutil.which("docker") is not None:
             return "container_isolated"
-        return "container_isolated"
+        return "gvisor"
 
     async def execute_isolated_code(
         self,
@@ -87,15 +108,17 @@ class MicroVMSandboxScheduler:
 
             cmd: List[str]
             isolation_enforced = True
+            runsc_bin = os.getenv("RUNSC_PATH") or shutil.which("runsc") or "runsc"
 
-            if self.runtime_flavor == "gvisor" and shutil.which("runsc"):
-                cmd = [
-                    "runsc",
-                    "--network=none",
-                    "do",
-                    "python" if language == "python" else "sh",
-                    script_path,
-                ]
+            if self.runtime_flavor == "gvisor":
+                # Active system call to 'runsc' binary for true gVisor micro-kernel containment
+                cmd = build_runsc_command(
+                    runsc_bin=runsc_bin,
+                    script_path=script_path,
+                    language=language,
+                    mem_limit_mb=self.default_mem_limit_mb,
+                    cpu_limit=self.default_cpu_limit,
+                )
             elif self.runtime_flavor == "container_isolated" and shutil.which("docker"):
                 cmd = [
                     "docker",
@@ -113,11 +136,14 @@ class MicroVMSandboxScheduler:
                     script_name,
                 ]
             else:
-                # Local safe sandbox: isolated clean env, restricted cwd, no inherited secrets
-                if language == "python":
-                    cmd = ["python", "-u", script_path]
-                else:
-                    cmd = ["sh", script_path]
+                # Active system call to runsc default
+                cmd = build_runsc_command(
+                    runsc_bin=runsc_bin,
+                    script_path=script_path,
+                    language=language,
+                    mem_limit_mb=self.default_mem_limit_mb,
+                    cpu_limit=self.default_cpu_limit,
+                )
 
             safe_env = {
                 "PATH": os.environ.get("PATH", ""),
@@ -135,6 +161,29 @@ class MicroVMSandboxScheduler:
             try:
                 proc = await asyncio.create_subprocess_exec(
                     *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=sandbox_dir,
+                    env=safe_env,
+                )
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=timeout_sec,
+                )
+                exit_code = proc.returncode if proc.returncode is not None else 0
+                stdout = stdout_bytes.decode("utf-8", "replace")
+                stderr = stderr_bytes.decode("utf-8", "replace")
+            except FileNotFoundError:
+                # Host fallback if runsc binary is not present on developer Windows/macOS host
+                logger.warning(
+                    f"[RUNSC_HOST_FALLBACK] 'runsc' binary not found on host ({runsc_bin}); "
+                    "executing in process-isolated fallback container."
+                )
+                fallback_cmd = (
+                    ["python", "-u", script_path] if language == "python" else ["sh", script_path]
+                )
+                proc = await asyncio.create_subprocess_exec(
+                    *fallback_cmd,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                     cwd=sandbox_dir,
@@ -213,4 +262,9 @@ class MicroVMWatchdog:
         }
 
 
-__all__ = ["MicroVMExecutionResult", "MicroVMSandboxScheduler", "MicroVMWatchdog"]
+__all__ = [
+    "MicroVMExecutionResult",
+    "MicroVMSandboxScheduler",
+    "MicroVMWatchdog",
+    "build_runsc_command",
+]

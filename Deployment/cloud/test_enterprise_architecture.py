@@ -31,9 +31,14 @@ from Runtime.consensus_network import (
     VoteDecision,
 )
 from Runtime.dual_tier_memory import DualTierMemoryRouter
-from Runtime.sandbox_microvm import MicroVMSandboxScheduler
+from Runtime.sandbox_microvm import MicroVMSandboxScheduler, build_runsc_command
 from Runtime.sarembok_telemetry import AgentTelemetryTracer
-from Runtime.sktb_event_bus import SecureKernelTelemetryBus
+from Runtime.sktb_event_bus import (
+    SecureKernelTelemetryBus,
+    RedisClusterPoolManager,
+    PRODUCTION_KAFKA_BROKERS,
+    PRODUCTION_REDIS_ENDPOINTS,
+)
 from Runtime.tamper_evident_audit import TamperEvidentAuditLedger
 from Runtime.wal_memory_manager import WalMemoryManager
 
@@ -252,7 +257,56 @@ class TestEnterpriseArchitecture(unittest.IsolatedAsyncioTestCase):
         restored = acn.rollback_sm.current_state
         self.assertEqual(restored.get("last_committed_proposal"), p1.proposal_id)
 
+    def test_phase6_clustered_brokers_runsc_and_hnsw_latency_hooks(self):
+        """Verifies Antigravity compute layer preparations:
+        1. Clustered Kafka production brokers & Redis cluster connection pool.
+        2. Active 'runsc' gVisor micro-kernel system call command generation.
+        3. Real-time L2 HNSW retrieval latency telemetry hooks (p95 monitoring).
+        """
+        # 1. Clustered Kafka production brokers & Redis cluster pool
+        bus = SecureKernelTelemetryBus.get_bus()
+        self.assertTrue(len(bus.server_list) >= 1)
+        for broker in ["kafka:9092", "localhost:9092"]:
+            self.assertIn(broker, bus.server_list)
+        self.assertTrue(any("sarembok.internal" in b for b in PRODUCTION_KAFKA_BROKERS))
+
+        pool = RedisClusterPoolManager.get_pool()
+        self.assertIsNotNone(pool)
+        self.assertTrue(len(pool.endpoints) >= 1)
+        self.assertIn("localhost:6379", pool.endpoints)
+
+        # 2. Active runsc gVisor system call command generation
+        runsc_cmd = build_runsc_command(
+            runsc_bin="/usr/local/bin/runsc",
+            script_path="/sandbox/workload.py",
+            language="python",
+            mem_limit_mb=512,
+            cpu_limit=1.0,
+        )
+        self.assertEqual(runsc_cmd[0], "/usr/local/bin/runsc")
+        self.assertIn("--network=none", runsc_cmd)
+        self.assertIn("--rootless=true", runsc_cmd)
+        self.assertIn("--platform=ptrace", runsc_cmd)
+        self.assertIn("do", runsc_cmd)
+        self.assertIn("python", runsc_cmd)
+        self.assertIn("/sandbox/workload.py", runsc_cmd)
+
+        # 3. Real-time L2 HNSW latency monitoring hooks & p95 statistics
+        router = DualTierMemoryRouter()
+        for i in range(10):
+            router.l2.insert(f"hook_doc_{i}", f"kernel latency verification turn {i}", {"idx": i})
+
+        # Execute queries to populate latency sliding window
+        for i in range(5):
+            router.query_semantic_long_term(f"verification turn {i}", top_k=2)
+
+        stats = router.get_retrieval_stats()
+        self.assertGreaterEqual(stats["sample_count"], 5)
+        self.assertTrue(stats["sla_compliant"])
+        self.assertLess(stats["p95_ms"], 45.0)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

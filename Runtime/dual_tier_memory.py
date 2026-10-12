@@ -14,6 +14,7 @@ import math
 import os
 import random
 import time
+from collections import deque
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("sarembok.dual_tier_memory")
@@ -31,7 +32,18 @@ class EphemeralL1Cache:
         self._init_redis_connection()
 
     def _init_redis_connection(self) -> None:
-        """Attempt to connect to external dedicated Redis cluster/instance."""
+        """Attempt to connect to external dedicated Redis cluster/instance via connection pool."""
+        try:
+            from Runtime.sktb_event_bus import RedisClusterPoolManager
+
+            pool_mgr = RedisClusterPoolManager.get_pool()
+            if pool_mgr.client is not None:
+                self._redis_client = pool_mgr.client
+                logger.info("[L1_REDIS] Connected to dedicated Redis cluster via connection pool")
+                return
+        except Exception:
+            pass
+
         try:
             import redis  # type: ignore
 
@@ -157,6 +169,7 @@ class HNSWVectorIndex:
         self.nodes: Dict[str, Tuple[List[float], Dict[str, Any]]] = {}  # doc_id -> (vector, metadata)
         self.graph: Dict[str, List[str]] = {}  # doc_id -> neighbor doc_ids (HNSW layer 0)
         self.entry_point: Optional[str] = None
+        self._latency_window: deque[float] = deque(maxlen=200)
 
     def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
         dot = sum(x * y for x, y in zip(a, b))
@@ -232,8 +245,54 @@ class HNSWVectorIndex:
             })
 
         latency_ms = (time.perf_counter() - t_start) * 1000.0
+        self._push_retrieval_telemetry(latency_ms)
         logger.debug(f"[L2_HNSW] Search completed in {latency_ms:.2f}ms (target SLA: <45ms)")
         return results
+
+    def _push_retrieval_telemetry(self, latency_ms: float) -> None:
+        """Pushes real-time p95 semantic retrieval latency telemetry to central telemetry log bus."""
+        self._latency_window.append(latency_ms)
+        sorted_lat = sorted(self._latency_window)
+        idx_p95 = int(len(sorted_lat) * 0.95)
+        p95 = sorted_lat[min(idx_p95, len(sorted_lat) - 1)] if len(sorted_lat) > 1 else latency_ms
+        p50 = sorted_lat[len(sorted_lat) // 2]
+        p99 = sorted_lat[min(int(len(sorted_lat) * 0.99), len(sorted_lat) - 1)]
+
+        try:
+            from Runtime.sktb_event_bus import SecureKernelTelemetryBus
+
+            bus = SecureKernelTelemetryBus.get_bus()
+            bus.publish_footprint_nowait(
+                topic="system-logs",
+                agent_id="MEMORY_ENGINE",
+                event_type="HNSW_SEMANTIC_RETRIEVAL_LATENCY",
+                details={
+                    "latency_ms": round(latency_ms, 3),
+                    "p50_latency_ms": round(p50, 3),
+                    "p95_latency_ms": round(p95, 3),
+                    "p99_latency_ms": round(p99, 3),
+                    "target_sla_ms": 45.0,
+                    "sla_compliant": p95 < 45.0,
+                    "sample_count": len(self._latency_window),
+                },
+            )
+        except Exception:
+            pass
+
+    def get_retrieval_stats(self) -> Dict[str, Any]:
+        """Returns current p50, p95, p99 semantic retrieval latency statistics."""
+        if not self._latency_window:
+            return {"sample_count": 0, "p50_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0, "sla_compliant": True}
+        sorted_lat = sorted(self._latency_window)
+        idx_p95 = int(len(sorted_lat) * 0.95)
+        p95 = sorted_lat[min(idx_p95, len(sorted_lat) - 1)]
+        return {
+            "sample_count": len(self._latency_window),
+            "p50_ms": round(sorted_lat[len(sorted_lat) // 2], 3),
+            "p95_ms": round(p95, 3),
+            "p99_ms": round(sorted_lat[min(int(len(sorted_lat) * 0.99), len(sorted_lat) - 1)], 3),
+            "sla_compliant": p95 < 45.0,
+        }
 
     def batch_search(self, queries: List[str], top_k: int = 5) -> List[List[Dict[str, Any]]]:
         """Executes high-throughput batch semantic queries."""
@@ -330,6 +389,10 @@ class DualTierMemoryRouter:
     def benchmark_sla(self, target_sla_ms: float = 45.0) -> Dict[str, Any]:
         """Runs the semantic retrieval benchmark against L2 HNSW index."""
         return self.l2.verify_retrieval_sla(num_queries=25, max_latency_ms=target_sla_ms)
+
+    def get_retrieval_stats(self) -> Dict[str, Any]:
+        """Returns real-time p50, p95, p99 semantic retrieval stats from L2 HNSW vector index."""
+        return self.l2.get_retrieval_stats()
 
 
 __all__ = ["EphemeralL1Cache", "HNSWVectorIndex", "DualTierMemoryRouter"]
