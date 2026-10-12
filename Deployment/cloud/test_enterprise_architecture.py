@@ -25,6 +25,11 @@ from Runtime.aas_grpc_service import (
     ScheduleRequest,
     SchedulingPriority,
 )
+from Runtime.consensus_network import (
+    AutomatedConsensusNetwork,
+    ConsensusStatus,
+    VoteDecision,
+)
 from Runtime.dual_tier_memory import DualTierMemoryRouter
 from Runtime.sandbox_microvm import MicroVMSandboxScheduler
 from Runtime.sarembok_telemetry import AgentTelemetryTracer
@@ -169,6 +174,85 @@ class TestEnterpriseArchitecture(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report["system_status"], "COMPLIANT")
         self.assertEqual(report["total_audit_blocks"], 3)
 
+    def test_phase3_retrieval_sla_target(self):
+        """Verifies HNSW vector search clears the enterprise <45ms SLA under batch query load."""
+        router = DualTierMemoryRouter()
+        # Seed 50 contextual documents
+        for i in range(50):
+            router.l2_vector_index.insert(
+                doc_id=f"doc_ctx_{i}",
+                text=f"Agent context state knowledge item number {i} regarding distributed consensus and kernel scheduling",
+                metadata={"index": i},
+            )
+        sla_report = router.verify_retrieval_sla(num_queries=20, max_latency_ms=45.0)
+        self.assertTrue(sla_report["slaCompliant"], f"Failed SLA target: {sla_report}")
+        self.assertLess(sla_report["p95LatencyMs"], 45.0)
+
+    def test_phase5_automated_consensus_and_entropy_rollback(self):
+        """Verifies Phase 4.0 Advanced Agent Evolution:
+        - Quorum-weighted Byzantine voting (STRATEGIST, WORKER, AUDITOR)
+        - Auditor absolute veto mechanism
+        - Sliding-window Shannon entropy monitoring (<0.88 limit check)
+        - Loop rollback state machine (↺ ROLLBACK) on non-deterministic drift.
+        """
+        acn = AutomatedConsensusNetwork(quorum_threshold=0.67, entropy_threshold=0.88)
+
+        # 1. Normal Quorum Approval & Checkpoint Generation
+        p1 = acn.create_proposal(
+            action_type="EXECUTE_TOOL",
+            payload={"tool": "bash", "command": "echo 'safe deploy'"},
+            proposer_agent_id="STRATEGIST_01",
+        )
+        acn.cast_vote(p1.proposal_id, "STRATEGIST_01", "STRATEGIST", VoteDecision.APPROVE, confidence=1.0)
+        acn.cast_vote(p1.proposal_id, "WORKER_01", "WORKER", VoteDecision.APPROVE, confidence=0.95)
+        acn.cast_vote(p1.proposal_id, "AUDITOR_01", "AUDITOR", VoteDecision.APPROVE, confidence=1.0)
+
+        res1 = acn.resolve_consensus(p1.proposal_id, current_entropy=0.22)
+        self.assertEqual(res1["status"], ConsensusStatus.CONSENSUS_REACHED.value)
+        self.assertGreaterEqual(res1["consensusRatio"], 0.67)
+        self.assertEqual(acn.rollback_sm.current_state.get("last_committed_proposal"), p1.proposal_id)
+
+        # 2. Auditor Veto Execution
+        p2 = acn.create_proposal(
+            action_type="MODIFY_SECURITY_POLICY",
+            payload={"bypass_firecracker": True},
+            proposer_agent_id="WORKER_02",
+        )
+        acn.cast_vote(p2.proposal_id, "STRATEGIST_01", "STRATEGIST", VoteDecision.APPROVE, confidence=0.8)
+        acn.cast_vote(p2.proposal_id, "WORKER_02", "WORKER", VoteDecision.APPROVE, confidence=0.9)
+        acn.cast_vote(
+            p2.proposal_id,
+            "AUDITOR_01",
+            "AUDITOR",
+            VoteDecision.REJECT,
+            confidence=0.99,
+            rationale="Unsafe sandbox bypass detected",
+        )
+
+        res2 = acn.resolve_consensus(p2.proposal_id, current_entropy=0.30)
+        self.assertEqual(res2["status"], ConsensusStatus.AUDITOR_VETOED.value)
+        self.assertEqual(res2["vetoBy"], "AUDITOR_01")
+
+        # 3. Shannon Entropy Drift & ↺ ROLLBACK Trigger
+        p3 = acn.create_proposal(
+            action_type="HIGH_UNCERTAINTY_BRANCH",
+            payload={"branch": "divergent"},
+            proposer_agent_id="WORKER_01",
+        )
+        acn.cast_vote(p3.proposal_id, "WORKER_01", "WORKER", VoteDecision.APPROVE, confidence=0.5)
+
+        # Inject severe entropy drift >= 0.88 to trigger rollback
+        res3 = acn.resolve_consensus(p3.proposal_id, current_entropy=0.95)
+        self.assertEqual(res3["status"], ConsensusStatus.ENTROPY_VIOLATION.value)
+        self.assertEqual(res3["action"], "↺ ROLLBACK")
+        self.assertGreaterEqual(res3["instantaneousEntropy"], 0.88)
+        self.assertIsNotNone(res3["rollback"])
+
+        # Check that state machine reverted back to last verified stable state (p1)
+        restored = acn.rollback_sm.current_state
+        self.assertEqual(restored.get("last_committed_proposal"), p1.proposal_id)
+
 
 if __name__ == "__main__":
     unittest.main()
+
