@@ -128,6 +128,8 @@ class SecureKernelTelemetryBus:
         self._dispatcher_thread: Optional[threading.Thread] = None
         self._published_count = 0
         self._kafka_producer = None
+        self._latest_tensor_metrics: Dict[str, Dict[str, Any]] = {}
+        self._latest_compute_metrics: Dict[str, Dict[str, Any]] = {}
         self._init_kafka_producer()
         self.start()
 
@@ -265,6 +267,77 @@ class SecureKernelTelemetryBus:
                 "mutation_details": details,
             },
         )
+
+    def emit_tensor_utilization(
+        self,
+        node_id: str,
+        gpu_model: str,
+        tensor_core_utilization_pct: float,
+        vram_allocated_mb: float,
+        vram_total_mb: float,
+        tensor_precision: str = "FP16/BF16",
+        active_streams: int = 1,
+        memory_bandwidth_pct: Optional[float] = None,
+    ) -> bool:
+        """Streams live Tensor Core and VRAM hardware metrics directly to 'tensor-metrics' Kafka topic."""
+        details = {
+            "gpu_model": gpu_model,
+            "tensor_core_utilization_pct": round(float(tensor_core_utilization_pct), 2),
+            "vram_allocated_mb": round(float(vram_allocated_mb), 2),
+            "vram_total_mb": round(float(vram_total_mb), 2),
+            "vram_utilization_pct": round((vram_allocated_mb / vram_total_mb * 100.0) if vram_total_mb > 0 else 0.0, 2),
+            "tensor_precision": tensor_precision,
+            "active_streams": int(active_streams),
+            "memory_bandwidth_pct": round(float(memory_bandwidth_pct), 2) if memory_bandwidth_pct is not None else None,
+            "timestamp": time.time(),
+        }
+        self._latest_tensor_metrics[node_id] = details
+        return self.publish_footprint_nowait(
+            topic="tensor-metrics",
+            agent_id=node_id,
+            event_type="TENSOR_CORE_HARDWARE_UTILIZATION",
+            details=details,
+        )
+
+    def emit_compute_p99_metrics(
+        self,
+        node_role: str,
+        p50_ms: float,
+        p95_ms: float,
+        p99_ms: float,
+        target_sla_ms: float = 45.0,
+        queue_depth: int = 0,
+    ) -> bool:
+        """Streams real-time p50/p95/p99 execution & retrieval SLA compute metrics to 'compute-sla-metrics' Kafka topic."""
+        details = {
+            "node_role": node_role.upper(),
+            "p50_latency_ms": round(float(p50_ms), 3),
+            "p95_latency_ms": round(float(p95_ms), 3),
+            "p99_latency_ms": round(float(p99_ms), 3),
+            "target_sla_ms": round(float(target_sla_ms), 3),
+            "sla_compliant": float(p99_ms) <= float(target_sla_ms),
+            "queue_depth": int(queue_depth),
+            "timestamp": time.time(),
+        }
+        self._latest_compute_metrics[node_role.upper()] = details
+        return self.publish_footprint_nowait(
+            topic="compute-sla-metrics",
+            agent_id=node_role.upper(),
+            event_type="COMPUTE_P99_SLA_METRIC",
+            details=details,
+        )
+
+    def get_latest_tensor_metrics(self, node_id: Optional[str] = None) -> Dict[str, Any]:
+        """Accessor for hardware scheduler and cluster monitoring."""
+        if node_id:
+            return self._latest_tensor_metrics.get(node_id, {})
+        return dict(self._latest_tensor_metrics)
+
+    def get_latest_compute_sla_metrics(self, node_role: Optional[str] = None) -> Dict[str, Any]:
+        """Accessor for task distributor and cluster health verification."""
+        if node_role:
+            return self._latest_compute_metrics.get(node_role.upper(), {})
+        return dict(self._latest_compute_metrics)
 
     def _dispatch_loop(self) -> None:
         """Background thread batching and transmitting events to Kafka cluster."""

@@ -56,13 +56,14 @@ jobs:
             Deployment/cloud/test_task_routing.py \
             Deployment/cloud/test_worker_lifecycle.py
 
-      - name: Agent tool-calling evaluation harness, task distribution, and artifact factory
+      - name: Agent tool-calling evaluation harness, task distribution, artifact factory, and silicon hardening
         timeout-minutes: 3
         run: |
           python -m unittest \
             Runtime/test_eval_harness.py \
             Runtime/test_stress_retrieval_and_quorum.py \
-            Runtime/test_artifact_factory.py
+            Runtime/test_artifact_factory.py \
+            Runtime/test_enterprise_silicon_hardening.py
 
       - name: Validate Compose specifications
         timeout-minutes: 2

@@ -15,6 +15,7 @@ import os
 import random
 import time
 from collections import deque
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("sarembok.dual_tier_memory")
@@ -327,15 +328,236 @@ class HNSWVectorIndex:
         }
 
 
-class DualTierMemoryRouter:
-    """Coordinates fast L1 context caching and automated demotion to L2 long-term memory
+@dataclass
+class ContextVirtualPage:
+    """Represents a discrete memory page mapped to an active agent PID."""
+    page_id: str
+    agent_pid: str
+    data: Dict[str, Any]
+    text_repr: str
+    is_dirty: bool = False
+    last_accessed: float = field(default_factory=time.time)
+    page_state: str = "ACTIVE_L1"  # "ACTIVE_L1", "SWAPPED_L2"
+    access_count: int = 0
 
-    meeting enterprise latency (<45ms semantic retrieval) and storage SLAs.
+
+class ContextPageFaultEngine:
+    """Multi-Tenant Context Virtual Memory Manager (VMM) and Page Fault Engine.
+
+    Treats agent working memory like virtual memory pages:
+    - Active Pages (L1): Stored in hot Redis connection pool / ephemeral memory.
+    - Swapped Pages (L2): Inactive / idle agent pages paged out to L2 HNSW vector index.
+    - Context Page Fault: Intercepts references to swapped-out pages, restores them
+      from L2 HNSW embeddings into L1 in under 15ms without dropping thread context.
+    """
+
+    def __init__(
+        self,
+        l1_cache: EphemeralL1Cache,
+        l2_index: HNSWVectorIndex,
+        max_active_pages_per_pid: int = 10,
+    ) -> None:
+        self.l1 = l1_cache
+        self.l2 = l2_index
+        self.max_active_pages_per_pid = max_active_pages_per_pid
+        # pid -> {page_id: ContextVirtualPage}
+        self.page_table: Dict[str, Dict[str, ContextVirtualPage]] = {}
+        self.fault_latencies: deque[float] = deque(maxlen=200)
+        self.total_page_faults = 0
+        self.total_swap_outs = 0
+        self.total_swap_ins = 0
+
+    def allocate_page(self, agent_pid: str, page_id: str, data: Dict[str, Any]) -> ContextVirtualPage:
+        """Allocates a virtual context page in L1; triggers LRU swap out if capacity is reached."""
+        if agent_pid not in self.page_table:
+            self.page_table[agent_pid] = {}
+
+        pid_pages = self.page_table[agent_pid]
+
+        # Enforce working set limit: if active L1 pages exceed budget, swap out LRU page
+        active_pages = [p for p in pid_pages.values() if p.page_state == "ACTIVE_L1"]
+        if len(active_pages) >= self.max_active_pages_per_pid:
+            # Sort by last_accessed ascending (LRU)
+            active_pages.sort(key=lambda p: p.last_accessed)
+            lru_page = active_pages[0]
+            self.swap_out_page(agent_pid, lru_page.page_id)
+
+        text_repr = json.dumps(data, sort_keys=True) if not isinstance(data, str) else data
+        page = ContextVirtualPage(
+            page_id=page_id,
+            agent_pid=agent_pid,
+            data=data,
+            text_repr=text_repr,
+            last_accessed=time.time(),
+            page_state="ACTIVE_L1",
+            access_count=1,
+        )
+        pid_pages[page_id] = page
+
+        # Store in L1 cache
+        l1_key = f"vmm:{agent_pid}:page:{page_id}"
+        self.l1.set(l1_key, data)
+        return page
+
+    def swap_out_page(self, agent_pid: str, page_id: str) -> bool:
+        """Pages out an active L1 context array into the underlying L2 HNSW vector index."""
+        pid_pages = self.page_table.get(agent_pid, {})
+        page = pid_pages.get(page_id)
+        if not page or page.page_state != "ACTIVE_L1":
+            return False
+
+        doc_id = f"swapped_{agent_pid}_{page_id}"
+        metadata = {
+            "agent_pid": agent_pid,
+            "page_id": page_id,
+            "swapped_at": time.time(),
+            "access_count": page.access_count,
+            "payload_data": page.data,
+        }
+        self.l2.insert(doc_id, page.text_repr, metadata)
+
+        # Mark page as swapped
+        page.page_state = "SWAPPED_L2"
+        self.total_swap_outs += 1
+
+        # Remove from hot L1 key-value store to reclaim RAM
+        l1_key = f"vmm:{agent_pid}:page:{page_id}"
+        if page_id in self.l1._in_memory_store:
+            del self.l1._in_memory_store[page_id]
+        if l1_key in self.l1._in_memory_store:
+            del self.l1._in_memory_store[l1_key]
+
+        logger.debug(f"[VMM_PAGE_OUT] Swapped page '{page_id}' for PID '{agent_pid}' to L2 HNSW index.")
+        return True
+
+    def access_page(self, agent_pid: str, page_id: str) -> Tuple[ContextVirtualPage, bool]:
+        """Accesses a virtual context page. Triggers a Context Page Fault if paged out to L2."""
+        pid_pages = self.page_table.get(agent_pid, {})
+        page = pid_pages.get(page_id)
+
+        # 1. Page hit in hot L1
+        if page and page.page_state == "ACTIVE_L1":
+            page.last_accessed = time.time()
+            page.access_count += 1
+            return page, False
+
+        # 2. Context Page Fault!
+        t_fault_start = time.perf_counter()
+        self.total_page_faults += 1
+
+        # Retrieve from L2 HNSW vector index
+        doc_id = f"swapped_{agent_pid}_{page_id}"
+        retrieved_data: Optional[Dict[str, Any]] = None
+
+        if doc_id in self.l2.nodes:
+            _, meta = self.l2.nodes[doc_id]
+            retrieved_data = meta.get("payload_data", {})
+        else:
+            # Fallback search if doc_id not directly keyed
+            results = self.l2.search(f"{agent_pid} {page_id}", top_k=1)
+            if results and results[0]["metadata"].get("page_id") == page_id:
+                retrieved_data = results[0]["metadata"].get("payload_data", {})
+
+        if retrieved_data is None:
+            raise KeyError(f"Context Page '{page_id}' for PID '{agent_pid}' not found in virtual memory.")
+
+        # Repage into L1
+        text_repr = json.dumps(retrieved_data, sort_keys=True)
+        if page is None:
+            page = ContextVirtualPage(
+                page_id=page_id,
+                agent_pid=agent_pid,
+                data=retrieved_data,
+                text_repr=text_repr,
+            )
+            if agent_pid not in self.page_table:
+                self.page_table[agent_pid] = {}
+            self.page_table[agent_pid][page_id] = page
+
+        page.data = retrieved_data
+        page.page_state = "ACTIVE_L1"
+        page.last_accessed = time.time()
+        page.access_count += 1
+
+        l1_key = f"vmm:{agent_pid}:page:{page_id}"
+        self.l1.set(l1_key, retrieved_data)
+        self.total_swap_ins += 1
+
+        fault_duration_ms = (time.perf_counter() - t_fault_start) * 1000.0
+        self.fault_latencies.append(fault_duration_ms)
+
+        logger.info(
+            f"[CONTEXT_PAGE_FAULT] Resolved page fault for PID '{agent_pid}' page '{page_id}' "
+            f"in {fault_duration_ms:.2f}ms (target SLA: <15ms)."
+        )
+
+        # Emit telemetry
+        try:
+            from Runtime.sktb_event_bus import SecureKernelTelemetryBus
+            bus = SecureKernelTelemetryBus.get_bus()
+            bus.publish_footprint_nowait(
+                topic="system-logs",
+                agent_id=agent_pid,
+                event_type="CONTEXT_PAGE_FAULT_RESOLVED",
+                details={
+                    "page_id": page_id,
+                    "resolution_ms": round(fault_duration_ms, 3),
+                    "sla_compliant": fault_duration_ms < 15.0,
+                    "total_faults": self.total_page_faults,
+                },
+            )
+        except Exception:
+            pass
+
+        return page, True
+
+    def swap_idle_processes(self, idle_threshold_seconds: float = 30.0) -> int:
+        """Puts idle agent memory arrays to sleep by swapping all their pages to L2."""
+        now = time.time()
+        swapped_count = 0
+        for pid, pages in self.page_table.items():
+            for page_id, page in list(pages.items()):
+                if page.page_state == "ACTIVE_L1" and (now - page.last_accessed) >= idle_threshold_seconds:
+                    if self.swap_out_page(pid, page_id):
+                        swapped_count += 1
+        return swapped_count
+
+    def get_paging_stats(self) -> Dict[str, Any]:
+        """Returns virtual memory manager metrics including fault resolution latency."""
+        p95_fault_ms = 0.0
+        if self.fault_latencies:
+            sorted_lat = sorted(self.fault_latencies)
+            idx = int(len(sorted_lat) * 0.95)
+            p95_fault_ms = sorted_lat[min(idx, len(sorted_lat) - 1)]
+
+        active_count = sum(
+            1 for pages in self.page_table.values() for p in pages.values() if p.page_state == "ACTIVE_L1"
+        )
+        swapped_count = sum(
+            1 for pages in self.page_table.values() for p in pages.values() if p.page_state == "SWAPPED_L2"
+        )
+
+        return {
+            "total_allocated_pages": active_count + swapped_count,
+            "active_l1_pages": active_count,
+            "swapped_l2_pages": swapped_count,
+            "page_fault_count": self.total_page_faults,
+            "swap_out_count": self.total_swap_outs,
+            "swap_in_count": self.total_swap_ins,
+            "p95_fault_resolution_ms": round(p95_fault_ms, 3),
+            "sla_compliant": p95_fault_ms < 15.0 if self.fault_latencies else True,
+        }
+
+
+class DualTierMemoryRouter:
+    """Coordinates fast L1 context caching, automated demotion, and Context Page Fault VMM
+    swapping meeting enterprise latency (<45ms semantic retrieval, <15ms page fault) SLAs.
     """
 
     def __init__(self, l1_ttl_seconds: int = 60, redis_url: Optional[str] = None):
         self.l1 = EphemeralL1Cache(redis_url=redis_url, ttl_seconds=l1_ttl_seconds)
         self.l2 = HNSWVectorIndex(m=16, ef_construction=64, ef_search=64)
+        self.vmm = ContextPageFaultEngine(self.l1, self.l2)
 
     @property
     def l2_vector_index(self) -> HNSWVectorIndex:
@@ -360,7 +582,6 @@ class DualTierMemoryRouter:
 
     def trigger_stale_demotion(self) -> int:
         """Scans L1 for expired working states and automatically promotes/demotes them
-
         into L2 HNSW vector embeddings for permanent semantic recall.
         """
         stale_entries = self.l1.get_stale_entries()
@@ -394,5 +615,27 @@ class DualTierMemoryRouter:
         """Returns real-time p50, p95, p99 semantic retrieval stats from L2 HNSW vector index."""
         return self.l2.get_retrieval_stats()
 
+    # Context Page Fault VMM methods
+    def allocate_virtual_page(self, agent_pid: str, page_id: str, data: Dict[str, Any]) -> ContextVirtualPage:
+        return self.vmm.allocate_page(agent_pid, page_id, data)
 
-__all__ = ["EphemeralL1Cache", "HNSWVectorIndex", "DualTierMemoryRouter"]
+    def access_virtual_page(self, agent_pid: str, page_id: str) -> Tuple[ContextVirtualPage, bool]:
+        return self.vmm.access_page(agent_pid, page_id)
+
+    def swap_out_virtual_page(self, agent_pid: str, page_id: str) -> bool:
+        return self.vmm.swap_out_page(agent_pid, page_id)
+
+    def swap_idle_virtual_memory(self, idle_threshold_seconds: float = 30.0) -> int:
+        return self.vmm.swap_idle_processes(idle_threshold_seconds)
+
+    def get_virtual_memory_stats(self) -> Dict[str, Any]:
+        return self.vmm.get_paging_stats()
+
+
+__all__ = [
+    "EphemeralL1Cache",
+    "HNSWVectorIndex",
+    "DualTierMemoryRouter",
+    "ContextVirtualPage",
+    "ContextPageFaultEngine",
+]
