@@ -6871,7 +6871,7 @@ async def process_http_request(connection: Any, request: Any) -> Any:
                 return make_api_response(413, {"error": "text_too_long", "maxChars": SAREMBOK_VOICE_MAX_CHARS})
 
             # Check in-memory audio cache
-            cache_key = f"{voice_param}:{text_value[:400]}"
+            cache_key = f"{voice_param}:{hashlib.sha256(text_value.encode('utf-8')).hexdigest()[:24]}"
             cached_audio = _TTS_MEMORY_CACHE.get(cache_key)
             if cached_audio:
                 from websockets.datastructures import Headers
@@ -6915,12 +6915,12 @@ async def process_http_request(connection: Any, request: Any) -> Any:
 
             if gemini_key:
                 def fetch_gemini_tts():
-                    models = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-3.8-flash-lite-tts"]
+                    models = ["gemini-3.1-flash-tts-preview"]
                     for m in models:
                         try:
                             g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
                             g_payload = json.dumps({
-                                "contents": [{"parts": [{"text": text_value[:1500]}]}],
+                                "contents": [{"parts": [{"text": text_value[:2000]}]}],
                                 "generationConfig": {
                                     "responseModalities": ["AUDIO"],
                                     "speechConfig": {
@@ -6938,7 +6938,7 @@ async def process_http_request(connection: Any, request: Any) -> Any:
                                 headers={"Content-Type": "application/json"},
                                 method="POST"
                             )
-                            with urllib.request.urlopen(g_req, timeout=10) as resp:
+                            with urllib.request.urlopen(g_req, timeout=35) as resp:
                                 g_data = json.loads(resp.read().decode("utf-8"))
                                 parts = g_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
                                 for p in parts:
@@ -6959,10 +6959,16 @@ async def process_http_request(connection: Any, request: Any) -> Any:
 
             # Fallback to local Kokoro container if Gemini TTS didn't return audio
             if not audio:
+                kokoro_voice = (
+                    "af_heart" if any(k in voice_param for k in ["vega", "heart", "ada"])
+                    else "af_nicole" if any(k in voice_param for k in ["kore", "aoede"])
+                    else "am_adam" if any(k in voice_param for k in ["puck", "charon", "fenrir", "onyx"])
+                    else "af_heart"
+                )
                 def fetch_kokoro_audio():
                     voice_payload = json.dumps({
                         "text": text_value,
-                        "voice": "af_heart" if "vega" in voice_param else "af_nicole",
+                        "voice": kokoro_voice,
                         "language": language,
                         "speed": speed,
                     }).encode("utf-8")
