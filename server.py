@@ -13,6 +13,9 @@ import asyncio
 import logging
 from aiohttp import web, WSCloseCode
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from Runtime.wal_memory_manager import WalMemoryManager
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
@@ -45,38 +48,14 @@ class SovereignKernel:
         self.wal_journal_mode = "WAL"
         self.state_status = "INITIALIZED"
         
-        # Initialize Persistent SQLite-WAL Storage Core
-        self._bootstrap_wal_memory()
+        # Initialize Decoupled Persistent SQLite-WAL Storage Core (Single-Writer Actor Queue)
+        self.wal_manager = WalMemoryManager.get_instance(self.db_path)
+        logger.info("[WAL_BOOT] Decoupled L1 SQLite-WAL actor queue initialized with zero-locking.")
 
     def _bootstrap_wal_memory(self):
-        """[WAL_BOOT] Establishes transactional ACID memory grids."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        # Enforce write-ahead log performance configuration
-        cursor.execute("PRAGMA journal_mode = WAL;")
-        cursor.execute("PRAGMA synchronous = NORMAL;")
-        
-        # Generate Core Schema
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS agent_wal (
-                step_id TEXT PRIMARY KEY,
-                agent_node TEXT,
-                directive TEXT,
-                entropy REAL,
-                status TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS system_state (
-                key TEXT PRIMARY KEY,
-                value TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        conn.commit()
-        conn.close()
-        logger.info("[WAL_BOOT] Session envelope initialized: active wal_store locked.")
+        """[WAL_BOOT] Forward compatibility hook for decoupled WAL memory."""
+        if hasattr(self, "wal_manager") and self.wal_manager:
+            self.wal_manager.start()
 
     def calculate_shannon_entropy(self, payload: str) -> float:
         """Enforces Shannon entropy loop defense metric metrics."""
@@ -126,16 +105,14 @@ class SovereignKernel:
                 else:
                     status = "EXECUTED_LOCAL_SANDBOX"
 
-                # Commit Transaction Frame onto SQLite-WAL Ledger
-                self._bootstrap_wal_memory()
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT OR REPLACE INTO agent_wal (step_id, agent_node, directive, entropy, status) VALUES (?, ?, ?, ?, ?)",
-                    (f"step_{req_id}", "STRATEGIST", directive, current_entropy, status)
+                # Commit Transaction Frame onto Decoupled SQLite-WAL Ledger (Non-Blocking)
+                self.wal_manager.record_step_nowait(
+                    step_id=f"step_{req_id}",
+                    agent_node="STRATEGIST",
+                    directive=directive,
+                    entropy=current_entropy,
+                    status=status
                 )
-                conn.commit()
-                conn.close()
 
                 return {
                     "jsonrpc": "2.0",
@@ -160,23 +137,16 @@ class SovereignKernel:
                 self.wal_journal_mode = params.get("wal_journal_mode", self.wal_journal_mode)
                 self.state_status = "STATE_RECONSTITUTED"
 
-                # ACID Transaction Commit to SQLite-WAL Ledger
-                self._bootstrap_wal_memory()
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute(f"PRAGMA journal_mode = {self.wal_journal_mode};")
-                cursor.execute("PRAGMA synchronous = NORMAL;")
-                cursor.execute(
-                    "INSERT OR REPLACE INTO agent_wal (step_id, agent_node, directive, entropy, status) VALUES (?, ?, ?, ?, ?)",
-                    (f"step_{req_id}", "FABRIC_KERNEL", json.dumps(params), self.shannon_entropy, "STATE_RECONSTITUTED")
+                # ACID Transaction Commit to Decoupled SQLite-WAL Ledger (Non-Blocking)
+                self.wal_manager.record_step_nowait(
+                    step_id=f"step_{req_id}",
+                    agent_node="FABRIC_KERNEL",
+                    directive=json.dumps(params),
+                    entropy=self.shannon_entropy,
+                    status="STATE_RECONSTITUTED"
                 )
                 for k, v in params.items():
-                    cursor.execute(
-                        "INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
-                        (k, str(v))
-                    )
-                conn.commit()
-                conn.close()
+                    self.wal_manager.set_system_state_nowait(k, str(v))
 
                 logger.info(f"[RECONSTITUTE] Fabric kernel {self.fabric_kernel} locked state on {self.target_node} ({self.proxy_weight_topology}).")
 

@@ -4,6 +4,11 @@
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
 PRAGMA foreign_keys = ON;
+PRAGMA busy_timeout = 30000;
+PRAGMA cache_size = -64000;
+PRAGMA wal_autocheckpoint = 1000;
+PRAGMA mmap_size = 268435456;
+PRAGMA temp_store = MEMORY;
 
 CREATE TABLE IF NOT EXISTS session_state (
     session_id TEXT PRIMARY KEY,
@@ -40,3 +45,8 @@ CREATE TABLE IF NOT EXISTS transaction_log (
 CREATE INDEX IF NOT EXISTS idx_tx_session ON transaction_log(session_id, committed);
 CREATE INDEX IF NOT EXISTS idx_tx_entropy ON transaction_log(entropy_score) WHERE committed = 1;
 CREATE INDEX IF NOT EXISTS idx_tx_sender ON transaction_log(sender_agent_id);
+CREATE INDEX IF NOT EXISTS idx_tx_agent_ts ON transaction_log(sender_agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_recipient_ts ON transaction_log(recipient_agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_created ON transaction_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_nodes_heartbeat ON agent_nodes(last_heartbeat DESC);
+

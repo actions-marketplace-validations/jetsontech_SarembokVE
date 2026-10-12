@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package sarembok.aas.v1;
+
+option go_package = "github.com/jetsontech/sarembokve/gen/aas/v1;aasv1";
+option java_package = "com.sarembok.aas.v1";
+option java_multiple_files = true;
+
+// ============================================================================
+// SAREMBOK VE - AUTONOMOUS AGENT SCHEDULER (AAS) PROTOCOL DEFINITION
+// Phase 2 Sovereign Kernel Infrastructure
+// Bidirectional streaming RPCs over HTTP/2 for micro-second scheduling latency.
+// ============================================================================
+
+service AutonomousAgentScheduler {
+  // Register an autonomous agent into the AAS scheduling matrix
+  rpc RegisterAgent (AgentRegistrationRequest) returns (AgentRegistrationResponse);
+
+  // Bidirectional streaming RPC for continuous time-slice allocation and state coordination
+  rpc ScheduleStream (stream AgentScheduleRequest) returns (stream AgentScheduleResponse);
+
+  // Bidirectional streaming RPC for low-latency agent-to-agent and agent-to-kernel payload exchange
+  rpc ExchangePayload (stream AgentPayloadEnvelope) returns (stream AgentPayloadEnvelope);
+
+  // High-frequency agent liveness and health verification
+  rpc Heartbeat (AgentHeartbeatRequest) returns (AgentHeartbeatResponse);
+}
+
+enum AgentRole {
+  AGENT_ROLE_UNSPECIFIED = 0;
+  AGENT_ROLE_STRATEGIST = 1;
+  AGENT_ROLE_WORKER = 2;
+  AGENT_ROLE_AUDITOR = 3;
+  AGENT_ROLE_KERNEL_GUARDRAIL = 4;
+}
+
+enum AgentStatus {
+  AGENT_STATUS_UNSPECIFIED = 0;
+  AGENT_STATUS_IDLE = 1;
+  AGENT_STATUS_BUSY = 2;
+  AGENT_STATUS_FROZEN = 3;
+  AGENT_STATUS_HALTED = 4;
+}
+
+enum SchedulingPriority {
+  SCHEDULING_PRIORITY_UNSPECIFIED = 0;
+  SCHEDULING_PRIORITY_REALTIME = 1;  // < 50ms latency (Voice/Dialogue/Kernel Control)
+  SCHEDULING_PRIORITY_STANDARD = 2;  // Web I/O, Browser Automation
+  SCHEDULING_PRIORITY_BATCH = 3;     // Heavy Compute, Rendering, Training
+}
+
+message AgentRegistrationRequest {
+  string agent_id = 1;
+  AgentRole role = 2;
+  repeated string capability_tags = 3;
+  string version = 4;
+  map<string, string> metadata = 5;
+}
+
+message AgentRegistrationResponse {
+  bool accepted = 1;
+  string assigned_slice_id = 2;
+  int64 heartbeat_interval_ms = 3;
+  string error_message = 4;
+}
+
+message AgentScheduleRequest {
+  string agent_id = 1;
+  string task_id = 2;
+  SchedulingPriority priority = 3;
+  int64 requested_slice_quantum_ms = 4;
+  double shannon_entropy = 5;
+  int64 tokens_requested = 6;
+  string trace_id = 7;
+  string span_id = 8;
+  int64 sequence_number = 9;
+}
+
+message AgentScheduleResponse {
+  string agent_id = 1;
+  string slice_id = 2;
+  bool granted = 3;
+  int64 granted_quantum_ms = 4;
+  AgentStatus status = 5;
+  string reason = 6;
+  int64 sequence_number = 7;
+  int64 server_timestamp_ns = 8;
+}
+
+message AgentPayloadEnvelope {
+  string message_id = 1;
+  string session_id = 2;
+  string sender_agent_id = 3;
+  string recipient_agent_id = 4;
+  bytes payload = 5;
+  string content_type = 6;              // e.g., "application/json", "application/x-protobuf"
+  int64 tokens_consumed = 7;
+  double entropy_score = 8;
+  string validation_hash = 9;
+  string trace_id = 10;
+  string span_id = 11;
+  int64 timestamp_ns = 12;
+}
+
+message AgentHeartbeatRequest {
+  string agent_id = 1;
+  AgentStatus status = 2;
+  string current_task_id = 3;
+  double cpu_utilization = 4;
+  int64 memory_used_bytes = 5;
+  int64 timestamp_ms = 6;
+}
+
+message AgentHeartbeatResponse {
+  bool acknowledged = 1;
+  bool requires_drain = 2;
+  int64 server_time_ms = 3;
+}

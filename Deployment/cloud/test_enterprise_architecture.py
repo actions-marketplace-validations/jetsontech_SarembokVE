@@ -1,0 +1,174 @@
+"""
+SarembokVE - Enterprise Architecture Comprehensive Acceptance Suite
+Validates Phases 1 through 4:
+- Phase 1: Zero-locking SQLite-WAL storage layer
+- Phase 2: AAS gRPC scheduler interface & OpenTelemetry trace propagation
+- Phase 3: Dual-Tier L1/L2 memory caching, HNSW search, stale demotion, & SKTB event bus
+- Phase 4: Sandboxed Micro-VM isolation & Tamper-Evident SHA-256 Merkle audit chain
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+import pathlib
+import sys
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from Runtime.aas_grpc_service import (
+    AgentRole,
+    AgentStatus,
+    AutonomousAgentSchedulerService,
+    ScheduleRequest,
+    SchedulingPriority,
+)
+from Runtime.dual_tier_memory import DualTierMemoryRouter
+from Runtime.sandbox_microvm import MicroVMSandboxScheduler
+from Runtime.sarembok_telemetry import AgentTelemetryTracer
+from Runtime.sktb_event_bus import SecureKernelTelemetryBus
+from Runtime.tamper_evident_audit import TamperEvidentAuditLedger
+from Runtime.wal_memory_manager import WalMemoryManager
+
+
+class TestEnterpriseArchitecture(unittest.IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        self.temp_audit_db = str(ROOT / "scratch" / "test_audit_ledger.db")
+        os.makedirs(os.path.dirname(self.temp_audit_db), exist_ok=True)
+        if os.path.exists(self.temp_audit_db):
+            os.remove(self.temp_audit_db)
+
+    def tearDown(self):
+        if os.path.exists(self.temp_audit_db):
+            os.remove(self.temp_audit_db)
+
+    async def test_phase1_wal_memory_manager_actor_queue(self):
+        """Verifies decoupled L1 SQLite-WAL actor queue handles async multi-agent writes without locks."""
+        wal_manager = WalMemoryManager.get_instance(str(ROOT / "scratch" / "test_wal_actor.db"))
+        
+        # Fire 25 concurrent agent step writes
+        tasks = []
+        for i in range(25):
+            tasks.append(
+                wal_manager.record_step_async(
+                    step_id=f"step_test_{i}",
+                    agent_node=f"AGENT_{i}",
+                    directive="Validate actor queue concurrency",
+                    entropy=0.25,
+                    status="COMPLETED",
+                    wait_flush=True,
+                )
+            )
+        await asyncio.gather(*tasks)
+
+        history = wal_manager.get_agent_history("AGENT_0", limit=10)
+        self.assertTrue(len(history) >= 1)
+        self.assertEqual(history[0]["agent_node"], "AGENT_0")
+
+    async def test_phase2_aas_scheduler_and_otel_tracing(self):
+        """Verifies AAS time-slice scheduling and OpenTelemetry trace propagation."""
+        aas = AutonomousAgentSchedulerService(max_entropy_threshold=0.88)
+        
+        # 1. Register Agent
+        reg_res = await aas.register_agent(
+            agent_id="STRATEGIST_01",
+            role=AgentRole.STRATEGIST,
+            capability_tags=["reasoning", "planning"],
+        )
+        self.assertTrue(reg_res["accepted"])
+        self.assertTrue(len(reg_res["assigned_slice_id"]) > 0)
+
+        # 2. OpenTelemetry Tracing
+        tracer = AgentTelemetryTracer.get_tracer()
+        with tracer.trace_agent_turn(
+            agent_id="STRATEGIST_01",
+            role="STRATEGIST",
+            task_id="task_alpha",
+        ) as span:
+            self.assertTrue(len(span.trace_id) == 32)
+            self.assertTrue(len(span.span_id) == 16)
+            
+            # 3. Request Schedule Slice with propagated trace context
+            sched_req = ScheduleRequest(
+                agent_id="STRATEGIST_01",
+                task_id="task_alpha",
+                priority=SchedulingPriority.REALTIME,
+                requested_slice_quantum_ms=30,
+                shannon_entropy=0.35,
+                trace_id=span.trace_id,
+                span_id=span.span_id,
+            )
+            sched_res = await aas.schedule_slice(sched_req)
+            self.assertTrue(sched_res.granted)
+            self.assertEqual(sched_res.status, AgentStatus.BUSY)
+            self.assertLessEqual(sched_res.granted_quantum_ms, 50)
+
+    def test_phase3_dual_tier_memory_and_sktb_event_bus(self):
+        """Verifies L1 cache, L2 HNSW vector retrieval, automatic stale demotion, and SKTB Kafka publishing."""
+        router = DualTierMemoryRouter(l1_ttl_seconds=0)  # Immediate expiry for demotion testing
+        
+        # 1. Store in L1
+        router.store_agent_context(
+            agent_id="AGENT_X",
+            context_key="active_hypothesis",
+            payload={"belief": "distributed consensus established", "confidence": 0.98},
+        )
+        
+        # 2. Trigger auto-demotion to L2 HNSW
+        demoted_count = router.trigger_stale_demotion()
+        self.assertEqual(demoted_count, 1)
+
+        # 3. Query L2 semantic memory
+        results = router.query_semantic_long_term("consensus distributed", top_k=1)
+        self.assertTrue(len(results) > 0)
+        self.assertIn("demoted_", results[0]["doc_id"])
+
+        # 4. SKTB Telemetry Bus publishing
+        bus = SecureKernelTelemetryBus.get_bus()
+        published = bus.publish_footprint_nowait(
+            topic="agent-events",
+            agent_id="AGENT_X",
+            event_type="STATE_DEMOTED",
+            details={"demoted_to": "L2_HNSW"},
+        )
+        self.assertTrue(published)
+
+    async def test_phase4_microvm_sandbox_and_tamper_evident_audit(self):
+        """Verifies isolated Micro-VM execution and tamper-evident SHA-256 Merkle audit chaining."""
+        # 1. Micro-VM Sandbox Execution
+        sandbox = MicroVMSandboxScheduler(runtime_flavor="container_isolated")
+        result = await sandbox.execute_isolated_code(
+            code_snippet="print('MICROVM_ISOLATED_OK: computed 42 * 2 =', 42 * 2)",
+            language="python",
+            agent_id="WORKER_SANDBOX",
+            timeout=5.0,
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("MICROVM_ISOLATED_OK: computed 42 * 2 = 84", result.stdout)
+
+        # 2. Tamper-Evident Cryptographic Ledger
+        ledger = TamperEvidentAuditLedger(db_path=self.temp_audit_db)
+        b0 = ledger.record_mutation("STRATEGIST", "DISPATCH_TASK", {"task_id": "T001"})
+        b1 = ledger.record_mutation("WORKER", "EXECUTE_MICRO_STEP", {"step": 1, "output": "pass"})
+        b2 = ledger.record_mutation("AUDITOR", "SIGN_ATTESTATION", {"valid": True})
+
+        self.assertEqual(b0.block_index, 0)
+        self.assertEqual(b1.prev_hash, b0.block_hash)
+        self.assertEqual(b2.prev_hash, b1.block_hash)
+
+        # 3. Verify Chain Integrity
+        is_valid, violations = ledger.verify_chain_integrity()
+        self.assertTrue(is_valid, f"Violations detected: {violations}")
+        self.assertEqual(len(violations), 0)
+
+        # 4. SOC 2 Type II Report
+        report = ledger.generate_soc2_compliance_report()
+        self.assertEqual(report["system_status"], "COMPLIANT")
+        self.assertEqual(report["total_audit_blocks"], 3)
+
+
+if __name__ == "__main__":
+    unittest.main()

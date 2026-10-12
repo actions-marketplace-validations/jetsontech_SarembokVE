@@ -32,6 +32,9 @@ export class WalStore {
   init() {
     if (this.dbPath !== ':memory:') {
       this.db.exec('PRAGMA journal_mode = WAL;');
+      this.db.exec('PRAGMA busy_timeout = 30000;');
+      this.db.exec('PRAGMA cache_size = -64000;');
+      this.db.exec('PRAGMA wal_autocheckpoint = 1000;');
     }
     this.db.exec('PRAGMA synchronous = NORMAL;');
     this.db.exec('PRAGMA foreign_keys = ON;');
