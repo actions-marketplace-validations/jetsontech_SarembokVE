@@ -11349,6 +11349,8 @@ button,
             s = s.replace(/\\([*_`#|])/g, "$1");
             s = s.replace(/([.!?])\s+-\s+(?=\*\*|[A-Za-z])/g, "$1\n- ");
             s = s.replace(/\s+(?=\d+\.\s+\*\*)/g, "\n");
+            // Strip any prompt-bleeding model headers or branding prefixes from the response text
+            s = s.replace(/^(?:⚡\s*|Model:\s*|Engine:\s*)[^\n]+(?:\r?\n)+/i, "");
             const pLow = String(prompt || "").toLowerCase();
 
             // Never remove individual provider sentences; limitations and refusals are valid response content.
@@ -11468,8 +11470,10 @@ button,
             const data = structured.content && typeof structured.content === "object"
                 ? structured.content
                 : structured;
-            const text = typeof data.text === "string" ? data.text.trim() : "";
-            const summary = typeof data.summary === "string" ? data.summary.trim() : "";
+            let text = typeof data.text === "string" ? data.text.trim() : "";
+            text = text.replace(/^(?:⚡\s*|Model:\s*|Engine:\s*)[^\n]+(?:\r?\n)+/i, "").trim();
+            let summary = typeof data.summary === "string" ? data.summary.trim() : "";
+            summary = summary.replace(/^(?:⚡\s*|Model:\s*|Engine:\s*)[^\n]+(?:\r?\n)+/i, "").trim();
             const sections = Array.isArray(data.sections) ? data.sections : [];
             const code = Array.isArray(data.code) ? data.code : [];
             const tables = Array.isArray(data.tables) ? data.tables : [];
@@ -11524,15 +11528,24 @@ button,
             const model = String(meta.model || "").trim();
             const taskCategory = String(meta.taskCategory || "").trim();
 
-            if (provider === "runtime_authority" || model === "runtime-authority") {
-                body += `<div class="srbk-structured-meta"><span class="srbk-meta-chip runtime">⚡ SAREMBOK CORE RUNTIME · AUTHORITATIVE</span></div>`;
-            } else if (provider || model) {
-                let cleanProv = provider;
-                let cleanMod = model;
-                if (cleanMod.includes("/")) cleanMod = cleanMod.split("/").pop();
-                cleanMod = cleanMod.replace(/-/g, " ").toUpperCase();
-                const taskBadge = (taskCategory && taskCategory !== "MANUAL" && taskCategory !== "GENERAL") ? ` · ${escapeHtml(taskCategory)}` : "";
-                body += `<div class="srbk-structured-meta"><span class="srbk-meta-chip">⚡ ${escapeHtml(cleanProv)} · ${escapeHtml(cleanMod)}${taskBadge}</span></div>`;
+            // Model metadata belongs strictly in top-level telemetry / HUD badges, never inside the conversational chat bubble
+            if (provider || model) {
+                const engineBadge = document.getElementById("dialogue-gpu-badge");
+                if (engineBadge) {
+                    if (provider === "runtime_authority" || model === "runtime-authority") {
+                        engineBadge.textContent = "ENGINE: SAREMBOK CORE RUNTIME";
+                        engineBadge.className = "cyber-card-badge green";
+                    } else {
+                        let cleanModel = model.includes("/") ? model.split("/").pop() : model;
+                        cleanModel = cleanModel.replace(/-/g, " ").toUpperCase();
+                        if (taskCategory && taskCategory !== "MANUAL" && taskCategory !== "GENERAL") {
+                            engineBadge.textContent = `ENGINE: DYNAMIC · ${taskCategory} (${cleanModel})`;
+                        } else {
+                            engineBadge.textContent = `ENGINE: ${cleanModel}`;
+                        }
+                        engineBadge.className = "cyber-card-badge cyan";
+                    }
+                }
             }
             return body || (text ? md(text) : "");
         }

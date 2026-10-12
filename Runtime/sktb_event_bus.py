@@ -57,6 +57,11 @@ class RedisClusterPoolManager:
         self._init_pool()
 
     def _init_pool(self) -> None:
+        if os.getenv("SAREMBOK_ENV", "").upper() == "CI" or os.getenv("CI", "").lower() in ("true", "1"):
+            self._pool = None
+            self._client = None
+            logger.info("[REDIS_POOL] CI environment detected: utilizing mock in-memory context.")
+            return
         try:
             import redis
             from redis.connection import ConnectionPool
@@ -142,6 +147,10 @@ class SecureKernelTelemetryBus:
 
     def _init_kafka_producer(self) -> None:
         """Attempt to initialize clustered Kafka producer (kafka-python / confluent-kafka)."""
+        if os.getenv("SAREMBOK_ENV", "").upper() == "CI" or os.getenv("CI", "").lower() in ("true", "1"):
+            self._kafka_producer = None
+            logger.info("[SKTB_BUS] CI environment detected: bypassing remote Kafka; using local ring buffer.")
+            return
         try:
             # 1. Try kafka-python
             from kafka import KafkaProducer  # type: ignore
