@@ -127,10 +127,11 @@ class SovereignKernel:
                     status = "EXECUTED_LOCAL_SANDBOX"
 
                 # Commit Transaction Frame onto SQLite-WAL Ledger
+                self._bootstrap_wal_memory()
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO agent_wal (step_id, agent_node, directive, entropy, status) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO agent_wal (step_id, agent_node, directive, entropy, status) VALUES (?, ?, ?, ?, ?)",
                     (f"step_{req_id}", "STRATEGIST", directive, current_entropy, status)
                 )
                 conn.commit()
@@ -160,12 +161,13 @@ class SovereignKernel:
                 self.state_status = "STATE_RECONSTITUTED"
 
                 # ACID Transaction Commit to SQLite-WAL Ledger
+                self._bootstrap_wal_memory()
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute(f"PRAGMA journal_mode = {self.wal_journal_mode};")
                 cursor.execute("PRAGMA synchronous = NORMAL;")
                 cursor.execute(
-                    "INSERT INTO agent_wal (step_id, agent_node, directive, entropy, status) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO agent_wal (step_id, agent_node, directive, entropy, status) VALUES (?, ?, ?, ?, ?)",
                     (f"step_{req_id}", "FABRIC_KERNEL", json.dumps(params), self.shannon_entropy, "STATE_RECONSTITUTED")
                 )
                 for k, v in params.items():

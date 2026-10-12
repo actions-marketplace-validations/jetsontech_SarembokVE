@@ -1,0 +1,115 @@
+<!-- Save as: public/components/UnifiedCockpit.html -->
+<div class="sovereign-cockpit-wrapper">
+  
+  <!-- Left Column: The High-Tech Frequency Visualizer Panel -->
+  <div class="cockpit-panel frequency-deck">
+    <div class="hud-card-header">
+      <div class="indicator-group">
+        <span class="neon-dot teal-pulse"></span>
+        <span class="mono-label">FREQUENCY SPECTRUM LINK: COMPILING TASK_1004</span>
+      </div>
+      <div class="layer-badge purple">SOVEREIGN_LOCAL_WEIGHTS</div>
+    </div>
+    
+    <div class="wave-spectrograph" id="wave-container">
+      <!-- 32-Band Adaptive Frequency Bars -->
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+      <div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div>
+    </div>
+    
+    <div class="hud-metadata-footer">
+      <span>SHANNON ENTROPY: <strong id="shannon-lbl" style="color:#4af626;">0.14</strong></span>
+      <span>NODE: <strong style="color:#fff;">colab-t4-e62944</strong></span>
+    </div>
+  </div>
+
+  <!-- Right Column: The Pinned MetaHuman Video Streaming Viewport -->
+  <div class="cockpit-panel metahuman-deck">
+    <div class="hud-card-header">
+      <div class="indicator-group">
+        <span class="neon-dot blue-pulse"></span>
+        <span class="mono-label">ADA v1 · EMBODIMENT VIEWPORT</span>
+      </div>
+      <div class="layer-badge blue">UE5.8 LIVE LINK</div>
+    </div>
+
+    <!-- Pinned Real-time Streaming Layer Media Frame Context -->
+    <div class="video-viewport-wrapper">
+      <div class="webrtc-stream-placeholder">
+        <div class="radar-scan"></div>
+        <div class="telemetry-box-overlay">
+          <div>GAZE VECTOR: <span style="color:#00f2fe;">X: -0.99 Y: -0.84</span></div>
+          <div>VISEME TARGET: <span style="color:#4af626;">JAW OPEN (0.34)</span></div>
+          <div>CODE MATRIX: <span style="color:#a855f7;">ACTIVE INFERENCE LOOP</span></div>
+        </div>
+        <span class="stream-text-tag">AWAITING UNREAL WEBRTC STREAM (PORT :11188)...</span>
+      </div>
+    </div>
+
+    <div class="hud-metadata-footer">
+      <span>LEDGER TRANSACTION: <strong style="color:#e5c07b;">step_1004</strong></span>
+      <span>STATUS: <strong style="color:#4af626;">ACID_WAL_COMMITTED</strong></span>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .sovereign-cockpit-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    background: #060709;
+  }
+  .cockpit-panel {
+    background: rgba(14, 18, 24, 0.65);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 480px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+  }
+  .hud-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+  .indicator-group { display: flex; align-items: center; gap: 8px; }
+  .neon-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .neon-dot.teal-pulse { background: #00f2fe; box-shadow: 0 0 10px #00f2fe; animation: blink 1.5s infinite; }
+  .neon-dot.blue-pulse { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; animation: blink 2s infinite; }
+  .mono-label { font-family: monospace; font-size: 11px; color: #fff; letter-spacing: 0.5px; }
+  .layer-badge { font-family: monospace; font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid; }
+  .layer-badge.purple { background: rgba(168, 85, 247, 0.12); color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
+  .layer-badge.blue { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); }
+  
+  /* Left Waveform CSS Structure */
+  .wave-spectrograph { display: flex; align-items: center; justify-content: center; gap: 4px; height: 250px; width: 90%; margin: 0 auto; }
+  .vbar { flex: 1; height: 12px; background: linear-gradient(to top, #4facfe 0%, #00f2fe 100%); border-radius: 3px; animation: bounceV 1.2s infinite ease-in-out; }
+  .vbar:nth-child(2n) { background: linear-gradient(to top, #b224ef 0%, #7579ff 100%); animation-delay: 0.2s; }
+  .vbar:nth-child(3n) { animation-delay: 0.4s; }
+  .vbar:nth-child(5n) { background: linear-gradient(to top, #4af626 0%, #3b82f6 100%); animation-delay: 0.1s; }
+
+  /* Right Video Viewport WebRTC Structure */
+  .video-viewport-wrapper { flex: 1; width: 100%; background: #000; border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; position: relative; overflow: hidden; }
+  .webrtc-stream-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+  .stream-text-tag { font-family: monospace; font-size: 11px; color: #4b5563; position: absolute; bottom: 20px; z-index: 5; }
+  .telemetry-box-overlay { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.65); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #a3aab4; display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(255,255,255,0.05); text-align: right; z-index: 5; }
+  .radar-scan { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(59, 130, 246, 0.05) 50%), linear-gradient(90deg, transparent 50%, rgba(59, 130, 246, 0.05) 50%); background-size: 20px 20px; animation: gridScroll 4s linear infinite; }
+
+  .hud-metadata-footer { border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-top: 15px; display: flex; justify-content: space-between; font-family: monospace; font-size: 11px; color: #4b5563; }
+  
+  @keyframes bounceV { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(5.5); } }
+  @keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  @keyframes gridScroll { from { background-position: 0 0; } to { background-position: 0 40px; } }
+</style>
