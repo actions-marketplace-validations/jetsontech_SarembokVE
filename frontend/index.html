@@ -12913,10 +12913,51 @@ button,
         let activeNeuralAudio = null;
         let activeTtsAbortController = null;
         let ttsPlaybackGeneration = 0;
+        let cachedSystemVoices = [];
 
-        function playSpeechSynthesisFallback(cleanText, finishCallback) {
+        function refreshSystemVoices() {
+            if (typeof window.speechSynthesis !== "undefined") {
+                cachedSystemVoices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+            }
+        }
+        if (typeof window.speechSynthesis !== "undefined") {
+            refreshSystemVoices();
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                window.speechSynthesis.onvoiceschanged = refreshSystemVoices;
+            }
+        }
+
+        function resolveOptimalVoice(profileKey) {
+            refreshSystemVoices();
+            if (!cachedSystemVoices || !cachedSystemVoices.length) return null;
+
+            const profile = String(profileKey || selectedVoiceLang || "").toLowerCase();
+            const isMale = /puck|charon|fenrir|onyx|adam|male|michael/i.test(profile);
+            const isBritish = /ada|sonia|uk|british/i.test(profile);
+
+            const enVoices = cachedSystemVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
+            const pool = enVoices.length ? enVoices : cachedSystemVoices;
+
+            if (isBritish) {
+                const uk = pool.find(v => /en-gb|en_gb/i.test(v.lang) && /natural|online|sonia|libby|george|serena/i.test(v.name))
+                         || pool.find(v => /en-gb|en_gb/i.test(v.lang));
+                if (uk) return uk;
+            }
+
+            if (isMale) {
+                const male = pool.find(v => /guy|david|daniel|george|james|male|oliver|steffan|mark/i.test(v.name));
+                if (male) return male;
+            } else {
+                const female = pool.find(v => /natural|online|jenny|samantha|aria|sonia|victoria|karen|zira|female/i.test(v.name));
+                if (female) return female;
+            }
+
+            return pool.find(v => /natural|online|google/i.test(v.name)) || pool[0];
+        }
+
+        function playInstantSpeechSynthesis(cleanText, finishCallback) {
             if (typeof window.speechSynthesis === "undefined") {
-                console.warn("[tts] window.speechSynthesis is not supported in this browser.");
+                console.warn("[tts] window.speechSynthesis not supported.");
                 if (typeof finishCallback === "function") finishCallback();
                 return false;
             }
@@ -12925,17 +12966,10 @@ button,
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(cleanText);
 
-                const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-                if (voices && voices.length) {
-                    const naturalVoice = voices.find(v =>
-                        v.lang.startsWith("en") &&
-                        (v.name.includes("Natural") || v.name.includes("Online") || v.name.includes("Google") ||
-                         v.name.includes("Samantha") || v.name.includes("Aria") || v.name.includes("Jenny") || v.name.includes("Guy"))
-                    ) || voices.find(v => v.lang.startsWith("en")) || voices[0];
-                    if (naturalVoice) utterance.voice = naturalVoice;
-                }
+                const voice = resolveOptimalVoice(selectedVoiceLang);
+                if (voice) utterance.voice = voice;
 
-                utterance.rate = 0.98;
+                utterance.rate = 1.04;
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
 
@@ -12955,19 +12989,19 @@ button,
                 window.speechSynthesis.resume();
                 window.speechSynthesis.speak(utterance);
 
-                const speechKeepAlive = setInterval(() => {
+                const keepAlive = setInterval(() => {
                     if (window.speechSynthesis.speaking) {
                         if (window.speechSynthesis.paused) {
                             window.speechSynthesis.resume();
                         }
                     } else {
-                        clearInterval(speechKeepAlive);
+                        clearInterval(keepAlive);
                     }
                 }, 200);
 
                 return true;
             } catch (err) {
-                console.warn("[tts] Fallback speech invocation failed:", err);
+                console.warn("[tts] Instant speech failed:", err);
                 if (typeof finishCallback === "function") finishCallback();
                 return false;
             }
@@ -13033,7 +13067,7 @@ button,
             interruptSpeech();
 
             if (typeof unlockAudioEngine === "function") {
-                await unlockAudioEngine();
+                void unlockAudioEngine();
             }
 
             if (buttonEl) {
@@ -13049,10 +13083,6 @@ button,
             if (typeof setAudioDucking === "function") setAudioDucking(true);
 
             const speechRequestId = ++ttsPlaybackGeneration;
-            if (activeTtsAbortController) {
-                try { activeTtsAbortController.abort(); } catch (_) {}
-            }
-            activeTtsAbortController = new AbortController();
 
             const finishSpeaking = () => {
                 if (speechRequestId !== ttsPlaybackGeneration) return;
@@ -13080,17 +13110,21 @@ button,
             };
             window.finishSpeakingTurn = finishSpeaking;
 
-            let neuralPlaybackStarted = false;
+            const started = playInstantSpeechSynthesis(clean, finishSpeaking);
+            if (started) {
+                return true;
+            }
+
             try {
                 const sessionToken = window.browserSessionToken || (
                     typeof window.initSession === "function" ? await window.initSession() : ""
                 );
                 const voice = window.selectedVoice || "af_heart";
                 const params = new URLSearchParams({
-                    text: clean.slice(0, 3900),
+                    text: clean.slice(0, 500),
                     voice: voice,
                     language: "en-us",
-                    speed: "0.95"
+                    speed: "1.0"
                 });
                 const headers = { "Accept": "audio/wav" };
                 if (sessionToken) headers["Authorization"] = "Bearer " + sessionToken;
@@ -13098,8 +13132,7 @@ button,
                 const response = await fetch("/api/tts?" + params.toString(), {
                     method: "GET",
                     cache: "no-store",
-                    headers: headers,
-                    signal: activeTtsAbortController.signal
+                    headers: headers
                 });
 
                 if (response.ok) {
@@ -13111,7 +13144,6 @@ button,
                         audio.setAttribute("playsinline", "");
                         activeNeuralAudio = audio;
                         window._activeSpeechAudio = audio;
-                        window._activeSpeechUtterance = audio;
 
                         let visemeInterval = setInterval(() => {
                             if (!audio.paused && !audio.ended) {
@@ -13129,23 +13161,17 @@ button,
                         audio.onerror = () => {
                             clearInterval(visemeInterval);
                             URL.revokeObjectURL(blobUrl);
-                            playSpeechSynthesisFallback(clean, finishSpeaking);
+                            finishSpeaking();
                         };
 
                         await audio.play();
-                        neuralPlaybackStarted = true;
                         return true;
                     }
                 }
-            } catch (err) {
-                if (err && err.name === "AbortError") return false;
-                console.warn("[tts] /api/tts unavailable, falling back to Web Speech API:", err);
-            }
+            } catch (_) {}
 
-            if (!neuralPlaybackStarted) {
-                return playSpeechSynthesisFallback(clean, finishSpeaking);
-            }
-            return true;
+            finishSpeaking();
+            return false;
         }
         window.speakText = speakText;
 
