@@ -9619,6 +9619,10 @@ button,
                 try { window._activeSpeechAudio.pause(); window._activeSpeechAudio.currentTime = 0; } catch (_) {}
                 window._activeSpeechAudio = null;
             }
+            if (window.activeTtsAbortController) {
+                try { window.activeTtsAbortController.abort(); } catch (_) {}
+                window.activeTtsAbortController = null;
+            }
             if (window.speechSynthesis) {
                 try { window.speechSynthesis.cancel(); } catch (_) {}
             }
@@ -13110,30 +13114,49 @@ button,
             };
             window.finishSpeakingTurn = finishSpeaking;
 
-            const started = playInstantSpeechSynthesis(clean, finishSpeaking);
-            if (started) {
-                return true;
+            // Determine active Gemini voice persona (matching Live Conversation)
+            const activeVoice = (typeof selectedVoiceLang !== "undefined" && selectedVoiceLang)
+                || (typeof window.sarembokLiveVoice !== "undefined" && window.sarembokLiveVoice)
+                || (typeof activeVoiceModel !== "undefined" && activeVoiceModel)
+                || "gemini-vega";
+
+            // Optimize text length for prompt response (~1-1.5s TTS generation)
+            let spokenSlice = clean;
+            if (spokenSlice.length > 380) {
+                const sentenceEnd = spokenSlice.slice(0, 380).lastIndexOf(". ");
+                if (sentenceEnd > 120) {
+                    spokenSlice = spokenSlice.slice(0, sentenceEnd + 1);
+                } else {
+                    spokenSlice = spokenSlice.slice(0, 380);
+                }
             }
 
             try {
                 const sessionToken = window.browserSessionToken || (
                     typeof window.initSession === "function" ? await window.initSession() : ""
                 );
-                const voice = window.selectedVoice || "af_heart";
                 const params = new URLSearchParams({
-                    text: clean.slice(0, 500),
-                    voice: voice,
+                    text: spokenSlice,
+                    voice: activeVoice,
                     language: "en-us",
                     speed: "1.0"
                 });
                 const headers = { "Accept": "audio/wav" };
                 if (sessionToken) headers["Authorization"] = "Bearer " + sessionToken;
 
+                const controller = new AbortController();
+                window.activeTtsAbortController = controller;
+
                 const response = await fetch("/api/tts?" + params.toString(), {
                     method: "GET",
                     cache: "no-store",
-                    headers: headers
+                    headers: headers,
+                    signal: controller.signal
                 });
+
+                if (speechRequestId !== ttsPlaybackGeneration) {
+                    return false;
+                }
 
                 if (response.ok) {
                     const blob = await response.blob();
@@ -13168,7 +13191,20 @@ button,
                         return true;
                     }
                 }
-            } catch (_) {}
+            } catch (err) {
+                if (err.name === "AbortError" || speechRequestId !== ttsPlaybackGeneration) {
+                    return false;
+                }
+                console.warn("[tts] Gemini neural voice unavailable, attempting local fallback:", err);
+            }
+
+            // Fallback to instant local speech synthesis if network/service unavailable
+            if (speechRequestId === ttsPlaybackGeneration) {
+                const startedFallback = playInstantSpeechSynthesis(clean, finishSpeaking);
+                if (startedFallback) {
+                    return true;
+                }
+            }
 
             finishSpeaking();
             return false;

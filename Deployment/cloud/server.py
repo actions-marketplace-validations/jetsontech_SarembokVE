@@ -20,6 +20,7 @@ import re
 import secrets
 import signal
 import sqlite3
+import struct
 import tempfile
 import time
 import urllib.request
@@ -96,6 +97,7 @@ try:
 except Exception:
     pass
 _FILE_REGISTRY: dict[str, dict[str, Any]] = {}
+_TTS_MEMORY_CACHE: dict[str, bytes] = {}
 
 def sanitize_filename(filename: str) -> str:
     filename = os.path.basename((filename or "").strip())
@@ -6859,48 +6861,132 @@ async def process_http_request(connection: Any, request: Any) -> Any:
             parsed = urllib.parse.urlparse(path)
             query = urllib.parse.parse_qs(parsed.query)
             text_value = str(query.get("text", [""])[0]).strip()
-            voice = str(query.get("voice", [os.getenv("SAREMBOK_VOICE_DEFAULT", "af_heart")])[0]).strip()
+            voice_param = str(query.get("voice", [os.getenv("SAREMBOK_VOICE_DEFAULT", "gemini-vega")])[0]).strip().lower()
             language = str(query.get("language", ["en-us"])[0]).strip().lower() or "en-us"
-            speed_raw = str(query.get("speed", ["0.95"])[0]).strip()
+            speed_raw = str(query.get("speed", ["1.0"])[0]).strip()
             speed = min(1.5, max(0.6, float(speed_raw)))
             if not text_value:
                 return make_api_response(400, {"error": "text_required"})
             if len(text_value) > SAREMBOK_VOICE_MAX_CHARS:
                 return make_api_response(413, {"error": "text_too_long", "maxChars": SAREMBOK_VOICE_MAX_CHARS})
 
-            voice_payload = json.dumps({
-                "text": text_value,
-                "voice": voice,
-                "language": language,
-                "speed": speed,
-            }).encode("utf-8")
-            req = urllib.request.Request(
-                f"{SAREMBOK_VOICE_URL}/tts",
-                data=voice_payload,
-                headers={"Content-Type": "application/json", "Accept": "audio/wav"},
-                method="POST",
-            )
-            # TTS synthesis is a blocking network/model call. Allow the CPU-only
-            # Kokoro service enough time to complete long utterances and queued
-            # requests while keeping the asyncio control plane non-blocking.
-            # directly on the runtime asyncio event loop: doing so stalls the WebSocket
-            # control plane for the entire Kokoro generation time and makes chat appear
-            # hung. Keep the control plane responsive by moving the blocking call to a
-            # worker thread.
-            def fetch_voice_audio():
-                with urllib.request.urlopen(req, timeout=VOICE_REQUEST_TIMEOUT_SECONDS) as resp:
-                    return resp.read()
+            # Check in-memory audio cache
+            cache_key = f"{voice_param}:{text_value[:400]}"
+            cached_audio = _TTS_MEMORY_CACHE.get(cache_key)
+            if cached_audio:
+                from websockets.datastructures import Headers
+                from websockets.http11 import Response
+                return Response(
+                    200,
+                    "OK",
+                    Headers([
+                        ("Content-Type", "audio/wav"),
+                        ("Cache-Control", "public, max-age=3600"),
+                        ("Content-Length", str(len(cached_audio))),
+                        ("Access-Control-Allow-Origin", "*"),
+                    ]),
+                    cached_audio,
+                )
 
-            audio = await asyncio.to_thread(fetch_voice_audio)
+            audio = None
+            gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+
+            # Map frontend persona voice names to Gemini TTS voices
+            GEMINI_VOICE_MAP = {
+                "vega": "zephyr",
+                "gemini-vega": "zephyr",
+                "zephyr": "zephyr",
+                "kore": "kore",
+                "gemini-kore": "kore",
+                "aoede": "aoede",
+                "gemini-aoede": "aoede",
+                "puck": "puck",
+                "gemini-puck": "puck",
+                "charon": "charon",
+                "gemini-charon": "charon",
+                "fenrir": "fenrir",
+                "gemini-fenrir": "fenrir",
+                "af_heart": "zephyr",
+                "af_nicole": "kore",
+                "ada_v1": "zephyr",
+                "sarembok_prime": "zephyr",
+            }
+            target_gemini_voice = GEMINI_VOICE_MAP.get(voice_param.lower().strip(), "zephyr")
+
+            if gemini_key:
+                def fetch_gemini_tts():
+                    models = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-3.8-flash-lite-tts"]
+                    for m in models:
+                        try:
+                            g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
+                            g_payload = json.dumps({
+                                "contents": [{"parts": [{"text": text_value[:1500]}]}],
+                                "generationConfig": {
+                                    "responseModalities": ["AUDIO"],
+                                    "speechConfig": {
+                                        "voiceConfig": {
+                                            "prebuiltVoiceConfig": {
+                                                "voiceName": target_gemini_voice
+                                            }
+                                        }
+                                    }
+                                }
+                            }).encode("utf-8")
+                            g_req = urllib.request.Request(
+                                g_url,
+                                data=g_payload,
+                                headers={"Content-Type": "application/json"},
+                                method="POST"
+                            )
+                            with urllib.request.urlopen(g_req, timeout=10) as resp:
+                                g_data = json.loads(resp.read().decode("utf-8"))
+                                parts = g_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                                for p in parts:
+                                    if "inlineData" in p and p["inlineData"].get("data"):
+                                        pcm = base64.b64decode(p["inlineData"]["data"])
+                                        # Pack 24kHz 16-bit mono RIFF WAV header
+                                        header = struct.pack(
+                                            "<4sI4s4sIHHIIHH4sI",
+                                            b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ",
+                                            16, 1, 1, 24000, 48000, 2, 16, b"data", len(pcm)
+                                        )
+                                        return header + pcm
+                        except Exception as e:
+                            LOG.warning("gemini_tts_attempt_failed model=%s error=%s", m, e)
+                    return None
+
+                audio = await asyncio.to_thread(fetch_gemini_tts)
+
+            # Fallback to local Kokoro container if Gemini TTS didn't return audio
+            if not audio:
+                def fetch_kokoro_audio():
+                    voice_payload = json.dumps({
+                        "text": text_value,
+                        "voice": "af_heart" if "vega" in voice_param else "af_nicole",
+                        "language": language,
+                        "speed": speed,
+                    }).encode("utf-8")
+                    req = urllib.request.Request(
+                        f"{SAREMBOK_VOICE_URL}/tts",
+                        data=voice_payload,
+                        headers={"Content-Type": "application/json", "Accept": "audio/wav"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=VOICE_REQUEST_TIMEOUT_SECONDS) as resp:
+                        return resp.read()
+
+                try:
+                    audio = await asyncio.to_thread(fetch_kokoro_audio)
+                except Exception as exc:
+                    LOG.warning("kokoro_fallback_failed error=%s", exc)
 
             if not audio:
                 return make_api_response(502, {"error": "voice_service_returned_no_audio"})
 
-            # Return a real websockets HTTP Response with the WAV bytes in
-            # the constructor.  The previous implementation built a text
-            # response with connection.respond() and then mutated its body.
-            # That is fragile across websockets releases and was the wrong
-            # abstraction for binary audio.
+            if len(_TTS_MEMORY_CACHE) > 200:
+                _TTS_MEMORY_CACHE.clear()
+            _TTS_MEMORY_CACHE[cache_key] = audio
+
             from websockets.datastructures import Headers
             from websockets.http11 import Response
 
@@ -6909,7 +6995,7 @@ async def process_http_request(connection: Any, request: Any) -> Any:
                 "OK",
                 Headers([
                     ("Content-Type", "audio/wav"),
-                    ("Cache-Control", "no-store"),
+                    ("Cache-Control", "public, max-age=3600"),
                     ("Content-Length", str(len(audio))),
                     ("Access-Control-Allow-Origin", "*"),
                 ]),
