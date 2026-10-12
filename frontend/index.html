@@ -3281,6 +3281,10 @@
             transition: color 0.2s;
         }
         .srbk-speak-btn:hover { color: var(--cyan); }
+        .srbk-speak-btn.speaking {
+            color: var(--cyan);
+            filter: drop-shadow(0 0 6px var(--cyan));
+        }
 
         /* MetaHuman Studio View */
         .metahuman-grid {
@@ -9611,9 +9615,21 @@ button,
             if (typeof window.interruptKokoroSpeech === 'function') {
                 try { window.interruptKokoroSpeech(); } catch (_) {}
             }
+            if (window._activeSpeechAudio) {
+                try { window._activeSpeechAudio.pause(); window._activeSpeechAudio.currentTime = 0; } catch (_) {}
+                window._activeSpeechAudio = null;
+            }
             if (window.speechSynthesis) {
                 try { window.speechSynthesis.cancel(); } catch (_) {}
             }
+            try {
+                document.querySelectorAll(".srbk-speak-btn.speaking").forEach(b => {
+                    b.classList.remove("speaking");
+                    b.dataset.speaking = "false";
+                    b.textContent = "🔊";
+                    b.title = "Narrate response";
+                });
+            } catch (_) {}
             if (typeof currentTurnId !== 'undefined') currentTurnId++;
             if (typeof liveSpeechQueue !== 'undefined') liveSpeechQueue = [];
             if (typeof isProcessingSpeechQueue !== 'undefined') isProcessingSpeechQueue = false;
@@ -12894,29 +12910,244 @@ button,
                 .trim();
         }
 
+        let activeNeuralAudio = null;
+        let activeTtsAbortController = null;
+        let ttsPlaybackGeneration = 0;
+
+        function playSpeechSynthesisFallback(cleanText, finishCallback) {
+            if (typeof window.speechSynthesis === "undefined") {
+                console.warn("[tts] window.speechSynthesis is not supported in this browser.");
+                if (typeof finishCallback === "function") finishCallback();
+                return false;
+            }
+
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+
+                const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+                if (voices && voices.length) {
+                    const naturalVoice = voices.find(v =>
+                        v.lang.startsWith("en") &&
+                        (v.name.includes("Natural") || v.name.includes("Online") || v.name.includes("Google") ||
+                         v.name.includes("Samantha") || v.name.includes("Aria") || v.name.includes("Jenny") || v.name.includes("Guy"))
+                    ) || voices.find(v => v.lang.startsWith("en")) || voices[0];
+                    if (naturalVoice) utterance.voice = naturalVoice;
+                }
+
+                utterance.rate = 0.98;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                utterance.onboundary = () => {
+                    if (typeof triggerSpeechViseme === "function") triggerSpeechViseme();
+                };
+                utterance.onend = () => {
+                    if (typeof finishCallback === "function") finishCallback();
+                };
+                utterance.onerror = (err) => {
+                    console.warn("[tts] SpeechSynthesis error:", err);
+                    if (typeof finishCallback === "function") finishCallback();
+                };
+
+                window._activeSpeechUtterance = utterance;
+
+                window.speechSynthesis.resume();
+                window.speechSynthesis.speak(utterance);
+
+                const speechKeepAlive = setInterval(() => {
+                    if (window.speechSynthesis.speaking) {
+                        if (window.speechSynthesis.paused) {
+                            window.speechSynthesis.resume();
+                        }
+                    } else {
+                        clearInterval(speechKeepAlive);
+                    }
+                }, 200);
+
+                return true;
+            } catch (err) {
+                console.warn("[tts] Fallback speech invocation failed:", err);
+                if (typeof finishCallback === "function") finishCallback();
+                return false;
+            }
+        }
+
         async function speakText(btnOrText, onCompleteCallback, preserveConversationTurn = false) {
             let text = "";
-            if (typeof btnOrText === "string") text = btnOrText;
-            else if (btnOrText && btnOrText.closest) {
-                const bubble = btnOrText.closest(".srbk-bubble") || btnOrText.closest(".ws-bubble");
+            let buttonEl = null;
+
+            if (typeof btnOrText === "string") {
+                text = btnOrText;
+            } else if (btnOrText && (btnOrText.closest || btnOrText.tagName)) {
+                buttonEl = btnOrText.classList?.contains("srbk-speak-btn") ? btnOrText : btnOrText.closest?.(".srbk-speak-btn");
+                const bubble = btnOrText.closest?.(".srbk-bubble") || btnOrText.closest?.(".ws-bubble") || btnOrText.parentElement;
                 text = bubble ? (bubble.querySelector(".srbk-content, .ws-content-text")?.textContent || "") : "";
             }
+
+            if (buttonEl && (buttonEl.classList.contains("speaking") || buttonEl.dataset.speaking === "true")) {
+                interruptSpeech();
+                buttonEl.classList.remove("speaking");
+                buttonEl.dataset.speaking = "false";
+                buttonEl.textContent = "🔊";
+                buttonEl.title = "Narrate response";
+                return false;
+            }
+
             text = String(text || "").trim();
-            if (!text) { if (typeof onCompleteCallback === "function") onCompleteCallback(); return false; }
-            if (typeof window.voiceEnabled !== "undefined" && !window.voiceEnabled) {
+            if (!text) {
                 if (typeof onCompleteCallback === "function") onCompleteCallback();
                 return false;
             }
-            if (typeof window.isNativeLiveActive === "function" && window.isNativeLiveActive()) {
-                // The current Live turn already owns its audio. Re-speaking the
-                // completed assistant text would create a second Gemini turn.
+
+            if (!buttonEl && typeof window.voiceEnabled !== "undefined" && !window.voiceEnabled) {
                 if (typeof onCompleteCallback === "function") onCompleteCallback();
                 return false;
             }
-            // Gemini Live is the sole voice authority. No Kokoro or browser SpeechSynthesis fallback.
-            if (typeof onCompleteCallback === "function") onCompleteCallback();
-            return false;
+
+            let clean = text
+                .replace(/:::(?:card|video|youtube|audio|doc|pdf|paper|music|tasks)[^\n]*\n?/gi, "")
+                .replace(/:::reveal[^\n]*\n?/gi, " Solution: ")
+                .replace(/:::/g, "")
+                .replace(/```[\s\S]*?```/g, "Code block omitted.")
+                .replace(/\\\[([\s\S]*?)\\\]/g, " $1 ")
+                .replace(/\\\(([\s\S]*?)\\\)/g, " $1 ")
+                .replace(/\$\$([\s\S]*?)\$\$/g, " $1 ")
+                .replace(/\$([^\$]+)\$/g, " $1 ")
+                .replace(/https?:\/\/\S+/g, "")
+                .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+                .replace(/`([^`]+)`/g, "$1")
+                .replace(/[*#_~|]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            if (typeof normalizeSarembokSpeech === "function") {
+                clean = normalizeSarembokSpeech(clean);
+            }
+
+            if (!clean) {
+                if (typeof onCompleteCallback === "function") onCompleteCallback();
+                return false;
+            }
+
+            interruptSpeech();
+
+            if (typeof unlockAudioEngine === "function") {
+                await unlockAudioEngine();
+            }
+
+            if (buttonEl) {
+                buttonEl.classList.add("speaking");
+                buttonEl.dataset.speaking = "true";
+                buttonEl.textContent = "⏹";
+                buttonEl.title = "Stop narration";
+            }
+            if (typeof isSpeakingTurn !== "undefined") isSpeakingTurn = true;
+            if (typeof currentAssistantSpokenText !== "undefined") currentAssistantSpokenText = clean;
+            if (typeof showInterruptPill === "function") showInterruptPill();
+            if (typeof setAvatarSignal === "function") setAvatarSignal("SPEAKING");
+            if (typeof setAudioDucking === "function") setAudioDucking(true);
+
+            const speechRequestId = ++ttsPlaybackGeneration;
+            if (activeTtsAbortController) {
+                try { activeTtsAbortController.abort(); } catch (_) {}
+            }
+            activeTtsAbortController = new AbortController();
+
+            const finishSpeaking = () => {
+                if (speechRequestId !== ttsPlaybackGeneration) return;
+                if (buttonEl) {
+                    buttonEl.classList.remove("speaking");
+                    buttonEl.dataset.speaking = "false";
+                    buttonEl.textContent = "🔊";
+                    buttonEl.title = "Narrate response";
+                }
+                if (typeof isSpeakingTurn !== "undefined") isSpeakingTurn = false;
+                if (typeof currentAssistantSpokenText !== "undefined") currentAssistantSpokenText = "";
+                if (typeof lastSpeechEndTime !== "undefined") lastSpeechEndTime = Date.now();
+                if (typeof setAvatarSignal === "function") setAvatarSignal("IDLE");
+                if (typeof setAudioDucking === "function") setAudioDucking(false);
+                if (typeof hideInterruptPill === "function") hideInterruptPill();
+                window._activeSpeechUtterance = null;
+                if (window._activeSpeechAudio) {
+                    try { window._activeSpeechAudio.pause(); } catch (_) {}
+                    window._activeSpeechAudio = null;
+                }
+                activeNeuralAudio = null;
+                if (typeof onCompleteCallback === "function") {
+                    try { onCompleteCallback(); } catch (_) {}
+                }
+            };
+            window.finishSpeakingTurn = finishSpeaking;
+
+            let neuralPlaybackStarted = false;
+            try {
+                const sessionToken = window.browserSessionToken || (
+                    typeof window.initSession === "function" ? await window.initSession() : ""
+                );
+                const voice = window.selectedVoice || "af_heart";
+                const params = new URLSearchParams({
+                    text: clean.slice(0, 3900),
+                    voice: voice,
+                    language: "en-us",
+                    speed: "0.95"
+                });
+                const headers = { "Accept": "audio/wav" };
+                if (sessionToken) headers["Authorization"] = "Bearer " + sessionToken;
+
+                const response = await fetch("/api/tts?" + params.toString(), {
+                    method: "GET",
+                    cache: "no-store",
+                    headers: headers,
+                    signal: activeTtsAbortController.signal
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    if (blob.size > 200) {
+                        const blobUrl = URL.createObjectURL(blob);
+                        const audio = new Audio(blobUrl);
+                        audio.preload = "auto";
+                        audio.setAttribute("playsinline", "");
+                        activeNeuralAudio = audio;
+                        window._activeSpeechAudio = audio;
+                        window._activeSpeechUtterance = audio;
+
+                        let visemeInterval = setInterval(() => {
+                            if (!audio.paused && !audio.ended) {
+                                if (typeof triggerSpeechViseme === "function") triggerSpeechViseme();
+                            } else {
+                                clearInterval(visemeInterval);
+                            }
+                        }, 140);
+
+                        audio.onended = () => {
+                            clearInterval(visemeInterval);
+                            URL.revokeObjectURL(blobUrl);
+                            finishSpeaking();
+                        };
+                        audio.onerror = () => {
+                            clearInterval(visemeInterval);
+                            URL.revokeObjectURL(blobUrl);
+                            playSpeechSynthesisFallback(clean, finishSpeaking);
+                        };
+
+                        await audio.play();
+                        neuralPlaybackStarted = true;
+                        return true;
+                    }
+                }
+            } catch (err) {
+                if (err && err.name === "AbortError") return false;
+                console.warn("[tts] /api/tts unavailable, falling back to Web Speech API:", err);
+            }
+
+            if (!neuralPlaybackStarted) {
+                return playSpeechSynthesisFallback(clean, finishSpeaking);
+            }
+            return true;
         }
+        window.speakText = speakText;
 
         function toggleSpeechRecognition() {
             if (typeof toggleLiveConversation === "function") {
