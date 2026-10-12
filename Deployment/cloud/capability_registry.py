@@ -96,10 +96,23 @@ class CapabilityRegistry:
                 "description": desc,
                 "enabled": enabled,
             })
+        mcp_tools = []
+        try:
+            try:
+                from mcp_gateway import get_mcp_gateway
+            except ImportError:
+                from Deployment.cloud.mcp_gateway import get_mcp_gateway
+            gw = get_mcp_gateway()
+            mcp_tools = gw.list_tools()
+        except Exception:
+            pass
+
         return {
-            "registryVersion": "2.0",
+            "registryVersion": "2026.1",
+            "mcpSpec": "v2026.1",
             "truthModel": "implemented_configured_operational",
             "capabilities": capabilities,
+            "mcpTools": mcp_tools,
             "providers": _provider_snapshot(),
             "runtime": runtime,
         }

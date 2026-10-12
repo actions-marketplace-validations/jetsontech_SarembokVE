@@ -28,7 +28,10 @@ from typing import Any
 
 import websockets
 
-from worker_task_executor import WorkerTaskExecutor
+try:
+    from worker_task_executor import WorkerTaskExecutor
+except ImportError:
+    from Deployment.cloud.worker_task_executor import WorkerTaskExecutor
 
 logging.basicConfig(
     level=os.getenv("SAREMBOK_LOG_LEVEL", "INFO").upper(),
@@ -218,6 +221,50 @@ class SarembokWorker:
         self.worker_token = issued_token
         self.enrollment_token = ""
         LOG.info("Registration confirmed: status=%s workerTokenIssued=yes", res.get("status"))
+
+    async def verify_handshake(self) -> dict[str, Any]:
+        """Perform a single roundtrip P2P WebSocket handshake verification for distributed fleet execution."""
+        LOG.info("Probing WebSocket handshake at %s...", self.ws_url)
+        worker_origin = os.getenv("SAREMBOK_WORKER_ORIGIN", "https://sarembok.com").strip() or None
+        connect_kwargs = {"ping_interval": 20, "ping_timeout": 20}
+        if worker_origin:
+            connect_kwargs["origin"] = worker_origin
+
+        loop = asyncio.get_running_loop()
+        t0 = loop.time()
+        async with websockets.connect(self.ws_url, **connect_kwargs) as ws:
+            reader_task = asyncio.create_task(self.message_reader(ws))
+            try:
+                # 1. Register
+                await self.register(ws)
+                reg_time = loop.time() - t0
+
+                # 2. Heartbeat check
+                t_hb = loop.time()
+                hb_res = await self._send_rpc(ws, "Heartbeat", {"workerId": self.worker_id, "status": "ONLINE"})
+                hb_latency = (loop.time() - t_hb) * 1000.0
+
+                # 3. Queue listening check
+                t_list = loop.time()
+                task_res = await self._send_rpc(ws, "ListTasks", {"status": "QUEUED", "workerId": self.worker_id})
+                task_latency = (loop.time() - t_list) * 1000.0
+
+                total_time = loop.time() - t0
+                report = {
+                    "status": "VERIFIED",
+                    "handshake": "PASS",
+                    "workerId": self.worker_id,
+                    "workerTokenIssued": bool(self.worker_token),
+                    "capabilities": self.capabilities,
+                    "registrationTimeMs": round(reg_time * 1000.0, 2),
+                    "heartbeatLatencyMs": round(hb_latency, 2),
+                    "taskListLatencyMs": round(task_latency, 2),
+                    "totalHandshakeTimeMs": round(total_time * 1000.0, 2),
+                }
+                LOG.info("Handshake successfully verified: %s", report)
+                return report
+            finally:
+                reader_task.cancel()
 
     async def heartbeat_loop(self, ws: websockets.ClientConnection) -> None:
         LOG.info("Heartbeat loop started interval=%ss", self.heartbeat_interval)
@@ -426,6 +473,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--heartbeat-interval", type=int, default=int(os.getenv("SAREMBOK_WORKER_HEARTBEAT_INTERVAL", "15")), help="Heartbeat interval in seconds")
     parser.add_argument("--poll-interval", type=int, default=2, help="Task poll interval in seconds")
     parser.add_argument("--once", action="store_true", help="Execute single task then exit (test mode)")
+    parser.add_argument("--verify-handshake", action="store_true", help="Run one-time P2P handshake verification and exit")
     return parser.parse_args()
 
 
@@ -439,6 +487,11 @@ async def main_async() -> None:
         heartbeat_interval=args.heartbeat_interval,
         poll_interval=args.poll_interval,
     )
+
+    if args.verify_handshake:
+        report = await worker.verify_handshake()
+        print(json.dumps(report, indent=2))
+        return
 
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):

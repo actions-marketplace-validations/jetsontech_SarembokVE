@@ -40,6 +40,18 @@ def _post_json(url: str, payload: dict[str, Any], headers: dict[str, str] | None
             return int(exc.code), raw
 
 
+try:
+    from mcp_gateway import get_mcp_gateway
+except ImportError:
+    try:
+        from Deployment.cloud.mcp_gateway import get_mcp_gateway
+    except ImportError:
+        try:
+            from .mcp_gateway import get_mcp_gateway
+        except ImportError:
+            get_mcp_gateway = None  # type: ignore
+
+
 class WorkerTaskExecutor:
     """Concrete, capability-aware executor shared by worker daemons."""
 
@@ -48,13 +60,84 @@ class WorkerTaskExecutor:
         worker_id: str,
         gpu_info: dict[str, Any] | None = None,
         host_action: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        mcp_gateway: Any = None,
     ) -> None:
         self.worker_id = worker_id
         self.gpu_info = gpu_info or {}
         self.host_action = host_action
+        if mcp_gateway is not None:
+            self.mcp_gateway = mcp_gateway
+        elif get_mcp_gateway is not None:
+            try:
+                self.mcp_gateway = get_mcp_gateway()
+            except Exception:
+                self.mcp_gateway = None
+        else:
+            self.mcp_gateway = None
+
+    def discover_tools(self) -> list[dict[str, Any]]:
+        """Dynamically discover available tools matching MCP v2026.1 specification."""
+        tools: list[dict[str, Any]] = [
+            {
+                "name": "compute",
+                "description": "Standard deterministic math, vector aggregation, and arithmetic operations.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "operation": {"type": "string", "enum": ["add", "multiply", "subtract", "divide", "modulo", "power", "average", "min", "max", "sum"]},
+                        "values": {"type": "array", "items": {"type": "number"}},
+                        "a": {"type": "number"},
+                        "b": {"type": "number"},
+                    },
+                },
+                "capability": "compute",
+            },
+            {
+                "name": "verification_suite",
+                "description": "Deterministic workspace validation via compileall and pytest regression verification.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "workspace": {"type": "string"},
+                        "runTests": {"type": "boolean"},
+                    },
+                },
+                "capability": "compute",
+            },
+        ]
+        if self._gpu_available():
+            tools.append({
+                "name": "gpu_deployment",
+                "description": "Hardware-attested GPU node execution and model weight synthesis.",
+                "inputSchema": {"type": "object", "properties": {"target": {"type": "string"}}},
+                "capability": "gpu",
+            })
+        if self._playwright_available():
+            tools.append({
+                "name": "web_automation",
+                "description": "Headless browser automation via Playwright with ARIA selector routing.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["url"],
+                    "properties": {
+                        "url": {"type": "string"},
+                        "actions": {"type": "array"},
+                    },
+                },
+                "capability": "web_automation",
+            })
+        if self.mcp_gateway and hasattr(self.mcp_gateway, "list_tools"):
+            try:
+                mcp_tools = self.mcp_gateway.list_tools()
+                for tool in mcp_tools:
+                    if not any(t["name"] == tool.get("name") for t in tools):
+                        tools.append(tool)
+            except Exception:
+                pass
+        return tools
 
     def capabilities(self) -> list[str]:
-        caps = ["compute"]
+        caps = ["compute", "mcp", "dynamic_tools"]
         if self.host_action is not None:
             caps.extend(["host_control", "desktop"])
         if self._gpu_available():
@@ -67,12 +150,72 @@ class WorkerTaskExecutor:
             caps.append("web_automation")
         return caps
 
+    def _execute_mcp_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute a dynamically discovered tool using the MCP Gateway or built-in tool registry."""
+        if not tool_name:
+            return {"status": "ERROR", "error": "tool name is required for dynamic tool invocation", "retryable": False}
+
+        args = arguments if isinstance(arguments, dict) else {}
+        if tool_name in {"compute", "general_compute", "arithmetic"}:
+            return self._compute(args)
+        if tool_name == "verification_suite":
+            return self._verification_suite(args)
+        if tool_name == "web_automation":
+            return self._web_automation(args)
+        if tool_name == "gpu_deployment":
+            return self._gpu_deployment(args)
+
+        if not self.mcp_gateway or not hasattr(self.mcp_gateway, "has_tool") or not self.mcp_gateway.has_tool(tool_name):
+            return {
+                "status": "UNAVAILABLE",
+                "error": f"Dynamic MCP tool '{tool_name}' is not registered or discovered",
+                "retryable": False,
+            }
+        try:
+            call_res = self.mcp_gateway.execute_tool(tool_name, arguments if isinstance(arguments, dict) else {})
+            is_err = bool(call_res.get("isError", False))
+            content = call_res.get("content", [])
+            output_text = content[0].get("text", "") if (content and isinstance(content, list)) else ""
+            if is_err:
+                return {
+                    "status": "FAILED",
+                    "error": output_text or "Dynamic tool execution failed",
+                    "tool": tool_name,
+                    "retryable": False,
+                }
+            return {
+                "status": "COMPLETED",
+                "output": output_text,
+                "tool": tool_name,
+                "mcpSpec": "v2026.1",
+            }
+        except Exception as exc:
+            return {
+                "status": "FAILED",
+                "error": f"dynamic_mcp_tool_execution_error: {exc}",
+                "tool": tool_name,
+                "retryable": False,
+            }
+
     def execute(self, task_type: str, payload: dict[str, Any]) -> dict[str, Any]:
         t = str(task_type or "compute").strip().lower()
         p = payload if isinstance(payload, dict) else {}
         started = time.perf_counter()
 
-        if t in {"smoke_test", "arithmetic", "compute", "general_compute"}:
+        # 1. Dynamic MCP v2026.1 Tool Routing
+        if t in {"mcp_call", "tools/call", "call_mcp_tool", "mcp_tool", "mcp"}:
+            tool_name = str(p.get("name") or p.get("tool") or "").strip()
+            tool_args = p.get("arguments") or p.get("args") or p.get("params") or p
+            result = self._execute_mcp_tool(tool_name, tool_args if isinstance(tool_args, dict) else {})
+        elif t.startswith("mcp:"):
+            tool_name = t.split(":", 1)[1].strip()
+            result = self._execute_mcp_tool(tool_name, p)
+        elif self.mcp_gateway and hasattr(self.mcp_gateway, "has_tool") and self.mcp_gateway.has_tool(t):
+            result = self._execute_mcp_tool(t, p)
+        elif p.get("tool") and self.mcp_gateway and hasattr(self.mcp_gateway, "has_tool") and self.mcp_gateway.has_tool(str(p["tool"])):
+            result = self._execute_mcp_tool(str(p["tool"]), p.get("arguments") or p)
+        # 2. Built-in Capability Handlers
+        elif t in {"smoke_test", "arithmetic", "compute", "general_compute"}:
             result = self._compute(p)
         elif t in {"host_action", "desktop"}:
             result = self._host(p)

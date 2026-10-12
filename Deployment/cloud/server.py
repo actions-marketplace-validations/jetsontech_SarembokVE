@@ -1123,10 +1123,25 @@ def required_capability_for_task(task_type: str, requested: str | None = None) -
     explicit = str(requested or "").strip()
     if explicit:
         return explicit
-    return TASK_CAPABILITY_BY_TYPE.get(
-        str(task_type or "").strip().lower(),
-        "compute",
-    )
+    clean_type = str(task_type or "").strip().lower()
+    if clean_type in TASK_CAPABILITY_BY_TYPE:
+        return TASK_CAPABILITY_BY_TYPE[clean_type]
+    try:
+        try:
+            from mcp_gateway import get_mcp_gateway
+        except ImportError:
+            from Deployment.cloud.mcp_gateway import get_mcp_gateway
+        gw = get_mcp_gateway(store=store)
+        if clean_type.startswith("mcp:"):
+            tool_name = clean_type.split(":", 1)[1].strip()
+            return gw.get_tool_capability(tool_name)
+        if clean_type in {"mcp_call", "tools/call", "call_mcp_tool", "mcp_tool", "mcp"}:
+            return "mcp"
+        if gw.has_tool(clean_type):
+            return gw.get_tool_capability(clean_type)
+    except Exception:
+        pass
+    return "compute"
 
 
 def task_dependency_ready(payload: Any) -> bool:
