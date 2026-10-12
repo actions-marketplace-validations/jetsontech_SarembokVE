@@ -7,6 +7,7 @@ import json
 import os
 import time
 import sys
+from pathlib import Path
 
 import websockets
 
@@ -25,15 +26,38 @@ from runtime_response_composer import (
     render_model_inventory,
 )
 
-CLOUD_SERVER_PATH = "/app/server.py"
-spec = importlib.util.spec_from_file_location("sarembok_cloud_server", CLOUD_SERVER_PATH)
+# Dynamically derive server path relative to module location / repository root
+cloud_dir = Path(__file__).resolve().parent
+repo_root = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) >= 3 else cloud_dir
+
+server_candidates = [
+    cloud_dir / "server.py",
+    repo_root / "Deployment" / "cloud" / "server.py",
+    repo_root / "server.py",
+    Path(os.getcwd()) / "server.py",
+    Path("/app/server.py"),
+]
+
+server_file_path = next((p for p in server_candidates if p.exists()), Path("/app/server.py"))
+
+spec = importlib.util.spec_from_file_location("sarembok_cloud_server", str(server_file_path))
 if spec is None or spec.loader is None:
-    raise RuntimeError(f"Unable to load cloud server: {CLOUD_SERVER_PATH}")
+    raise RuntimeError(f"Unable to load cloud server: {server_file_path}")
 cloud_server = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = cloud_server
 spec.loader.exec_module(cloud_server)
 
-sys.path.insert(0, "/app/Runtime")
+# Dynamically resolve Runtime path for cross-platform container and host execution
+runtime_candidates = [
+    repo_root / "Runtime",
+    cloud_dir / "Runtime",
+    Path("/app/Runtime"),
+    Path(os.getcwd()) / "Runtime",
+]
+runtime_dir = next((str(p) for p in runtime_candidates if p.exists()), "/app/Runtime")
+if runtime_dir not in sys.path:
+    sys.path.insert(0, runtime_dir)
+
 from sarembok_knowledge_api import KnowledgeRuntimeAPI
 from sarembok_knowledge_runtime import PersistentKnowledgeRuntime
 

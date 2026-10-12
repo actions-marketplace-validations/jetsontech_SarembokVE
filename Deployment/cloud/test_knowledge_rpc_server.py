@@ -19,7 +19,15 @@ class KnowledgeRPCBridgeTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.temp_dir.cleanup()
+        if hasattr(cls, "bridge") and hasattr(cls.bridge, "cloud_server"):
+            try:
+                cls.bridge.cloud_server.store.close()
+            except Exception:
+                pass
+        try:
+            cls.temp_dir.cleanup()
+        except Exception:
+            pass
 
     def test_knowledge_methods_are_exposed_through_cloud_dispatch(self):
         result = self.bridge.dispatch(
