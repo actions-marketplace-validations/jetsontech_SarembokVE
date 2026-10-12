@@ -8,8 +8,12 @@ import sys
 import unittest
 
 _CLOUD_DIR = os.path.dirname(os.path.abspath(__file__))
-if _CLOUD_DIR not in sys.path:
-    sys.path.insert(0, _CLOUD_DIR)
+_REPO_ROOT = os.path.dirname(os.path.dirname(_CLOUD_DIR))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+if _CLOUD_DIR in sys.path:
+    sys.path.remove(_CLOUD_DIR)
+sys.path.insert(0, _CLOUD_DIR)
 
 from sarembok_distributed_tracing import tracer, Span, generate_trace_id, generate_span_id
 from sarembok_event_bus import event_bus, CloudEvent
@@ -204,6 +208,9 @@ class TestReasoningEngineAndCrossDomain(unittest.TestCase):
 
 
 class TestServerRPCEndpoints(unittest.TestCase):
+    def setUp(self) -> None:
+        vector_store.clear()
+
     def test_rpc_get_traces(self) -> None:
         res = dispatch("GetTraces", {"limit": 10})
         self.assertIn("traces", res)
@@ -349,5 +356,40 @@ class TestEssentialMCPServers(unittest.TestCase):
         self.assertIn("delivered", slk["content"][0]["text"])
 
 
+class TestSarembokRpcServer768DimVectorContract(unittest.TestCase):
+    def test_768_dim_vector_payload_validation_and_casting(self) -> None:
+        import numpy as np
+        from Runtime.sarembok_rpc_server import (
+            SarembokRpcServer,
+            VectorValidationError,
+            VECTOR_DATABASE_DIM,
+        )
+        server = SarembokRpcServer()
+
+        # 1. Reject unaligned dimension (e.g. 128 instead of 768)
+        with self.assertRaises(VectorValidationError):
+            server.validate_and_cast_vector([0.1] * 128)
+
+        # 2. Accept and cast strict 768-dim float32 vector
+        raw_768 = [0.05] * VECTOR_DATABASE_DIM
+        casted = server.validate_and_cast_vector(raw_768)
+        self.assertEqual(casted.shape, (768,))
+        self.assertEqual(casted.dtype, np.float32)
+
+        # 3. Test vector_insert_and_query RPC endpoint with 768-dim vector
+        res = server.vector_insert_and_query({
+            "id": "vec_768_test",
+            "vector": raw_768,
+            "query_vector": raw_768,
+            "top_k": 1,
+            "metadata": {"tier": "enterprise"},
+        })
+        self.assertTrue(res["inserted"])
+        self.assertEqual(res["dimensions"], 768)
+        self.assertEqual(len(res["results"]), 1)
+        self.assertEqual(res["results"][0]["id"], "vec_768_test")
+
+
 if __name__ == "__main__":
     unittest.main()
+
