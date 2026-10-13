@@ -234,12 +234,13 @@
             border-right: 1px solid rgba(0, 240, 255, 0.09);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            z-index: 100;
+            z-index: 200;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 80px 0 24px;
             gap: 16px;
+            pointer-events: auto;
         }
         .dock-btn {
             width: 44px;
@@ -254,6 +255,7 @@
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
+            pointer-events: auto !important;
         }
         .dock-btn:hover {
             color: var(--cyan);
@@ -2422,6 +2424,7 @@
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
+            display: none !important;
         }
         .boot-badge {
             font-family: var(--font-mono);
@@ -3325,12 +3328,15 @@
             height: 100%;
             display: block;
             cursor: crosshair;
+            position: relative;
+            z-index: 1;
+            pointer-events: auto;
         }
 
         .metahuman-hud-overlay {
             position: absolute;
             inset: 16px;
-            pointer-events: none;
+            pointer-events: none !important;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -3338,6 +3344,10 @@
             font-size: 10px;
             letter-spacing: 0.12em;
             text-transform: uppercase;
+            z-index: 5;
+        }
+        .metahuman-hud-overlay * {
+            pointer-events: none !important;
         }
         .metahuman-hud-top {
             display: flex;
@@ -4247,10 +4257,12 @@
             box-sizing: border-box;
             z-index: 25;
             backdrop-filter: blur(16px);
+            pointer-events: none;
         }
         #workspace-cockpit-sidebar.expanded {
             width: 480px;
             border-left: 1px solid rgba(0, 240, 255, 0.25);
+            pointer-events: auto;
         }
         @media (max-width: 900px) {
             #workspace-cockpit-sidebar.expanded {
@@ -5332,9 +5344,11 @@
             z-index: 1999;
             opacity: 0;
             pointer-events: none;
+            display: none;
             transition: opacity 0.3s ease;
         }
         #task-history-backdrop.open {
+            display: block;
             opacity: 1;
             pointer-events: auto;
         }
@@ -9608,24 +9622,36 @@ button,
         window.currentUiMode = 'simple';
         var _systemSettingsCache = null;
 
-        function interruptSpeech() {
-            if (typeof window.clearNativeOutputAudio === 'function') {
-                try { window.clearNativeOutputAudio(); } catch (_) {}
+        /* STRICT SINGLE-OWNER AUDIO SESSION MUTEX CONTRACT */
+        function enforceAudioMutexLock(ownerId) {
+            window.__audioMutexOwner = ownerId || "user-interrupt";
+            window.__audioMutexEpoch = (window.__audioMutexEpoch || 0) + 1;
+
+            // 1. Explicitly cancel browser SpeechSynthesis immediately to prevent overlapping voices
+            if (typeof window.speechSynthesis !== "undefined" && window.speechSynthesis) {
+                try { window.speechSynthesis.cancel(); } catch (_) {}
             }
-            if (typeof window.interruptKokoroSpeech === 'function') {
+            // 2. Flush Kokoro WebAudio buffer / abort active neural streams
+            if (typeof window.interruptKokoroSpeech === "function") {
                 try { window.interruptKokoroSpeech(); } catch (_) {}
-            }
-            if (window._activeSpeechAudio) {
-                try { window._activeSpeechAudio.pause(); window._activeSpeechAudio.currentTime = 0; } catch (_) {}
-                window._activeSpeechAudio = null;
             }
             if (window.activeTtsAbortController) {
                 try { window.activeTtsAbortController.abort(); } catch (_) {}
                 window.activeTtsAbortController = null;
             }
-            if (window.speechSynthesis) {
-                try { window.speechSynthesis.cancel(); } catch (_) {}
+            if (window._activeSpeechAudio) {
+                try {
+                    window._activeSpeechAudio.pause();
+                    window._activeSpeechAudio.currentTime = 0;
+                    window._activeSpeechAudio.src = "";
+                } catch (_) {}
+                window._activeSpeechAudio = null;
             }
+            // 3. Clear native Gemini Live audio output queue
+            if (typeof window.clearNativeOutputAudio === "function") {
+                try { window.clearNativeOutputAudio(true); } catch (_) {}
+            }
+            // 4. Reset speak button states & avatar state
             try {
                 document.querySelectorAll(".srbk-speak-btn.speaking").forEach(b => {
                     b.classList.remove("speaking");
@@ -9634,17 +9660,23 @@ button,
                     b.title = "Narrate response";
                 });
             } catch (_) {}
-            if (typeof currentTurnId !== 'undefined') currentTurnId++;
-            if (typeof liveSpeechQueue !== 'undefined') liveSpeechQueue = [];
-            if (typeof isProcessingSpeechQueue !== 'undefined') isProcessingSpeechQueue = false;
-            if (typeof currentAssistantSpokenText !== 'undefined') currentAssistantSpokenText = "";
-            if (typeof liveSilenceTimer !== 'undefined') clearTimeout(liveSilenceTimer);
-            if (typeof liveTranscriptBuffer !== 'undefined') liveTranscriptBuffer = "";
-            if (typeof isSpeakingTurn !== 'undefined') isSpeakingTurn = false;
-            if (typeof isWaitingForAIResponse !== 'undefined') isWaitingForAIResponse = false;
-            if (typeof setAudioDucking === 'function') setAudioDucking(false);
-            if (typeof setAvatarSignal === 'function') setAvatarSignal("IDLE");
-            if (typeof hideInterruptPill === 'function') hideInterruptPill();
+            if (typeof currentTurnId !== "undefined") currentTurnId++;
+            if (typeof liveSpeechQueue !== "undefined") liveSpeechQueue = [];
+            if (typeof isProcessingSpeechQueue !== "undefined") isProcessingSpeechQueue = false;
+            if (typeof currentAssistantSpokenText !== "undefined") currentAssistantSpokenText = "";
+            if (typeof liveSilenceTimer !== "undefined") clearTimeout(liveSilenceTimer);
+            if (typeof liveTranscriptBuffer !== "undefined") liveTranscriptBuffer = "";
+            if (typeof isSpeakingTurn !== "undefined") isSpeakingTurn = false;
+            if (typeof isWaitingForAIResponse !== "undefined") isWaitingForAIResponse = false;
+            if (typeof setAudioDucking === "function") setAudioDucking(false);
+            if (typeof setAvatarSignal === "function") setAvatarSignal("IDLE");
+            if (typeof hideInterruptPill === "function") hideInterruptPill();
+            return window.__audioMutexEpoch;
+        }
+        window.enforceAudioMutexLock = enforceAudioMutexLock;
+
+        function interruptSpeech() {
+            enforceAudioMutexLock("interruptSpeech");
         }
         window.interruptSpeech = interruptSpeech;
 

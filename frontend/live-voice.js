@@ -305,7 +305,31 @@
     }
 
     function clearNativeOutputAudio(discardInFlight) {
-        // Gemini Live is the sole voice authority. Browser SpeechSynthesis is disabled.
+        // Enforce strict single-owner audio contract: kill any active SpeechSynthesis or audio streams
+        try {
+            if (typeof window.speechSynthesis !== "undefined" && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        } catch (_) {}
+        try {
+            if (typeof window.interruptKokoroSpeech === "function") {
+                window.interruptKokoroSpeech();
+            }
+        } catch (_) {}
+        try {
+            if (window._activeSpeechAudio) {
+                window._activeSpeechAudio.pause();
+                window._activeSpeechAudio.currentTime = 0;
+                window._activeSpeechAudio = null;
+            }
+        } catch (_) {}
+        try {
+            if (window.activeTtsAbortController) {
+                window.activeTtsAbortController.abort();
+                window.activeTtsAbortController = null;
+            }
+        } catch (_) {}
+
         nativeNextAudioTime = nativeOutputContext
             ? nativeOutputContext.currentTime
             : 0;
@@ -1401,7 +1425,13 @@
                         // But when the user speaks into the microphone (normal speech RMS is 0.04 - 0.25+),
                         // instantly trigger verbal barge-in, halt assistant audio in <1ms,
                         // and stream user voice directly to Gemini Live.
-                        if (isModelSpeaking) {
+                        // Check if ANY playback stream is active (model speaking, SpeechSynthesis, audio element)
+                        var anyStreamActive = isModelSpeaking ||
+                            window.__srbkIsSpeaking ||
+                            (typeof window.speechSynthesis !== "undefined" && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) ||
+                            Boolean(window._activeSpeechAudio && !window._activeSpeechAudio.paused);
+
+                        if (anyStreamActive) {
                             var isSpeech = false;
                             // Fast trigger: energetic speech (>= 0.070 RMS) interrupts on 1 frame (40ms)
                             if (rms >= 0.070) {
@@ -1420,7 +1450,11 @@
 
                             if (isSpeech) {
                                 console.log("[barge-in] Human speech detected during active audio turn (rms=" + rms.toFixed(3) + "). Halting assistant speech immediately.");
-                                clearNativeOutputAudio(true);
+                                if (typeof window.enforceAudioMutexLock === "function") {
+                                    window.enforceAudioMutexLock("verbal-barge-in");
+                                } else {
+                                    clearNativeOutputAudio(true);
+                                }
                                 isModelSpeaking = false;
                                 setNativeLiveStatus(
                                     "HEARING YOU",
@@ -1430,7 +1464,7 @@
                                     if (typeof setAvatarSignal === "function") setAvatarSignal("LISTENING");
                                 } catch (_) {}
                                 logNativeLive("verbal barge-in triggered · assistant halted", "cyan");
-                            } else {
+                            } else if (isModelSpeaking) {
                                 // Suppress residual speaker bleed while assistant speaks without interruption
                                 return;
                             }
