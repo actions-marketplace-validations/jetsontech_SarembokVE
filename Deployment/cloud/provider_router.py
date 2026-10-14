@@ -138,7 +138,7 @@ class ProviderRouter:
         Returns:
             (category, model_alias)
             category: 'CODE' | 'REASONING' | 'SYNTHESIS' | 'VISION' | 'FAST'
-            model_alias: 'qwen-2.5-coder' | 'llama-3.3-70b' | 'deepseek-v3' | 'gemini-flash'
+            model_alias: 'qwen-2.5-coder' | 'llama-3.3-70b' | 'deepseek-v3' | 'gemma-2-2b'
         """
         if image_frame:
             return 'VISION', 'gemini-flash'
@@ -187,10 +187,12 @@ class ProviderRouter:
         if 'codegemma' in text:
             return 'CODE', 'codegemma'
         if 'gemma' in text:
-            return 'GENERAL', 'gemma-2-9b'
+            return 'GENERAL', 'gemma-2-2b'
 
-        # 4. Fast conversational / default
-        return 'FAST', 'gemini-flash'
+        # 4. Fast conversational / default. Gemma is the local-first default
+        # for ordinary text chat; explicit model selections and specialized
+        # code/reasoning/synthesis/vision routes above remain unchanged.
+        return 'FAST', 'gemma-2-2b'
 
     MODEL_ALIASES: dict[str, str] = {
         'gpt-4o-mini': 'openai/gpt-4o-mini',

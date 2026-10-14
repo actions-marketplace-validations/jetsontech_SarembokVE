@@ -8152,7 +8152,8 @@ button,
                     <div class="dialogue-title">SAREMBOK · SOVEREIGN DIALOGUE &amp; SYNTHESIS</div>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <select class="cyber-select" id="active-model-select" onchange="onModelChange(this.value)" title="Active AI Model Engine">
-                            <option value="auto" selected>⚡ Auto (Dynamic Task-Optimized)</option>
+                            <option value="auto" selected>⚡ Auto (Gemma Default · Task-Optimized)</option>
+                            <option value="gemma-2-2b">Gemma 2 2B (Local CPU)</option>
                             <option value="gemini-flash">Gemini 3.8 Flash (Massive Context · Fast)</option>
                             <option value="qwen-2.5-coder">Qwen 2.5 Coder (Code & Architecture)</option>
                             <option value="llama-3.3-70b">Llama 3.3 70B (Deep Reasoning)</option>
@@ -8173,7 +8174,7 @@ button,
                             <span class="admin-exec-dot"></span>
                             <span id="admin-exec-btn-text">ADMIN: OFF</span>
                         </button>
-                        <div class="cyber-card-badge cyan" id="dialogue-gpu-badge" title="Active Engine">ENGINE: AUTO (DYNAMIC TASK ROUTING)</div>
+                        <div class="cyber-card-badge cyan" id="dialogue-gpu-badge" title="Active Engine">ENGINE: AUTO (GEMMA DEFAULT · TASK ROUTING)</div>
                         <button class="dialogue-voice-chip" id="dialogue-voice-toggle-chip" onclick="toggleVoiceOutput()" title="Toggle voice narration">
                             <span class="voice-chip-dot"></span>
                             <span id="dialogue-voice-chip-text">VOICE: ON</span>
@@ -11654,7 +11655,7 @@ button,
             const badge = document.getElementById("dialogue-gpu-badge");
             if (!badge) return;
             if (val === "auto") {
-                badge.textContent = "ENGINE: AUTO (DYNAMIC TASK ROUTING)";
+                badge.textContent = "ENGINE: AUTO (GEMMA DEFAULT · TASK ROUTING)";
                 badge.className = "cyber-card-badge cyan";
             } else {
                 let cleanName = val.replace(/-/g, " ").toUpperCase();

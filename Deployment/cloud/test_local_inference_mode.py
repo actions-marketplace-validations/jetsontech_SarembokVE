@@ -73,6 +73,41 @@ class TestLocalInferenceMode(unittest.TestCase):
             self.assertNotIn('OpenRouter', names)
             self.assertNotIn('OpenAI', names)
 
+    def test_auto_text_chat_prefers_local_gemma_and_reports_provider(self):
+        with patch.dict(os.environ, {
+            'SAREMBOK_LOCAL_ONLY_MODE': 'false',
+            'SAREMBOK_LOCAL_URL': 'http://127.0.0.1:11434/v1/chat/completions',
+            'SAREMBOK_LOCAL_MODEL': 'gemma2:2b',
+            'SAREMBOK_PROVIDER_ORDER': 'Gemini,OpenRouter,Groq,OpenAI,Custom',
+            'GEMINI_API_KEY': 'test-gemini-key',
+            'OPENROUTER_API_KEY': 'test-openrouter-key',
+            'GROQ_API_KEY': 'test-groq-key',
+        }):
+            router = ProviderRouter()
+            task_category, model_alias = router.classify_task_intent(
+                'Hello, how are you?'
+            )
+            self.assertEqual(task_category, 'FAST')
+            self.assertEqual(model_alias, 'gemma-2-2b')
+
+            with patch.object(
+                router,
+                '_request',
+                return_value=('GEMMA_DEFAULT_OK', {}, 'chat.completions'),
+            ) as request:
+                result = router.generate(
+                    'You are SarembokVE.',
+                    'Hello, how are you?',
+                    [{'role': 'user', 'content': 'Hello, how are you?'}],
+                    requested_model='auto',
+                )
+
+            self.assertEqual(request.call_args.args[0].name, 'LocalGemma')
+            self.assertEqual(result.text, 'GEMMA_DEFAULT_OK')
+            self.assertEqual(result.provider, 'LocalGemma')
+            self.assertEqual(result.model, 'gemma2:2b')
+            self.assertEqual(result.task_category, 'FAST')
+
     def test_configured_preserves_production_defaults_when_local_only_false(self):
         with patch.dict(os.environ, {
             'SAREMBOK_LOCAL_ONLY_MODE': 'false',
