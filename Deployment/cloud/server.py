@@ -3207,6 +3207,12 @@ def sarembok_process_dialogue(
                 "_persistReply": reply,
             }
         except Exception as exc:
+            if PROVIDER_ROUTER.is_local_only(model):
+                LOG.warning(
+                    "explicit local inference failed; refusing conversational fallback: %s",
+                    exc,
+                )
+                raise
             LOG.info("fast_conversational_lane_fallback error=%s", exc)
 
     # 5. Build context from real system state
@@ -3529,6 +3535,12 @@ def sarembok_process_dialogue(
         else:
             reply = provider_result.text
     except Exception as exc:
+        if PROVIDER_ROUTER.is_local_only(model):
+            LOG.warning(
+                "explicit local inference failed; refusing generic response fallback: %s",
+                exc,
+            )
+            raise
         LOG.warning("LLM provider fabric failed: %s", exc)
 
     if reply:
@@ -6512,8 +6524,20 @@ def cancel_tts_stream(stream_id: str) -> bool:
             except Exception:
                 pass
         task = state.get("task")
-        if task is not None and not task.done():
-            task.cancel()
+        return True
+
+ACTIVE_CHAT_STREAMS: dict[str, dict[str, Any]] = {}
+ACTIVE_CHAT_STREAMS_LOCK = threading.RLock()
+
+def cancel_chat_stream(stream_id: str) -> bool:
+    with ACTIVE_CHAT_STREAMS_LOCK:
+        state = ACTIVE_CHAT_STREAMS.get(stream_id)
+        if not state:
+            return False
+        state["cancelled"] = True
+        cancel_evt = state.get("cancel_event")
+        if cancel_evt is not None:
+            cancel_evt.set()
         return True
 
 
@@ -6666,7 +6690,9 @@ async def handler(websocket) -> None:
 
                 if method == "CancelActiveStream":
                     target_id = str(params.get("streamId") or params.get("id") or "")
-                    cancelled = cancel_tts_stream(target_id) if target_id else False
+                    cancelled = False
+                    if target_id:
+                        cancelled = cancel_tts_stream(target_id) or cancel_chat_stream(target_id)
                     await websocket.send(json.dumps({
                         "jsonrpc": "2.0",
                         "id": request.get("id"),
@@ -6690,11 +6716,18 @@ async def handler(websocket) -> None:
                     # callback back onto the event loop without blocking inference.
                     loop = asyncio.get_running_loop()
                     delta_queue: asyncio.Queue[str | None] = asyncio.Queue()
+                    chat_stream_id = str(params.get("streamId") or request.get("id") or "")
+                    cancel_event = threading.Event()
+                    with ACTIVE_CHAT_STREAMS_LOCK:
+                        ACTIVE_CHAT_STREAMS[chat_stream_id] = {
+                            "cancelled": False,
+                            "cancel_event": cancel_event,
+                        }
 
                     async def _send_chat_deltas() -> None:
                         while True:
                             chunk = await delta_queue.get()
-                            if chunk is None:
+                            if chunk is None or cancel_event.is_set():
                                 return
                             await websocket.send(json.dumps({
                                 "jsonrpc": "2.0",
@@ -6706,6 +6739,8 @@ async def handler(websocket) -> None:
                             }, separators=(",", ":")))
 
                     def _on_delta(chunk: str) -> None:
+                        if cancel_event.is_set():
+                            raise RuntimeError("inference_cancelled_by_client")
                         text_chunk = str(chunk or "")
                         if text_chunk:
                             loop.call_soon_threadsafe(delta_queue.put_nowait, text_chunk)
@@ -6727,8 +6762,16 @@ async def handler(websocket) -> None:
                         else:
                             async with get_db_lock():
                                 result = await asyncio.to_thread(dispatch, method, params)
+                    except Exception as exc:
+                        if "inference_cancelled" in str(exc):
+                            LOG.info("chat_stream_cancelled stream_id=%s", chat_stream_id)
+                            result = {"cancelled": True, "streamId": chat_stream_id, "message": "inference_cancelled"}
+                        else:
+                            raise
                     finally:
                         reset_stream_callback(stream_token)
+                        with ACTIVE_CHAT_STREAMS_LOCK:
+                            ACTIVE_CHAT_STREAMS.pop(chat_stream_id, None)
                         await delta_queue.put(None)
                         await delta_sender
                 else:
