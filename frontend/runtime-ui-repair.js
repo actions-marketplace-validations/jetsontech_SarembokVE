@@ -353,7 +353,27 @@
 
     function healthSnapshot() {
         const views = Array.from(document.querySelectorAll(".view-panel")).map(el => el.id.replace(/^view-/, ""));
-        const dockButtons = Array.from(document.querySelectorAll(".dock-btn")).map(el => el.id.replace(/^dock-btn-/, ""));
+        const dockElements = Array.from(document.querySelectorAll(".dock-btn"));
+        const dockButtons = dockElements.map(el => el.id.replace(/^dock-btn-/, ""));
+        const internalDockElements = dockElements
+            .filter(el => !(el instanceof HTMLAnchorElement));
+        const internalDockButtons = internalDockElements
+            .map(el => el.id.replace(/^dock-btn-/, ""));
+        const appElement = document.getElementById("app");
+        const simpleMode = document.body.classList.contains("mode-simple")
+            || !!(appElement && appElement.classList.contains("mode-simple"));
+        const internalDockVisible = internalDockElements.length > 0
+            && internalDockElements.every(el => {
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el);
+                return rect.width > 0 && rect.height > 0
+                    && style.display !== "none"
+                    && style.visibility !== "hidden"
+                    && style.pointerEvents !== "none";
+            });
+        const consoleLink = document.getElementById("dock-btn-console");
+        const consoleLinkValid = consoleLink instanceof HTMLAnchorElement
+            && consoleLink.getAttribute("href") === "/console";
         const themeButton = document.getElementById("srbk-theme-toggle");
         const mdRenderer = typeof window.md === "function";
         let markdownTest = false;
@@ -366,7 +386,13 @@
         window.__srbkRuntimeUiHealth = {
             runtimeRepair: true,
             rpcRecovery: typeof window.sendRPC === "function",
-            navigation: views.length > 0 && dockButtons.every(id => views.includes(id)),
+            navigation: views.length > 0
+                && internalDockButtons.length > 0
+                && internalDockButtons.every(id => views.includes(id))
+                && consoleLinkValid
+                && internalDockVisible,
+            uiMode: simpleMode ? "simple" : "cockpit",
+            dockButtonsVisible: internalDockVisible,
             views,
             dockButtons,
             markdownRenderer: mdRenderer && markdownTest,
