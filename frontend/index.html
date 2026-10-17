@@ -72,8 +72,8 @@
         /* ====== LAYOUT: FRONTIER RESPONSIVE GRID WITH RETRACTABLE RAILS ====== */
         .console-layout {
             display: grid;
-            grid-template-columns: 280px minmax(0, 1fr) 280px;
-            grid-template-rows: 54px minmax(0, 1fr);
+            grid-template-columns: 260px minmax(0, 1fr) 260px;
+            grid-template-rows: 48px minmax(0, 1fr);
             height: 100vh;
             height: 100dvh;
             min-height: 100svh;
@@ -103,31 +103,58 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 20px;
-            background: rgba(6, 10, 18, 0.85);
+            padding: 0 16px;
+            background: rgba(6, 10, 18, 0.92);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            height: 54px;
+            height: 48px;
             box-sizing: border-box;
             z-index: 50;
             position: relative;
+            gap: 12px;
         }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow: hidden;
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 auto;
+        }
+
+        .view-nav-tabs {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            margin-left: 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .view-nav-tabs::-webkit-scrollbar { display: none; }
 
         .rail-toggle-group {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 3px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2px 4px;
             border-radius: var(--radius-sm);
         }
 
         .rail-toggle-btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: transparent;
             border: 1px solid transparent;
             border-radius: 4px;
@@ -135,7 +162,7 @@
             font-family: var(--font-sans);
             font-size: 11px;
             font-weight: 500;
-            padding: 4px 8px;
+            padding: 3px 6px;
             cursor: pointer;
             transition: all 0.15s ease;
             white-space: nowrap;
@@ -474,7 +501,7 @@
 
         /* ====== LEFT RAIL: MEMORY TIMELINE ====== */
         .memory-rail {
-            width: 280px;
+            width: 260px;
             min-width: 0;
             background: rgba(8, 12, 22, 0.8);
             backdrop-filter: blur(20px);
@@ -783,8 +810,8 @@
             backdrop-filter: blur(28px);
             -webkit-backdrop-filter: blur(28px);
             border: 1px solid rgba(0, 240, 255, 0.22);
-            border-radius: 18px;
-            padding: 10px 14px 12px;
+            border-radius: 14px;
+            padding: 8px 12px 8px;
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(0, 240, 255, 0.08);
             pointer-events: auto;
             transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
@@ -976,8 +1003,10 @@
         /* ====== RIGHT RAIL: SYSTEM STATE ====== */
 
         .system-rail {
-            width: 280px;
+            width: 260px;
             min-width: 0;
+            overflow-y: auto;
+            scrollbar-width: thin;
             background: rgba(8, 12, 22, 0.8);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -1038,8 +1067,24 @@
         }
 
         .system-section {
-            padding: 14px 16px;
+            padding: 8px 14px;
             border-bottom: 1px solid var(--border-default);
+        }
+
+        .system-section-title {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .system-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 0;
         }
 
         .system-section-title {
@@ -1100,6 +1145,24 @@
             font-family: var(--font-mono);
             color: var(--text-muted);
             word-break: break-all;
+        }
+
+        @media (max-width: 1600px) {
+            .logo-tag { display: none; }
+        }
+
+        @media (max-width: 1440px) {
+            .rail-toggle-btn kbd, .console-main-site kbd { display: none; }
+            .top-bar { padding: 0 10px; }
+        }
+
+        @media (max-height: 800px) {
+            .input-area { padding: 0 16px 8px; }
+            .floating-composer-card { padding: 6px 10px 6px; border-radius: 12px; }
+            .composer-pills-bar { margin-bottom: 4px; }
+            .action-pill { font-size: 10px; padding: 2px 8px; }
+            .system-section { padding: 6px 12px; }
+            .topology-container { padding: 4px 2px; margin-bottom: 4px; }
         }
 
         /* ====== RESPONSIVE ====== */
@@ -1346,37 +1409,37 @@
         <!-- TOP BAR -->
         <header class="top-bar">
             <div class="top-bar-left">
-                <span class="logo-mark">SAREMBOK VE</span>
+                <span class="logo-mark" style="letter-spacing:1px;font-size:12px;">SAREMBOK VE</span>
                 <span class="logo-tag">Autonomous Agent Platform</span>
                 <nav class="view-nav-tabs">
-                    <button class="view-tab active" id="tab-console" onclick="switchView('console')">⚡ Engine Workspace</button>
-                    <button class="view-tab" id="tab-mesh" onclick="switchView('mesh')">🌐 Compute Mesh</button>
-                    <button class="view-tab" id="tab-projects" onclick="switchView('projects')">🚀 Live Playground</button>
-                    <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs &amp; CLI</button>
-                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')">👤 Hologram HUD</button>
+                    <button class="view-tab active" id="tab-console" onclick="switchView('console')">⚡ Workspace</button>
+                    <button class="view-tab" id="tab-mesh" onclick="switchView('mesh')">🌐 Mesh</button>
+                    <button class="view-tab" id="tab-projects" onclick="switchView('projects')">🚀 Playground</button>
+                    <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs</button>
+                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')">👤 HUD</button>
                     <button class="view-tab" onclick="openPolicyModal('privacy')">🔒 Privacy</button>
                     <button class="view-tab" onclick="openPolicyModal('terms')">⚖ Terms</button>
                 </nav>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div class="top-bar-right">
                 <!-- RETRACTABLE PANEL TOGGLES -->
                 <div class="rail-toggle-group">
-                    <button id="rail-toggle-left" class="rail-toggle-btn active" onclick="toggleLeftRail()" title="Toggle Memory Timeline (Ctrl+[)">
+                    <button id="rail-toggle-left" class="rail-toggle-btn active" onclick="toggleLeftRail()" title="Toggle Memory Panel (Ctrl+[)">
                         <span>◧</span> <span>Memory</span> <kbd>Ctrl+[</kbd>
                     </button>
-                    <button id="rail-toggle-right" class="rail-toggle-btn active" onclick="toggleRightRail()" title="Toggle Cluster Telemetry (Ctrl+])">
+                    <button id="rail-toggle-right" class="rail-toggle-btn active" onclick="toggleRightRail()" title="Toggle Telemetry Panel (Ctrl+])">
                         <span>◨</span> <span>Telemetry</span> <kbd>Ctrl+]</kbd>
                     </button>
                 </div>
 
-                <button class="console-main-site" onclick="openCommandPalette()" style="background:rgba(0,240,255,0.08);border-color:rgba(0,240,255,0.3);color:var(--accent);display:inline-flex;align-items:center;gap:6px;">
-                    <span>⌘</span> Command <kbd style="background:rgba(0,0,0,0.4);padding:1px 5px;border-radius:3px;font-size:9px;border:1px solid rgba(255,255,255,0.1);">Ctrl+K</kbd>
+                <button class="console-main-site" onclick="openCommandPalette()" style="background:rgba(0,240,255,0.08);border-color:rgba(0,240,255,0.3);color:var(--accent);display:inline-flex;align-items:center;gap:4px;" title="Command Palette (Ctrl+K)">
+                    <span>⌘</span> <kbd style="background:rgba(0,0,0,0.4);padding:1px 4px;border-radius:3px;font-size:9px;border:1px solid rgba(255,255,255,0.1);">Ctrl+K</kbd>
                 </button>
-                <a href="/legacy" class="console-main-site" title="Open the full visual cockpit interface">LEGACY COCKPIT</a>
-                <a href="https://github.com/jetsontech/SarembokVE" target="_blank" rel="noopener noreferrer" class="console-main-site" title="View Source on GitHub">GITHUB ↗</a>
-                <div class="connection-indicator" id="connection-status">
+                <a href="/legacy" class="console-main-site" title="Open the full visual cockpit interface">COCKPIT</a>
+                <a href="https://github.com/jetsontech/SarembokVE" target="_blank" rel="noopener noreferrer" class="console-main-site" title="View Source on GitHub">GH ↗</a>
+                <div class="connection-indicator" id="connection-status" style="gap:4px;padding:3px 6px;border-radius:4px;background:rgba(255,255,255,0.02);">
                     <span class="connection-dot" id="connection-dot"></span>
-                    <span id="connection-text">Connecting…</span>
+                    <span id="connection-text" style="font-size:10px;">Connecting…</span>
                 </div>
             </div>
         </header>
@@ -1487,7 +1550,7 @@
                     <span class="live-beacon"><span class="beacon-dot"></span> VERIFIED</span>
                 </div>
                 <div class="topology-container">
-                    <svg class="topology-svg" viewBox="0 0 248 95" preserveAspectRatio="xMidYMid meet">
+                    <svg class="topology-svg" viewBox="0 0 248 70" preserveAspectRatio="xMidYMid meet">
                         <defs>
                             <filter id="neonGlowPulse" x="-20%" y="-20%" width="140%" height="140%">
                                 <feGaussianBlur stdDeviation="1.5" result="blur"/>
@@ -1498,46 +1561,46 @@
                             </filter>
                         </defs>
                         <!-- Circuit lines -->
-                        <path d="M 36 42 L 86 42" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-dasharray="3,3"/>
-                        <path d="M 122 42 L 164 26" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-dasharray="3,3"/>
-                        <path d="M 122 42 L 164 62" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-dasharray="3,3"/>
+                        <path d="M 32 35 L 82 35" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-dasharray="3,3"/>
+                        <path d="M 118 35 L 158 20" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-dasharray="3,3"/>
+                        <path d="M 118 35 L 158 50" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" stroke-dasharray="3,3"/>
 
                         <!-- Traveling pulse dots -->
-                        <circle r="2.5" fill="#00f0ff" filter="url(#neonGlowPulse)">
-                            <animateMotion path="M 36 42 L 86 42" dur="1.8s" repeatCount="indefinite"/>
+                        <circle r="2" fill="#00f0ff" filter="url(#neonGlowPulse)">
+                            <animateMotion path="M 32 35 L 82 35" dur="1.8s" repeatCount="indefinite"/>
                         </circle>
-                        <circle r="2.5" fill="#10b981" filter="url(#neonGlowPulse)">
-                            <animateMotion path="M 122 42 L 164 26" dur="2.2s" repeatCount="indefinite"/>
+                        <circle r="2" fill="#10b981" filter="url(#neonGlowPulse)">
+                            <animateMotion path="M 118 35 L 158 20" dur="2.2s" repeatCount="indefinite"/>
                         </circle>
-                        <circle r="2.5" fill="#c084fc" filter="url(#neonGlowPulse)">
-                            <animateMotion path="M 122 42 L 164 62" dur="2.6s" repeatCount="indefinite"/>
+                        <circle r="2" fill="#c084fc" filter="url(#neonGlowPulse)">
+                            <animateMotion path="M 118 35 L 158 50" dur="2.6s" repeatCount="indefinite"/>
                         </circle>
 
                         <!-- Node 1: Client -->
-                        <g transform="translate(8, 28)">
-                            <rect width="28" height="28" rx="5" fill="#081020" stroke="rgba(0,240,255,0.5)" stroke-width="1.2"/>
-                            <text x="14" y="18" fill="#00f0ff" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" text-anchor="middle">CLI</text>
+                        <g transform="translate(6, 23)">
+                            <rect width="26" height="24" rx="4" fill="#081020" stroke="rgba(0,240,255,0.5)" stroke-width="1.1"/>
+                            <text x="13" y="16" fill="#00f0ff" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" text-anchor="middle">CLI</text>
                         </g>
 
                         <!-- Node 2: Caddy Edge -->
-                        <g transform="translate(86, 26)">
-                            <rect width="36" height="32" rx="5" fill="#06161c" stroke="#10b981" stroke-width="1.4" filter="url(#neonGlowPulse)"/>
-                            <text x="18" y="15" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="8" font-weight="700" text-anchor="middle">EDGE</text>
-                            <text x="18" y="25" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="7" text-anchor="middle">Caddy2</text>
+                        <g transform="translate(82, 21)">
+                            <rect width="36" height="28" rx="4" fill="#06161c" stroke="#10b981" stroke-width="1.3" filter="url(#neonGlowPulse)"/>
+                            <text x="18" y="14" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="7.5" font-weight="700" text-anchor="middle">EDGE</text>
+                            <text x="18" y="23" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="6.5" text-anchor="middle">Caddy2</text>
                         </g>
 
                         <!-- Node 3: Playwright Chromium Pod -->
-                        <g transform="translate(164, 12)">
-                            <rect width="76" height="26" rx="4" fill="#0a1224" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
-                            <text x="38" y="14" fill="#38bdf8" font-family="'JetBrains Mono', monospace" font-size="7.5" font-weight="600" text-anchor="middle">BROWSER POD</text>
-                            <text x="38" y="22" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="6.5" text-anchor="middle">Chromium Sandbox</text>
+                        <g transform="translate(158, 8)">
+                            <rect width="82" height="22" rx="4" fill="#0a1224" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+                            <text x="41" y="12" fill="#38bdf8" font-family="'JetBrains Mono', monospace" font-size="7" font-weight="600" text-anchor="middle">BROWSER POD</text>
+                            <text x="41" y="19" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="6" text-anchor="middle">Chromium Sandbox</text>
                         </g>
 
                         <!-- Node 4: Sovereign GPU Mesh -->
-                        <g transform="translate(164, 48)">
-                            <rect width="76" height="26" rx="4" fill="#140a24" stroke="rgba(168,85,247,0.4)" stroke-width="1"/>
-                            <text x="38" y="14" fill="#c084fc" font-family="'JetBrains Mono', monospace" font-size="7.5" font-weight="600" text-anchor="middle">MUSE-GLIMMER</text>
-                            <text x="38" y="22" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="6.5" text-anchor="middle">Sovereign Mesh</text>
+                        <g transform="translate(158, 38)">
+                            <rect width="82" height="22" rx="4" fill="#140a24" stroke="rgba(168,85,247,0.4)" stroke-width="1"/>
+                            <text x="41" y="12" fill="#c084fc" font-family="'JetBrains Mono', monospace" font-size="7" font-weight="600" text-anchor="middle">MUSE-GLIMMER</text>
+                            <text x="41" y="19" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="6" text-anchor="middle">Sovereign Mesh</text>
                         </g>
                     </svg>
                 </div>
@@ -2020,8 +2083,8 @@
                 return;
             }
 
-            const leftCol = window.railsState.left ? '280px' : '0px';
-            const rightCol = window.railsState.right ? '280px' : '0px';
+            const leftCol = window.railsState.left ? '260px' : '0px';
+            const rightCol = window.railsState.right ? '260px' : '0px';
 
             if (layout) {
                 layout.style.gridTemplateColumns = `${leftCol} minmax(0, 1fr) ${rightCol}`;
