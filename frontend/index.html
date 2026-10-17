@@ -7370,14 +7370,51 @@ button,
     };
 
     function renderVideoCardV7(title, url) {
-        const movie = resolveMovieDatabase(title, url);
-        if (movie) {
-            return renderNativeCinemaCard(movie);
-        }
 
         const safeTitle = escapeHtmlLocal(title || "MEDIA");
         const raw = String(url || "").trim();
-        const id = extractId(raw);
+        const youtubeMatch = raw.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/]|$)/i);
+        const id = extractId(raw) || (youtubeMatch ? youtubeMatch[1] : null);
+        const directMedia = /^https?:\/\/.+\.(?:mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(raw);
+
+        if (directMedia) {
+            return `<div class="srbk-video-card" data-sarembok-media="video"
+                style="width:100%;max-width:640px;margin:8px auto;background:#050a12;border:1px solid rgba(0,216,232,.25);border-radius:8px;overflow:hidden;">
+                <div style="padding:10px;color:var(--cyan);font-size:11px;">DIRECT VIDEO · ${safeTitle}</div>
+                <video controls playsinline preload="metadata" src="${escapeHtmlLocal(raw)}"
+                    style="width:100%;aspect-ratio:16/9;object-fit:contain;background:#000;"></video>
+            </div>`;
+        }
+
+        if (/tubitv\.com/i.test(raw) && !id && !directMedia) {
+            const catalogMovie = resolveMovieDatabase(title, raw);
+            if (catalogMovie) return renderNativeCinemaCard(catalogMovie);
+        }
+        if (/^https?:\/\//i.test(raw) && !id) {
+            const safeUrl = escapeHtmlLocal(raw);
+            return `<div class="srbk-video-card" data-sarembok-media="source"
+                style="width:100%;max-width:640px;margin:8px auto;background:rgba(4,10,18,.95);border:1px solid rgba(0,216,232,.25);border-radius:8px;overflow:hidden;">
+                <div style="padding:12px;color:var(--cyan);font-size:11px;">${safeTitle}</div>
+                <div style="padding:14px;color:#b9c8d8;font-size:12px;line-height:1.5;">
+                    This is a webpage, not a directly playable video.
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer"
+                       style="color:var(--cyan);font-weight:700;">OPEN SOURCE ↗</a>
+                </div>
+            </div>`;
+        }
+        if (!/^https?:\/\//i.test(raw) && !id && !directMedia) {
+            const catalogMovie = resolveMovieDatabase(title, raw);
+            if (catalogMovie) return renderNativeCinemaCard(catalogMovie);
+            const query = raw || title || "video";
+            const searchUrl = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
+            return `<div class="srbk-video-card" data-sarembok-media="source"
+                style="width:100%;max-width:640px;margin:8px auto;padding:16px;box-sizing:border-box;background:#050c14;border:1px solid rgba(0,216,232,.22);border-radius:8px;color:#b9c8d8;">
+                <div style="color:var(--cyan);font-weight:700;margin-bottom:8px;">${safeTitle}</div>
+                <div style="font-size:12px;line-height:1.5;margin-bottom:12px;">No verified playable video was resolved.</div>
+                <a href="${escapeHtmlLocal(searchUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-weight:700;">OPEN YOUTUBE SEARCH ↗</a>
+            </div>`;
+        }
+
         let iframeSrc;
 
         if (id) {
@@ -7388,9 +7425,7 @@ button,
         } else if (/^https?:\/\//i.test(raw)) {
             iframeSrc = raw;
         } else {
-            const q = encodeURIComponent(raw || title || "video");
-            iframeSrc =
-                "https://www.youtube-nocookie.com/embed?listType=search&list=" + q;
+            iframeSrc = "about:blank";
         }
 
         return `
@@ -8131,7 +8166,8 @@ button,
                     <div class="dialogue-title">SAREMBOK · SOVEREIGN DIALOGUE &amp; SYNTHESIS</div>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <select class="cyber-select" id="active-model-select" onchange="onModelChange(this.value)" title="Active AI Model Engine">
-                            <option value="auto" selected>⚡ Auto (Dynamic Task-Optimized)</option>
+                            <option value="auto" selected>⚡ Auto (Gemma Default · Task-Optimized)</option>
+                            <option value="gemma-2-2b">Gemma 2 2B (Local CPU)</option>
                             <option value="gemini-flash">Gemini 3.8 Flash (Massive Context · Fast)</option>
                             <option value="qwen-2.5-coder">Qwen 2.5 Coder (Code & Architecture)</option>
                             <option value="llama-3.3-70b">Llama 3.3 70B (Deep Reasoning)</option>
@@ -8152,7 +8188,7 @@ button,
                             <span class="admin-exec-dot"></span>
                             <span id="admin-exec-btn-text">ADMIN: OFF</span>
                         </button>
-                        <div class="cyber-card-badge cyan" id="dialogue-gpu-badge" title="Active Engine">ENGINE: AUTO (DYNAMIC TASK ROUTING)</div>
+                        <div class="cyber-card-badge cyan" id="dialogue-gpu-badge" title="Active Engine">ENGINE: AUTO (GEMMA DEFAULT · TASK ROUTING)</div>
                         <button class="dialogue-voice-chip" id="dialogue-voice-toggle-chip" onclick="toggleVoiceOutput()" title="Toggle voice narration">
                             <span class="voice-chip-dot"></span>
                             <span id="dialogue-voice-chip-text">VOICE: ON</span>
@@ -9850,10 +9886,29 @@ button,
          */
         async function resolveAndUpdateMediaCards(containerEl, query, displayTitle) {
             if (!query) return;
+              const showSearchFallback = () => {
+                  const searchUrl = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
+                  containerEl.querySelectorAll('iframe[src="about:blank"]').forEach(iframe => {
+                      const wrap = iframe.closest(".srbk-video-player-wrap") || iframe.parentElement;
+                      if (!wrap) return;
+                      const card = document.createElement("div");
+                      card.style.cssText = "padding:22px;background:#050c14;color:#b9c8d8;font-size:12px;line-height:1.5;text-align:center;";
+                      const message = document.createElement("div");
+                      message.textContent = "No verified video match was returned.";
+                      const link = document.createElement("a");
+                      link.href = searchUrl;
+                      link.target = "_blank";
+                      link.rel = "noopener noreferrer";
+                      link.textContent = "Open YouTube search results ↗";
+                      link.style.cssText = "display:inline-block;margin-top:10px;color:#00d8e8;font-weight:700;";
+                      card.append(message, link);
+                      wrap.replaceChildren(card);
+                  });
+              };
             try {
                 const result = await sendRPC("SearchYouTube", { query });
                 const videoId = result?.videoId;
-                if (!videoId) return;
+                if (!videoId) { showSearchFallback(); return; }
 
                 const realEmbedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&enablejsapi=1`;
                 const realWatchUrl = `https://www.youtube.com/watch?v=${videoId}`;
@@ -10190,6 +10245,18 @@ button,
                 }
             }
 
+            const inlineTarget = String(media.embedUrl || media.raw || "").trim();
+            const inlineDirectFile = /^https?:\/\/.+\.(?:mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(inlineTarget);
+            const inlineYoutube = /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/]|$)/i.test(inlineTarget);
+            if (media.needsResolve || media.embedUrl === "about:blank") {
+                const q = String(media.resolveQuery || urlOrQuery || title || "video").trim();
+                const searchUrl = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
+                media = { ...media, raw: searchUrl, embedUrl: searchUrl, directWatchUrl: searchUrl,
+                    needsResolve: false, status: "search_link_ready", searchUrl };
+            } else if (!media.ytId && !inlineYoutube && !inlineDirectFile && /^https?:\/\//i.test(inlineTarget)) {
+                const searchUrl = media.directWatchUrl || inlineTarget;
+                media = { ...media, status: "search_link_ready", searchUrl, directWatchUrl: searchUrl };
+            }
             lastActiveInlineMedia = media;
             window.lastActiveInlineMedia = media;
 
@@ -10614,19 +10681,45 @@ button,
         window.extractYouTubeId = extractYouTubeId;
 
         function renderVideoCard(title, urlOrBody) {
-            const movie = (typeof resolveMovieDatabase === "function") ? resolveMovieDatabase(title, urlOrBody) : null;
-            if (movie && typeof renderNativeCinemaCard === "function") {
-                return renderNativeCinemaCard(movie);
-            }
 
-            const media = resolvePlayableMedia(urlOrBody, title);
+            const suppliedTarget = String(urlOrBody || "").trim();
+              const suppliedYoutube = suppliedTarget.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/]|$)/i);
+              const suppliedYoutubeId = /^[A-Za-z0-9_-]{11}$/.test(suppliedTarget) || Boolean(suppliedYoutube);
+              const suppliedDirectMedia = /^https?:\/\/.+\.(?:mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(suppliedTarget);
+              const isProviderPage = /^https?:\/\//i.test(suppliedTarget)
+                  && !suppliedYoutubeId
+                  && !suppliedDirectMedia
+                  && !/tubitv\.com/i.test(suppliedTarget);
+              if (isProviderPage) {
+                  const safeSourceTitle = escapeHtml(String(title || "Media source"));
+                  const safeSourceUrl = escapeHtml(suppliedTarget);
+                  return `<div class="srbk-video-card" data-sarembok-media="source"
+                      style="width:100%;max-width:640px;margin:8px auto;padding:16px;box-sizing:border-box;background:#050c14;border:1px solid rgba(0,216,232,.22);border-radius:8px;color:#b9c8d8;">
+                      <div style="font-weight:700;color:#fff;margin-bottom:8px;">${safeSourceTitle}</div>
+                      <div style="font-size:12px;line-height:1.5;margin-bottom:12px;">This URL is a webpage or search result, not a verified video stream.</div>
+                      <a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" style="color:#00d8e8;font-weight:700;">OPEN SOURCE ↗</a>
+                  </div>`;
+              }
+              const movie = (!/^https?:\/\//i.test(suppliedTarget) || /tubitv\.com/i.test(suppliedTarget))
+                    && !suppliedYoutubeId && !suppliedDirectMedia
+                    && typeof resolveMovieDatabase === "function"
+                    ? resolveMovieDatabase(title, urlOrBody) : null;
+                if (movie && typeof renderNativeCinemaCard === "function") {
+                    return renderNativeCinemaCard(movie);
+                }
+
+                const media = resolvePlayableMedia(urlOrBody, title);
             const mediaTarget = media.ytId || media.raw || media.embedUrl;
             const isTubi = /tubitv\.com/i.test(media.embedUrl) || /tubitv\.com/i.test(mediaTarget) || /tubitv\.com/i.test(urlOrBody);
             const isTubiSearch = isTubi && (/search/i.test(media.embedUrl) || /search/i.test(mediaTarget) || !/movies\/\d+/i.test(mediaTarget));
-            const isDirectStream = media.embedUrl.endsWith(".mp4") || media.embedUrl.endsWith(".webm") || media.platform === "direct_stream" || media.embedUrl.includes("/sample/") || media.embedUrl.includes("/download/");
+            const isDirectStream = media.platform === "direct_stream" || /^https?:\/\/.+\.(?:mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(String(media.embedUrl || media.raw || ""));
             const rawQuery = (media.displayTitle || title || "movies").replace(/^🎬\s*/, "").replace(/\s*·\s*TUBI.*$/i, "").trim();
+            const isUnresolvedQuery = Boolean(media.needsResolve) || media.embedUrl === "about:blank";
+            const mediaSourceUrl = /^https?:\/\//i.test(String(media.directWatchUrl || ""))
+                ? String(media.directWatchUrl)
+                : "https://www.youtube.com/results?search_query=" + encodeURIComponent(rawQuery || title || "video");
 
-            const headerActions = isTubiSearch ? `
+            let headerActions = isTubiSearch ? `
                 <div style="display:flex; gap:6px; align-items:center;">
                     <button type="button" class="srbk-video-pop-btn" style="background:#00d8e8;color:#000;font-weight:700;" onclick="window.open('${escapeHtml(mediaTarget)}', '_blank', 'popup=yes,width=1920,height=1080,fullscreen=yes')">▶ FULLSCREEN ↗</button>
                     <button type="button" class="srbk-video-pop-btn" onclick="popOutFloatingVideo('${escapeHtml(mediaTarget)}', '${escapeHtml(media.displayTitle)}')">⧉ POP OUT</button>
@@ -10652,8 +10745,16 @@ button,
                 </div>
             `));
 
+            if (isUnresolvedQuery) {
+                headerActions = `<a href="${escapeHtml(mediaSourceUrl)}" target="_blank" rel="noopener noreferrer" class="srbk-video-link" style="color:#00d8e8;font-weight:700;">OPEN YOUTUBE SEARCH ↗</a>`;
+            }
             let playerHtml = "";
-            if (isTubiSearch) {
+            if (isUnresolvedQuery) {
+                playerHtml = `<div class="srbk-video-player-wrap" style="min-height:120px;padding:20px;box-sizing:border-box;background:#050c14;color:#b9c8d8;border-radius:8px;text-align:center;">
+                    <div style="margin-bottom:12px;">No verified playable video was resolved.</div>
+                    <a href="${escapeHtml(mediaSourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:#00d8e8;font-weight:700;">Open YouTube search results ↗</a>
+                </div>`;
+            } else if (isTubiSearch) {
                 const searchQ = encodeURIComponent(rawQuery);
                 playerHtml = `
                 <div class="srbk-tubi-search-container" style="background:#050c14;border-radius:8px;overflow:hidden;border:1px solid rgba(0,216,232,0.25);">
@@ -11586,7 +11687,7 @@ button,
             const badge = document.getElementById("dialogue-gpu-badge");
             if (!badge) return;
             if (val === "auto") {
-                badge.textContent = "ENGINE: AUTO (DYNAMIC TASK ROUTING)";
+                badge.textContent = "ENGINE: AUTO (GEMMA DEFAULT · TASK ROUTING)";
                 badge.className = "cyber-card-badge cyan";
             } else {
                 let cleanName = val.replace(/-/g, " ").toUpperCase();
@@ -12539,8 +12640,13 @@ button,
 
                 scrollDialogue();
 
-                // Frontier voice authority: normal SarembokChat responses remain text-only.
-                // Gemini Live owns audio when Live is active; never invoke a second TTS engine here.
+                // Ordinary chat speaks only when its own Voice toggle is enabled.
+                // Gemini Live remains the exclusive audio authority while active.
+                if (window.voiceEnabled && !window.nativeLiveActive && !window.liveConversationActive &&
+                    typeof window.speakText === "function") {
+                    try { window.speakText(finalText); }
+                    catch (voiceErr) { console.warn("[Sarembok] Chat speech failed:", voiceErr); }
+                }
 
             } catch (err) {
                 content.innerHTML = `<p style="color:var(--amber);">Execution notice: ${escapeHtml(err.message)}</p>`;
@@ -14051,10 +14157,14 @@ button,
                     sendRPC("ListTasks", {})
                 ]);
                 const agents = Array.isArray(agentRes?.agents) ? agentRes.agents : [];
-                const tasks = Array.isArray(taskRes?.tasks) ? taskRes.tasks : [];
                 const registered = agents.length;
                 const online = agents.filter(a => String(a.status || "").toUpperCase() === "ONLINE").length;
-                const activeTasks = tasks.filter(t => ["QUEUED", "RUNNING", "PENDING_WORKER"].includes(String(t.status || "").toUpperCase())).length;
+                const tasks = Array.isArray(taskRes?.tasks) ? taskRes.tasks : [];
+                const activeTasks = tasks.filter(t =>
+                    ["QUEUED", "RUNNING", "PENDING_WORKER"].includes(
+                        String(t.status || "").toUpperCase()
+                    )
+                ).length;
 
                 const onlineEl = document.getElementById("agents-count-online");
                 const registeredEl = document.getElementById("agents-count-registered");
@@ -15267,7 +15377,7 @@ button,
         /* ============================================================
            UI MODE TOGGLE & SIMPLE CHAT MANAGEMENT
            ============================================================ */
-        currentUiMode = currentUiMode || 'simple';
+        currentUiMode = currentUiMode || 'cockpit';
 
         function setUiMode(mode, save = true) {
             currentUiMode = mode;
@@ -15305,18 +15415,23 @@ button,
 
             if (save) {
                 try {
-                    localStorage.setItem('sarembok_ui_mode_v2', mode);
+                    localStorage.setItem('sarembok_ui_mode_v3', mode);
                 } catch(e) {}
             }
         }
 
         function initUiMode() {
+            // Respect the v3 preference; new profiles default to Cockpit.
+            let preferredMode = 'cockpit';
             try {
-                localStorage.setItem('sarembok_ui_mode_v2', 'simple');
-                setUiMode('simple', false);
-            } catch(e) {
-                setUiMode('simple', false);
-            }
+                const stored = localStorage.getItem('sarembok_ui_mode_v3');
+                if (stored === 'simple' || stored === 'cockpit') {
+                    preferredMode = stored;
+                } else {
+                    localStorage.setItem('sarembok_ui_mode_v3', preferredMode);
+                }
+            } catch (e) {}
+            setUiMode(preferredMode, false);
         }
 
         function updateSimpleHeroVisibility() {
@@ -16783,7 +16898,7 @@ button,
                         roleBadgeEl.style.background = "rgba(0,240,255,0.15)";
                         roleBadgeEl.style.color = "var(--cyan)";
                     }
-                    setUiMode('simple', false);
+                    // Preserve the user's selected interface mode.
                     if (telemetryToggleBtn) telemetryToggleBtn.style.display = "none";
                 }
                 if (logoutBtn) logoutBtn.style.display = "flex";
@@ -17369,7 +17484,7 @@ if (gField) {
 
 </script>
 <!-- SAREMBOK_RUNTIME_UI_BRIDGES_V2 -->
-<script src="/runtime-ui-repair.js?v=20260921-tts1" defer></script>
+<script src="/runtime-ui-repair.js?v=20261014-ui-voicefix3" defer></script>
 <script>
 (function initializeSarembokActiveTab() {
     function syncActiveTab() {
@@ -17427,7 +17542,7 @@ body #dialogue-history .srbk-cinema-player-box video {
     height: 100% !important;
 }
 </style>
-    <script src="/live-voice.js?v=20261011-verbal-barge-in-v29"></script>
+    <script src="/live-voice.js?v=20261014-ui-voicefix3"></script>
 
 </body>
 </html>

@@ -363,8 +363,9 @@
             return;
         }
 
-        // Privacy & Mute check: if user turned VOICE: OFF, NEVER play audio
-        if (typeof window.voiceEnabled !== "undefined" && !window.voiceEnabled) {
+        // Native Gemini Live has its own audio authority.
+        // The ordinary-chat Voice toggle must not mute the Live session.
+        if (!nativeLiveActive) {
             return;
         }
 
@@ -528,7 +529,7 @@
         }
 
         if (nativeAssistantBubble) {
-            var content = nativeAssistantBubble.querySelector(".srbk-content");
+            var content = nativeAssistantBubble.querySelector(".srbk-content, .msg-body");
             if (content) {
                 var renderVal = value;
                 // Auto-close unclosed design/mockup blocks for real-time live preview while streaming
@@ -818,34 +819,51 @@
                 var mediaType = String(args.media_type || "video").trim();
                 lastLiveMediaTrigger = mediaQuery;
                 lastLiveMediaTriggerTime = Date.now();
-                // Play INLINE in the conversation bubble by default
-                if (typeof window.playVideoInline === "function") {
-                    try {
-                        window.playVideoInline(mediaQuery, mediaQuery);
-                    } catch (e) {
-                        console.warn("[LiveVoice] playVideoInline invocation failed:", e);
-                    }
-                }
+                // Await the console/main inline media bridge and report its actual outcome.
                 try {
-                    result = await srbkSendRPC("ResolveMediaStream", { query: mediaQuery, media_type: mediaType });
-                    if (!result || !result.url) {
+                    if (typeof window.playVideoInline !== "function") {
                         result = {
-                            status: "playing_inline",
+                            status: "unavailable",
                             query: mediaQuery,
-                            player: "inline_chat",
-                            message: "Media is now playing inline in the conversation chat. The user can watch inline or click 'Pop Out' to float it over all windows."
+                            message: "Inline media playback is unavailable in this interface."
                         };
                     } else {
-                        result.status = "playing_inline";
-                        result.player = "inline_chat";
-                        result.message = "Media is now playing inline in the conversation chat. The user can watch inline or click 'Pop Out' to float it over all windows.";
+                        var inlineResult = await window.playVideoInline(mediaQuery, mediaQuery);
+                        if (inlineResult && (
+                            (inlineResult.ok === true && inlineResult.status === "player_embedded") ||
+                            Boolean(inlineResult.ytId) ||
+                            /^[A-Za-z0-9_-]{11}$/.test(String(inlineResult.videoId || "")) ||
+                            /(?:youtube(?:-nocookie)?\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)/i.test(String(inlineResult.embedUrl || inlineResult.url || inlineResult.raw || "")) ||
+                            /\.(?:mp4|webm|ogg|mov|m4v)(?:[?#]|$)/i.test(String(inlineResult.embedUrl || inlineResult.url || inlineResult.raw || ""))
+                        )) {
+                            result = {
+                                status: "playing_inline",
+                                query: mediaQuery,
+                                player: "inline_chat",
+                                title: inlineResult.title || inlineResult.displayTitle || mediaQuery,
+                                message: "A media player was added to the conversation. Playback may require pressing Play."
+                            };
+                        } else if (inlineResult && inlineResult.status === "search_link_ready") {
+                            result = {
+                                status: "search_link_ready",
+                                query: mediaQuery,
+                                searchUrl: inlineResult.searchUrl || ("https://www.youtube.com/results?search_query=" + encodeURIComponent(mediaQuery)),
+                                message: "I couldn't resolve an embeddable playable item. A search link is available in the conversation."
+                            };
+                        } else {
+                            result = {
+                                status: "unavailable",
+                                query: mediaQuery,
+                                message: (inlineResult && inlineResult.message) || "No playable media was resolved."
+                            };
+                        }
                     }
-                } catch (_) {
+                } catch (e) {
+                    console.warn("[LiveVoice] inline media resolution failed:", e);
                     result = {
-                        status: "playing_inline",
+                        status: "unavailable",
                         query: mediaQuery,
-                        player: "inline_chat",
-                        message: "Media is now playing inline in the conversation chat."
+                        message: "Media resolution failed; playback has not been confirmed."
                     };
                 }
             } else if (name === "generate_flyer") {
@@ -1323,17 +1341,9 @@
                 nativeLiveActive = true;
                 window.nativeLiveActive = true;
                 window.liveConversationActive = true;
-                window.voiceEnabled = true;
+                // Live Voice owns its own audio; do not mutate the independent
+                // ordinary-chat Voice toggle or its HUD state.
                 try {
-                    if (typeof voiceEnabled !== "undefined") voiceEnabled = true;
-                    var voiceLabel = document.getElementById("hud-voice-label");
-                    if (voiceLabel) voiceLabel.textContent = "VOICE: ON";
-                    var voiceBtn = document.getElementById("hud-voice-toggle");
-                    if (voiceBtn) voiceBtn.classList.remove("muted");
-                    var voiceChip = document.getElementById("dialogue-voice-toggle-chip");
-                    if (voiceChip) voiceChip.classList.remove("muted");
-                    var voiceChipText = document.getElementById("dialogue-voice-chip-text");
-                    if (voiceChipText) voiceChipText.textContent = "VOICE: ON";
                     var inp = document.getElementById("directive-input");
                     if (inp) {
                         inp.classList.add("live-active");
@@ -1513,7 +1523,45 @@
                 );
             } catch (err) {
                 nativeLiveActive = false;
+                window.nativeLiveActive = false;
+                window.liveConversationActive = false;
                 nativeLiveStopping = true;
+
+                // Release ownership after failed startup so another attempt
+                // or the other Sarembok interface is not left locked out.
+                try { releaseLiveAuthority(); } catch (_) {}
+                try { clearNativeOutputAudio(); } catch (_) {}
+
+                if (nativeReconnectTimer) {
+                    clearTimeout(nativeReconnectTimer);
+                    nativeReconnectTimer = null;
+                }
+
+                var failedSocket = nativeLiveSocket;
+                nativeLiveSocket = null;
+                nativeSetupComplete = false;
+                try {
+                    if (failedSocket && failedSocket.readyState < WebSocket.CLOSING) {
+                        failedSocket.close(1000, "startup-failed");
+                    }
+                } catch (_) {}
+
+                try {
+                    var failedDirectiveInput = document.getElementById("directive-input");
+                    if (failedDirectiveInput) {
+                        failedDirectiveInput.classList.remove("live-active");
+                        if (failedDirectiveInput.dataset.normalPlaceholder) {
+                            failedDirectiveInput.placeholder = failedDirectiveInput.dataset.normalPlaceholder;
+                        }
+                    }
+                    var failedGlobalInput = document.getElementById("global-input-field");
+                    if (failedGlobalInput) {
+                        failedGlobalInput.classList.remove("live-active");
+                        if (failedGlobalInput.dataset.normalPlaceholder) {
+                            failedGlobalInput.placeholder = failedGlobalInput.dataset.normalPlaceholder;
+                        }
+                    }
+                } catch (_) {}
 
                 if (nativeLiveMediaStream) {
                     nativeLiveMediaStream.getTracks().forEach(function (track) {
