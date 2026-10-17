@@ -7081,12 +7081,18 @@ async def process_http_request(connection: Any, request: Any) -> Any:
         parsed = urllib.parse.urlparse(path)
         q = urllib.parse.parse_qs(parsed.query)
         target = str(q.get("target", [""])[0] or q.get("url", [""])[0]).strip()
-        if not target and hasattr(request, "body"):
+        body_json = {}
+        if hasattr(request, "body") and getattr(request, "body", None):
             try:
                 body_json = json.loads(request.body.decode("utf-8"))
-                target = str(body_json.get("target") or body_json.get("url") or "").strip()
+                if not target:
+                    target = str(body_json.get("target") or body_json.get("url") or "").strip()
             except Exception:
                 pass
+
+        if not target:
+            return make_api_response(400, {"error": "target_url_required", "detail": "Provide ?target=https://... or JSON payload with url"})
+
         custom_headers = {}
         custom_cookies = []
         if isinstance(body_json, dict):
@@ -7097,9 +7103,15 @@ async def process_http_request(connection: Any, request: Any) -> Any:
             if body_json.get("token") or body_json.get("auth"):
                 tok = str(body_json.get("token") or body_json.get("auth")).strip()
                 custom_headers["Authorization"] = f"Bearer {tok}" if not tok.startswith("Bearer ") else tok
+
         auth_param = str(q.get("auth", [""])[0] or q.get("token", [""])[0]).strip()
         if auth_param:
             custom_headers["Authorization"] = f"Bearer {auth_param}" if not auth_param.startswith("Bearer ") else auth_param
+
+        for hp in q.get("header", []):
+            if ":" in hp:
+                hk, hv = hp.split(":", 1)
+                custom_headers[hk.strip()] = hv.strip()
 
         try:
             spec_res = await asyncio.to_thread(dispatch, "ExtractSystemSpecification", {
