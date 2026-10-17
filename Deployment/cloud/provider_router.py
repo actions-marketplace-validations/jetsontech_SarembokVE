@@ -442,8 +442,8 @@ class ProviderRouter:
             result['Custom'] = ProviderSpec('Custom', os.getenv('LLM_MODEL', 'llama-3.1-8b'), 'openai', custom, os.getenv('LLM_API_KEY', 'dummy'))
         order = [x.strip() for x in os.getenv('SAREMBOK_PROVIDER_ORDER', 'Gemini,LocalGemma,OpenRouter,Groq,OpenAI,Custom').split(',') if x.strip()]
 
-        # When Gemma model or local is specifically requested, prioritize LocalGemma or OpenRouter
-        if target_model and any(m in target_model.lower() for m in ('gemma', 'local')):
+        # When Gemma model, local, muse, or glimmer is specifically requested, prioritize LocalGemma or OpenRouter
+        if target_model and any(m in target_model.lower() for m in ('gemma', 'local', 'muse', 'glimmer')):
             if 'LocalGemma' in result:
                 order = ['LocalGemma'] + [x for x in order if x != 'LocalGemma']
 

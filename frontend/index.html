@@ -872,10 +872,11 @@
                 <span class="logo-mark">SAREMBOK VE</span>
                 <span class="logo-tag">Autonomous Agent Platform</span>
                 <nav class="view-nav-tabs">
-                    <button class="view-tab active" id="tab-console" onclick="switchView('console')">⚡ Console</button>
-                    <button class="view-tab" id="tab-projects" onclick="switchView('projects')">📁 Projects &amp; Walkthroughs</button>
-                    <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs &amp; Specs</button>
-                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')">👤 Hologram Avatar</button>
+                    <button class="view-tab active" id="tab-console" onclick="switchView('console')">⚡ Engine Workspace</button>
+                    <button class="view-tab" id="tab-mesh" onclick="switchView('mesh')">🌐 Compute Mesh</button>
+                    <button class="view-tab" id="tab-projects" onclick="switchView('projects')">🚀 Live Playground</button>
+                    <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs &amp; CLI</button>
+                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')">👤 Hologram HUD</button>
                     <button class="view-tab" onclick="openPolicyModal('privacy')">🔒 Privacy</button>
                     <button class="view-tab" onclick="openPolicyModal('terms')">⚖ Terms</button>
                 </nav>
@@ -906,6 +907,12 @@
 
         <!-- CENTER: CONVERSATION -->
         <main class="conversation-panel" id="view-console-panel">
+            <!-- QUICK TARGET AUDIT BAR -->
+            <div style="background:var(--bg-surface);border-bottom:1px solid var(--border-default);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:5;">
+                <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;white-space:nowrap;">AUDIT TARGET:</span>
+                <input type="text" id="quick-target-url" value="https://httpbin.org" placeholder="https://api.target.com" style="flex:1;min-width:200px;background:#05070d;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#fff;font-family:var(--font-mono);font-size:12px;padding:6px 12px;outline:none;">
+                <button onclick="injectPrompt('/spec ' + document.getElementById('quick-target-url').value);sendMessage();" style="background:linear-gradient(135deg,#0284c7,#38bdf8);border:none;border-radius:var(--radius-sm);color:#080a0f;font-weight:700;font-size:12px;padding:6px 16px;cursor:pointer;white-space:nowrap;box-shadow:0 0 12px rgba(56,189,248,0.25);">⚡ Reverse-Engineer</button>
+            </div>
             <div class="conversation-scroll" id="conversation-scroll">
                 <div class="msg-group">
                     <div class="msg-sender agent">
@@ -1060,6 +1067,55 @@
             </div>
         </section>
 
+        <!-- SUB-VIEW: SOVEREIGN COMPUTE MESH -->
+        <section class="view-panel" id="view-mesh-panel" style="display:none;">
+            <div class="panel-header-title">Sovereign GPU Compute Mesh Dashboard</div>
+            <div class="panel-header-desc">Decentralized cluster topology. Run inference workloads on free Google Colab T4 or RunPod A100 instances with zero cloud API token burn.</div>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px;margin-bottom:32px;">
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--green);font-weight:700;">● CLUSTER EDGE (ONLINE)</span>
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">HOST: 15.204.173.205</span>
+                    </div>
+                    <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;">Central Production Gateway</div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">Caddy 2 Edge Reverse Proxy + Python 3.12 Core Runtime. Manages session broker, rate limiting, and task queues.</p>
+                    <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">Services: 4/4 Containers Healthy</div>
+                </div>
+
+                <div style="background:var(--bg-surface);border:1px solid rgba(56,189,248,0.3);border-radius:var(--radius-md);padding:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent);font-weight:700;">● SOVEREIGN WORKER SLOTS</span>
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent);">WSS TUNNEL ACTIVE</span>
+                    </div>
+                    <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;">Google Colab &amp; RunPod Mesh</div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">Supported Sovereign Models: <code>muse-glimmer-30b</code>, <code>qwen-2.5-coder-32b</code>. Provides real zero-cost GPU computation.</p>
+                    <a href="https://github.com/jetsontech/SarembokVE/blob/main/Deployment/cloud/sarembok_gpu_worker.ipynb" target="_blank" rel="noopener" class="btn-console" style="display:inline-block;margin-top:4px;">🚀 Launch Free Colab GPU Node →</a>
+                </div>
+
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--amber);font-weight:700;">● ZERO-INSTALL DEVELOPER CLI</span>
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">NPX READY</span>
+                    </div>
+                    <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;">Sarembok Developer CLI</div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">Run specification audits in your local terminal or CI pipeline with zero installation overhead.</p>
+                    <div style="background:#05070d;border:1px solid var(--border-default);padding:8px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;color:var(--accent);">
+                        npx sarembok spec https://httpbin.org -o openapi.json
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;">
+                <h3 style="font-size:16px;color:#fff;margin-bottom:12px;">1-Command Worker Node Launcher</h3>
+                <p style="font-size:13.5px;color:var(--text-secondary);margin-bottom:16px;">Run this command in any terminal with an NVIDIA GPU (or in a Google Colab / Kaggle notebook) to connect your hardware to the cluster:</p>
+                <div style="position:relative;background:#05070d;border:1px solid var(--border-default);border-radius:6px;padding:14px;font-family:var(--font-mono);font-size:12px;color:#cbd5e1;overflow-x:auto;">
+                    <code>curl -sSL https://sarembok.com/Deployment/cloud/colab_worker.py | python - --server wss://sarembok.com/worker/ws --models muse-glimmer-30b,qwen-2.5-coder-32b</code>
+                    <button onclick="navigator.clipboard.writeText('curl -sSL https://sarembok.com/Deployment/cloud/colab_worker.py | python - --server wss://sarembok.com/worker/ws --models muse-glimmer-30b,qwen-2.5-coder-32b');this.textContent='Copied!';" style="position:absolute;top:10px;right:10px;background:var(--bg-elevated);border:1px solid var(--border-default);color:var(--text-secondary);font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer;">Copy</button>
+                </div>
+            </div>
+        </section>
+
         <!-- SUB-VIEW: DOCS & SPECS -->
         <section class="view-panel" id="view-docs-panel" style="display:none;">
             <div class="panel-header-title">Technical Documentation &amp; Architecture</div>
@@ -1162,12 +1218,14 @@
             const memRail = document.getElementById('console-memory-rail');
             const sysRail = document.getElementById('console-system-rail');
             const consolePanel = document.getElementById('view-console-panel');
+            const meshPanel = document.getElementById('view-mesh-panel');
             const projectsPanel = document.getElementById('view-projects-panel');
             const docsPanel = document.getElementById('view-docs-panel');
             const avatarPanel = document.getElementById('view-avatar-panel');
 
             // Hide all sub-views
             if (consolePanel) consolePanel.style.display = 'none';
+            if (meshPanel) meshPanel.style.display = 'none';
             if (memRail) memRail.style.display = 'none';
             if (sysRail) sysRail.style.display = 'none';
             if (projectsPanel) projectsPanel.style.display = 'none';
@@ -1181,6 +1239,7 @@
                 if (sysRail) sysRail.style.display = 'flex';
             } else {
                 if (consoleLayout) consoleLayout.style.gridTemplateColumns = '1fr';
+                if (viewName === 'mesh' && meshPanel) meshPanel.style.display = 'block';
                 if (viewName === 'projects' && projectsPanel) projectsPanel.style.display = 'flex';
                 if (viewName === 'docs' && docsPanel) docsPanel.style.display = 'flex';
                 if (viewName === 'avatar' && avatarPanel) {

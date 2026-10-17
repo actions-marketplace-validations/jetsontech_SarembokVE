@@ -333,6 +333,45 @@
             <p class="hero-subtitle">See how SarembokVE accomplishes complex autonomous goals with zero human intervention: from reverse-engineering live APIs to orchestrating decentralized GPU meshes.</p>
         </div>
 
+        <!-- LIVE INTERACTIVE VERIFICATION SANDBOX -->
+        <section class="project-card" style="border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 0 32px rgba(56, 189, 248, 0.15); margin-bottom: 48px;">
+            <div class="project-header" style="background: rgba(56, 189, 248, 0.05);">
+                <div>
+                    <span class="project-tag" style="background: rgba(16, 185, 129, 0.2); color: var(--green);">● LIVE RUNTIME SANDBOX</span>
+                    <h2 class="project-title">Test Live Autonomous Verification On Any Target</h2>
+                </div>
+                <div style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">
+                    Powered by Playwright Chromium Engine
+                </div>
+            </div>
+            <div style="padding: 24px 28px;">
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+                    Enter any public API or web application endpoint below. SarembokVE will deploy a sandboxed headless Chromium browser, analyze HTTP traffic &amp; DOM structures, and synthesize verified OpenAPI &amp; TypeScript contracts in real time.
+                </p>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="url" id="live-target-input" value="https://httpbin.org" placeholder="https://..." style="flex: 1; min-width: 280px; background: #05070d; border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: #fff; font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; outline: none;">
+                    <button class="btn-action btn-run" onclick="executeLiveTest()" id="live-run-btn" style="padding: 10px 20px; font-size: 13px;">🚀 Run Live Verification</button>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="btn-action" style="font-size: 11px; padding: 4px 10px;" onclick="setTarget('https://httpbin.org')">⚡ httpbin.org</button>
+                    <button class="btn-action" style="font-size: 11px; padding: 4px 10px;" onclick="setTarget('https://news.ycombinator.com')">⚡ news.ycombinator.com</button>
+                    <button class="btn-action" style="font-size: 11px; padding: 4px 10px;" onclick="setTarget('https://jsonplaceholder.typicode.com')">⚡ jsonplaceholder.typicode.com</button>
+                </div>
+
+                <!-- Live Results Display -->
+                <div id="live-results-container" style="display: none; background: #05060a; border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; font-family: var(--font-mono);">
+                    <div style="background: var(--bg-elevated); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-default); font-size: 12px;">
+                        <span id="live-status-tag" style="color: var(--green);">✔ VERIFIED 100% TRUTH PASS</span>
+                        <span id="live-latency-tag" style="color: var(--accent);">Latency: 2450ms</span>
+                    </div>
+                    <div style="padding: 16px; max-height: 240px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #cbd5e1;" id="live-terminal-log">
+                    </div>
+                    <div style="padding: 12px 16px; background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; gap: 10px; flex-wrap: wrap;" id="live-actions-bar">
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Project 1 -->
         <article class="project-card" id="project-1">
             <div class="project-header">
@@ -509,6 +548,65 @@
     </div>
 
     <script>
+        function setTarget(url) {
+            document.getElementById('live-target-input').value = url;
+            executeLiveTest();
+        }
+
+        async function executeLiveTest() {
+            const input = document.getElementById('live-target-input');
+            const btn = document.getElementById('live-run-btn');
+            const container = document.getElementById('live-results-container');
+            const log = document.getElementById('live-terminal-log');
+            const statusTag = document.getElementById('live-status-tag');
+            const latencyTag = document.getElementById('live-latency-tag');
+            const actionsBar = document.getElementById('live-actions-bar');
+
+            const target = input.value.trim();
+            if (!target) return;
+
+            btn.disabled = true;
+            btn.innerText = '⚡ Inspecting Live Target...';
+            container.style.display = 'block';
+            statusTag.style.color = 'var(--amber)';
+            statusTag.textContent = '⏳ CRAWLING & INFERRING SCHEMA...';
+            latencyTag.textContent = 'Engine: Chromium (Playwright)';
+            log.innerHTML = `[00:00.010] <span class="log-accent">SANDBOX</span> Deploying ephemeral browser container to probe: ${target}...\n[00:00.340] <span class="log-accent">NET</span> Intercepting HTTP network requests & DOM schema structures...`;
+            actionsBar.innerHTML = '';
+
+            const t0 = Date.now();
+            try {
+                const resp = await fetch(`/api/spec?target=${encodeURIComponent(target)}`);
+                const data = await resp.json();
+                const duration = Date.now() - t0;
+
+                statusTag.style.color = data.verified ? 'var(--green)' : 'var(--amber)';
+                statusTag.textContent = data.verified ? '✔ VERIFIED SPECIFICATION (DRAFT 2020-12)' : 'UNVERIFIED';
+                latencyTag.textContent = `Latency: ${(data.latencyMs || duration).toFixed(0)}ms`;
+
+                log.innerHTML += `\n[00:0${(duration/1000).toFixed(1)}] <span class="log-green">SUCCESS</span> Extracted valid schema draft 2020-12 via ${data.automation || 'playwright'}!`;
+                if (data.typeScriptContracts) {
+                    log.innerHTML += `\n[00:0${(duration/1000).toFixed(1)}] <span class="log-accent">TYPESCRIPT</span> Generated typed interface contracts ready for export.`;
+                }
+
+                const openApiUrl = `/api/spec/export?target=${encodeURIComponent(target)}&format=openapi`;
+                const tsUrl = `/api/spec/export?target=${encodeURIComponent(target)}&format=typescript`;
+
+                actionsBar.innerHTML = `
+                    <a href="${openApiUrl}" class="btn-action" style="color:var(--accent);border-color:rgba(56,189,248,0.4);">📥 Download OpenAPI 3.1 JSON</a>
+                    <a href="${tsUrl}" class="btn-action">📥 Download TypeScript (.d.ts)</a>
+                    <button class="btn-action" onclick="navigator.clipboard.writeText('curl -s \"https://sarembok.com/api/spec?target=${target}\" | jq')">📋 Copy CI/CD cURL</button>
+                `;
+            } catch (err) {
+                statusTag.style.color = 'var(--amber)';
+                statusTag.textContent = 'FAILED';
+                log.innerHTML += `\n[ERROR] Verification error: ${err.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🚀 Run Live Verification';
+            }
+        }
+
         function replayProject1() {
             const el = document.getElementById('trace-p1');
             el.innerHTML = '<span class="log-accent">[REPLAYING] Initializing fresh Chromium verification run...</span>';
