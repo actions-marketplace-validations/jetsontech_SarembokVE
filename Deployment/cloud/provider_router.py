@@ -95,6 +95,11 @@ class ProviderRouter:
     @staticmethod
     def _classify_http_error(body: str) -> str:
         lowered = body.lower()
+        if any(marker in lowered for marker in (
+            'requires more credits', 'insufficient credit',
+            'not enough credits', 'openrouter_credits',
+        )):
+            return 'insufficient_credits'
         if any(marker in lowered for marker in ('quota exceeded', 'free_tier', 'quota')):
             return 'quota_exceeded'
         if 'rate limit' in lowered or 'too many requests' in lowered:
@@ -221,6 +226,60 @@ class ProviderRouter:
         'qwen-2.5-3b': 'qwen2.5:3b',
     }
 
+    def _configured_local_model(self, candidate: str | None = None) -> str:
+        """Resolve a local model without passing cloud model IDs to the local API."""
+        raw = (
+            str(candidate or "").strip()
+            or os.getenv("SAREMBOK_LOCAL_MODEL", "").strip()
+            or os.getenv("SAREMBOK_LOCAL_GEMMA_MODEL", "").strip()
+            or "gemma2:2b"
+        )
+        resolved = self.resolve_model_id(raw) or "gemma2:2b"
+        normalized = resolved.strip().lower()
+        remote_prefixes = (
+            "openai/", "google/", "meta-llama/", "deepseek/",
+            "anthropic/", "mistralai/", "x-ai/", "cohere/",
+            "perplexity/", "qwen/", "moonshotai/", "nvidia/",
+        )
+        if (
+            normalized in {"", "local", "local-only", "local_only", "auto", "default", "dynamic"}
+            or normalized.startswith(remote_prefixes)
+        ):
+            logger.warning(
+                "local_model_config_rejected model=%s fallback_model=gemma2:2b",
+                resolved,
+            )
+            return "gemma2:2b"
+        return resolved
+
+    def _apply_browser_agent_profile(
+        self,
+        providers: list[ProviderSpec],
+        system_prompt: str,
+    ) -> list[ProviderSpec]:
+        """Use a web-agent-specific Groq model without changing ordinary chat."""
+        if "SAREMBOK WEB / APP EXECUTION PROTOCOL" not in system_prompt:
+            return providers
+
+        web_model = (
+            os.getenv("SAREMBOK_WEB_GROQ_MODEL", "qwen/qwen3.8-27b").strip()
+            or "qwen/qwen3.8-27b"
+        )
+        adjusted: list[ProviderSpec] = []
+        for spec in providers:
+            if spec.name == "Groq":
+                if spec.model != web_model:
+                    logger.info(
+                        "browser_agent_model_override provider=Groq model=%s",
+                        web_model,
+                    )
+                adjusted.append(
+                    ProviderSpec(spec.name, web_model, spec.kind, spec.endpoint, spec.key)
+                )
+            else:
+                adjusted.append(spec)
+        return adjusted
+
     def is_local_only(self, requested_model: str | None = None) -> bool:
         if self.local_only_mode:
             return True
@@ -249,11 +308,7 @@ class ProviderRouter:
                 or os.getenv("SAREMBOK_LOCAL_GEMMA_URL", "").strip()
                 or "http://172.18.0.1:11434/v1/chat/completions"
             )
-            local_model = (
-                os.getenv("SAREMBOK_LOCAL_MODEL", "").strip()
-                or os.getenv("SAREMBOK_LOCAL_GEMMA_MODEL", "").strip()
-                or "gemma2:2b"
-            )
+            local_model = self._configured_local_model()
             rm = str(requested_model or "").strip().lower()
 
             # A local/ or ollama/ prefix explicitly selects the suffix as
@@ -261,12 +316,12 @@ class ProviderRouter:
             if rm.startswith(("local/", "ollama/")):
                 suffix = rm.split("/", 1)[1].strip()
                 if suffix:
-                    local_model = self.resolve_model_id(suffix) or local_model
+                    local_model = self._configured_local_model(suffix)
             # Direct local model aliases may override the configured default.
             # Cloud model hints must never become Ollama model names, even
             # when global local-only mode is enabled.
             elif rm in ("gemma2:2b", "qwen2.5:3b", "gemma-2-2b", "qwen-2.5-3b"):
-                local_model = self.resolve_model_id(rm) or local_model
+                local_model = self._configured_local_model(rm)
 
             local_key = (
                 os.getenv("SAREMBOK_LOCAL_KEY", "").strip()
@@ -301,9 +356,8 @@ class ProviderRouter:
             local_url = 'http://172.18.0.1:11434/v1/chat/completions'
 
         if local_url:
-            local_model_id = os.getenv('SAREMBOK_LOCAL_MODEL', os.getenv('SAREMBOK_LOCAL_GEMMA_MODEL', 'gemma2:2b')).strip()
-            if target_model and target_model not in ('local', 'local-only'):
-                local_model_id = target_model
+            # Do not pass a cloud model ID to the local inference endpoint.
+            local_model_id = self._configured_local_model()
             result['LocalGemma'] = ProviderSpec(
                 'LocalGemma',
                 local_model_id,
@@ -500,6 +554,19 @@ class ProviderRouter:
     def _handle_http_error(self, spec: ProviderSpec, exc: urllib.error.HTTPError, attempts: int, deadline: float) -> None:
         body = self._http_error_body(exc)
         classification = self._classify_http_error(body)
+
+        # Stop repeating requests that the current provider balance cannot afford.
+        if classification == 'insufficient_credits':
+            cooldown = 300.0
+            self._set_provider_cooldown(spec.name, cooldown)
+            raise RuntimeError(
+                f'{spec.name} insufficient_credits; provider cooldown={int(cooldown)}s'
+            )
+
+        # Back off temporarily after exhausted retries for transient server errors.
+        if exc.code in {500, 502, 503, 504} and attempts >= 2:
+            self._set_provider_cooldown(spec.name, 30.0)
+
         if exc.code == 429:
             cooldown = 20.0 if classification == 'quota_exceeded' else 10.0
             self._set_provider_cooldown(spec.name, cooldown)
@@ -702,7 +769,10 @@ class ProviderRouter:
             actual_model = auto_model
             logger.info("dynamic_model_routing_stream task=%s routed_model=%s", task_category, actual_model)
 
-        providers = self.configured(requested_model=actual_model, dynamic_key=dynamic_key)
+        providers = self._apply_browser_agent_profile(
+            self.configured(requested_model=actual_model, dynamic_key=dynamic_key),
+            system_prompt,
+        )
         if not providers:
             raise RuntimeError('no language-model provider configured')
         deadline = time.monotonic() + self.total_timeout
@@ -752,7 +822,10 @@ class ProviderRouter:
             actual_model = auto_model
             logger.info("dynamic_model_routing task=%s routed_model=%s", task_category, actual_model)
 
-        providers = self.configured(requested_model=actual_model, dynamic_key=dynamic_key)
+        providers = self._apply_browser_agent_profile(
+            self.configured(requested_model=actual_model, dynamic_key=dynamic_key),
+            system_prompt,
+        )
         if not providers:
             raise RuntimeError('no language-model provider configured')
         deadline = time.monotonic() + self.total_timeout

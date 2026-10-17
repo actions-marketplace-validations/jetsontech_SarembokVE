@@ -1090,15 +1090,95 @@
         }
 
         // ====== TEXT FORMATTING ======
+        function renderConsoleMockupCard(title, body) {
+            let raw = String(body || "").trim();
+            const codeBlock = raw.match(/```(?:html|xml)?\s*([\s\S]*?)```/i);
+            let htmlContent = codeBlock ? codeBlock[1].trim() : raw;
+
+            htmlContent = htmlContent
+                .replace(/^```(?:html|xml)?\s*/i, "")
+                .replace(/\s*```$/i, "")
+                .trim();
+
+            if (!htmlContent) {
+                return '<div class="msg-body">The preview did not contain HTML to render.</div>';
+            }
+
+            if (!/<html[\s>]/i.test(htmlContent) && !/<!doctype/i.test(htmlContent)) {
+                htmlContent =
+                    '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+                    '<style>body{margin:0;padding:20px;font-family:system-ui,sans-serif;' +
+                    'background:#0f172a;color:#f8fafc;box-sizing:border-box}</style>' +
+                    '</head><body>' + htmlContent + '</body></html>';
+            }
+
+            const heading = String(title || "").trim() || "Interactive prototype";
+
+            // Render generated HTML in a sandboxed frame, isolated from the console.
+            return `
+                <section class="console-mockup-card"
+                    style="margin:12px 0;padding:12px;border:1px solid rgba(0,220,240,.35);
+                    border-radius:12px;background:#0b1420;overflow:hidden;">
+                    <div style="font-size:12px;font-weight:700;letter-spacing:.08em;
+                        color:#54e7f2;margin-bottom:10px;">
+                        INTERACTIVE PREVIEW — ${esc(heading)}
+                    </div>
+                    <iframe title="${esc(heading)}"
+                        sandbox="allow-scripts allow-forms allow-popups"
+                        referrerpolicy="no-referrer"
+                        style="display:block;width:100%;height:460px;border:0;
+                        border-radius:8px;background:#0f172a;"
+                        srcdoc="${esc(htmlContent)}"></iframe>
+                    <details style="margin-top:10px;color:#b9c8d8;font-size:12px;">
+                        <summary style="cursor:pointer;">View HTML source</summary>
+                        <pre style="white-space:pre-wrap;overflow-wrap:anywhere;
+                            max-height:360px;overflow:auto;padding:10px;
+                            background:#050b12;color:#d5e5f4;">${esc(htmlContent)}</pre>
+                    </details>
+                </section>`;
+        }
+
+        function formatPlainReply(text) {
+            let html = esc(text);
+            html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(
+                /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+                '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+            );
+            return html.replace(/\n/g, '<br>');
+        }
+
         function formatReply(text) {
             if (!text) return '';
-            let html = esc(text);
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            html = html.replace(/\n/g, '<br>');
+
+            // Normalize provider-escaped Markdown before parsing visual blocks.
+            const source = String(text)
+                .replace(/\\n/g, "\n")
+                .replace(/\\([*_`#|<>])/g, "$1");
+
+            const blockPattern =
+                /:::(?:mockup|design|prototype)(?:\s+([^\n]+))?\n([\s\S]*?):::/gi;
+
+            let html = "";
+            let cursor = 0;
+            let match;
+
+            while ((match = blockPattern.exec(source)) !== null) {
+                html += formatPlainReply(source.slice(cursor, match.index));
+                html += renderConsoleMockupCard(match[1], match[2]);
+                cursor = blockPattern.lastIndex;
+            }
+
+            html += formatPlainReply(source.slice(cursor));
             return html;
         }
+
+        // The live-voice renderer uses md() when it is available.
+        // Expose the console renderer so both routes render mockup blocks consistently.
+        window.md = formatReply;
 
         function esc(str) {
             if (!str) return '';
@@ -1286,6 +1366,65 @@
                 ? { ok: true, status: "player_embedded", title: title || q, ...media }
                 : { ok: false, status: "search_link_ready", title: title || q, searchUrl: "https://www.youtube.com/results?search_query=" + encodeURIComponent(q) };
         };
+
+        // One media request can arrive through both the live intent detector
+        // and Gemini's play_media tool. Share in-flight work and reuse a recent
+        // successful result instead of appending duplicate players.
+        (function installConsoleMediaDeduplication() {
+            const base = window.playVideoInline;
+            if (typeof base !== "function" || base.__srbkDeduplicated) return;
+
+            const inFlight = new Map();
+            const recentSuccess = new Map();
+            const reuseWindowMs = 20000;
+
+            async function deduplicatedPlayVideoInline(query, title) {
+                const key = String(query || "")
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, " ");
+
+                if (!key) return base.call(this, query, title);
+
+                const pending = inFlight.get(key);
+                if (pending) {
+                    console.info("[console] Reusing in-flight media request:", key);
+                    return pending;
+                }
+
+                const previous = recentSuccess.get(key);
+                if (previous && Date.now() - previous.at < reuseWindowMs) {
+                    console.info("[console] Suppressing duplicate media render:", key);
+                    return { ...previous.result, deduplicated: true };
+                }
+
+                const operation = Promise.resolve().then(
+                    () => base.call(this, query, title)
+                );
+                inFlight.set(key, operation);
+
+                try {
+                    const result = await operation;
+                    if (result && result.ok === true &&
+                        result.status === "player_embedded") {
+                        recentSuccess.set(key, { at: Date.now(), result });
+
+                        // Keep the cache bounded for long-running console sessions.
+                        while (recentSuccess.size > 40) {
+                            recentSuccess.delete(recentSuccess.keys().next().value);
+                        }
+                    }
+                    return result;
+                } finally {
+                    if (inFlight.get(key) === operation) {
+                        inFlight.delete(key);
+                    }
+                }
+            }
+
+            deduplicatedPlayVideoInline.__srbkDeduplicated = true;
+            window.playVideoInline = deduplicatedPlayVideoInline;
+        })();
 
         // ====== CONSOLE NATIVE LIVE VOICE ADAPTERS ======
         window.appendUserDialogue=function(text){

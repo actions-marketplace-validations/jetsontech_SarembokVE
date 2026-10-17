@@ -257,6 +257,7 @@ BROWSER_ALLOWED_METHODS = {
     "ResolveMediaStream",
     "RegisterWorker",
     "Heartbeat",
+    "ListDashboardTasks",
     "ListTasks",
     "ClaimTask",
     "CompleteTask",
@@ -1748,12 +1749,21 @@ def run_browser_agent_loop(prompt_clean: str, system_prompt: str, session_id: st
 ==================== SAREMBOK WEB / APP EXECUTION PROTOCOL ====================
 You are operating as Sarembok's verified web and application execution agent.
 Use the browser tools to inspect the page before interacting with it.
-TOOLS:
-1. browser_inspect() -> inspect current URL, visible text, links, buttons, forms, and controls.
-2. browser_navigate(url="https://...") -> navigate the persistent browser session.
-3. browser_action(action=..., selector=..., text=..., value=..., key=...) -> click, fill, type, select, press, scroll, wait, back, forward, extract.
-4. mcp_list() -> list configured external MCP integrations and their live tools.
-5. mcp_call(server="...", tool="...", arguments={...}) -> execute a configured MCP tool.
+PLAIN-TEXT ACTION PROTOCOL — REQUIRED:
+The application does not send native function schemas to the model. Do not issue native
+tool calls, function-call objects, or a tool_calls response. Return ordinary assistant text.
+When requesting an action, emit these literal lines, with JSON arguments on the second line:
+ACTION: browser_inspect
+ARGUMENTS: {}
+These are protocol labels parsed by the application, not native model tools.
+AVAILABLE ACTION LABELS:
+1. browser_inspect — inspect URL, visible text, links, buttons, forms, and controls.
+2. browser_navigate — navigate the persistent browser session; ARGUMENTS must include url.
+3. browser_action — click, fill, type, select, press, scroll, wait, back, forward, or extract.
+4. mcp_list — list configured external MCP integrations and their live tools.
+5. mcp_call — execute a configured MCP tool using server, tool, and arguments fields.
+For browser_action, include the relevant action and selector/text/value/key fields as needed.
+For mcp_call, include server, tool, and arguments. Use valid JSON in ARGUMENTS.
 RULES:
 - Inspect before clicking or filling when the target is not already unambiguous.
 - Never claim an action completed unless the tool returned ok=true and verified=true.
@@ -3498,6 +3508,7 @@ def sarembok_process_dialogue(
     provider_latency_ms = None
     provider_api = None
     provider_usage = {}
+    provider_task = "GENERAL"
     try:
         # Pass requested model, multimodal image frame, and dynamic user api_key into ProviderRouter
         provider_result = PROVIDER_ROUTER.generate(
@@ -4885,6 +4896,53 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
             "status": new_status,
             "error": error_msg,
         }
+
+    if method == "ListDashboardTasks":
+        # Browser-facing, read-only task summary. Do not expose raw task
+        # payloads, worker tokens, or worker-only scheduler fields.
+        ensure_scheduler_schema()
+        rows = store.db.execute(
+            """
+            SELECT task_id, task_type, payload, assigned_worker_id,
+                   status, created_at, updated_at
+            FROM tasks
+            ORDER BY created_at DESC
+            LIMIT 100
+            """
+        ).fetchall()
+
+        tasks_list = []
+        for row in rows:
+            try:
+                payload_obj = json.loads(row[2]) if row[2] else {}
+            except Exception:
+                payload_obj = {"text": str(row[2] or "")}
+
+            summary = ""
+            if isinstance(payload_obj, str):
+                summary = payload_obj
+            elif isinstance(payload_obj, dict):
+                for key in ("directive", "text", "prompt", "task", "description"):
+                    value = payload_obj.get(key)
+                    if isinstance(value, str) and value.strip():
+                        summary = value.strip()
+                        break
+
+            summary = re.sub(r"\\s+", " ", summary).strip()[:500]
+            if not summary:
+                summary = str(row[1] or "Background task")
+
+            tasks_list.append({
+                "taskId": str(row[0] or ""),
+                "taskType": str(row[1] or ""),
+                "status": str(row[4] or "UNKNOWN"),
+                "summary": summary,
+                "assignedWorkerId": str(row[3] or ""),
+                "createdAt": str(row[5] or ""),
+                "updatedAt": str(row[6] or ""),
+            })
+
+        return {"tasks": tasks_list, "count": len(tasks_list)}
 
     if method == "ListTasks":
         ensure_scheduler_schema()
@@ -6786,7 +6844,24 @@ async def handler(websocket) -> None:
                     asyncio.create_task(_persist_deferred_chat(result))
             except PermissionError as exc:
                 response = {"jsonrpc": "2.0", "id": request.get("id") if isinstance(request, dict) else None, "error": {"code": -32001, "message": str(exc)}}
-                LOG.warning("rpc_auth_failed peer=%s", peer)
+                failed_method = request.get("method") if isinstance(request, dict) else None
+                failed_id = request.get("id") if isinstance(request, dict) else None
+                failed_params = request.get("params") if isinstance(request, dict) else None
+                if not isinstance(failed_params, dict):
+                    failed_params = {}
+                LOG.warning(
+                    "rpc_auth_failed peer=%s method=%s request_id=%s "
+                    "browser_allowed=%s worker_auth_method=%s "
+                    "has_session_token=%s has_worker_token=%s has_auth_token=%s",
+                    peer,
+                    failed_method,
+                    failed_id,
+                    failed_method in BROWSER_ALLOWED_METHODS,
+                    failed_method in WORKER_AUTH_METHODS,
+                    bool(failed_params.get("sessionToken")),
+                    bool(failed_params.get("workerToken")),
+                    bool(failed_params.get("authToken")),
+                )
                 await websocket.send(json.dumps(response, separators=(",", ":")))
             except Exception as exc:
                 response = {"jsonrpc": "2.0", "id": request.get("id") if isinstance(request, dict) else None, "error": {"code": -32000, "message": str(exc)}}

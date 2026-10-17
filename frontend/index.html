@@ -6909,11 +6909,33 @@ button,
 (function installVideoIntentV8() {
     function explicitVideoIntent(prompt) {
         const text = String(prompt || "").trim();
+        if (!text) return false;
 
+        const commandText = text.replace(
+            /^(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)/i,
+            ""
+        ).trim();
+
+        const asksAnInformationQuestion =
+            /^(?:what|why|how|is|are|tell me|explain|to)\b/i.test(text) ||
+            (/^(?:can|could|would|should|do|does|did)\b/i.test(text) && commandText === text);
+
+        const asksMultipleStreams =
+            /\b(?:two|multiple|several|\d+)\s+(?:different\s+)?(?:videos?|streams?|audio streams?)\b|\b(?:at the same time|simultaneously)\b/i.test(text);
+
+        if (
+            asksAnInformationQuestion ||
+            asksMultipleStreams ||
+            /\b(?:game|chess|code|canvas)\b/i.test(text)
+        ) {
+            return false;
+        }
+
+        // Match explicit media requests after removing a polite command prefix.
         return (
-            /\b(?:watch|play|show|open|stream|listen to)\b[\s\S]{0,120}\b(?:video|youtube|clip|footage|recording|movie|documentary)\b/i.test(text)
+            /\b(?:watch|play|show|open|stream|listen to)\b[\s\S]{0,120}\b(?:video|youtube|clip|footage|recording|movie|documentary)\b/i.test(commandText)
             ||
-            /\b(?:video|youtube)\b[\s\S]{0,80}\b(?:about|on|of|from)\b/i.test(text)
+            /\b(?:video|youtube)\b[\s\S]{0,80}\b(?:about|on|of|from)\b/i.test(commandText)
         );
     }
 
@@ -6936,7 +6958,9 @@ button,
                 return rendered;
             }
 
-            if (/srbk-video-card/i.test(String(rendered || ""))) {
+            // The original enrichment may contain Markdown media blocks before
+            // the renderer turns them into HTML. Detect both representations.
+            if (/(?:srbk-video-card|srbk-music-card|:::video\b|:::music\b|:::youtube\b|youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)/i.test(String(rendered || ""))) {
                 return rendered;
             }
 
@@ -9886,6 +9910,27 @@ button,
          */
         async function resolveAndUpdateMediaCards(containerEl, query, displayTitle) {
             if (!query) return;
+
+            // A single query must not be copied into every unresolved media card.
+            // This helper is used for one explicit media request, so retain its
+            // first media card and remove additional cards before applying a result.
+            const existingMediaCards = Array.from(
+                containerEl.querySelectorAll(".srbk-video-card, .srbk-music-card")
+            );
+            existingMediaCards.slice(1).forEach(card => card.remove());
+
+            const unresolvedFrames = Array.from(
+                containerEl.querySelectorAll('iframe[src="about:blank"]')
+            );
+            if (unresolvedFrames.length > 1) {
+                const primaryFrame = unresolvedFrames[0];
+                unresolvedFrames.slice(1).forEach(iframe => {
+                    const card = iframe.closest(".srbk-video-card, .srbk-music-card");
+                    if (card && !card.contains(primaryFrame)) card.remove();
+                    else iframe.remove();
+                });
+            }
+
               const showSearchFallback = () => {
                   const searchUrl = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
                   containerEl.querySelectorAll('iframe[src="about:blank"]').forEach(iframe => {
@@ -11529,11 +11574,31 @@ button,
                 "play video", "video of", "video about"
             ];
 
+            const rawPlaybackPrompt = String(prompt || "").trim();
+            const normalizedPlaybackPrompt = rawPlaybackPrompt.replace(
+                /^(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)/i,
+                ""
+            ).trim();
+
+            const asksAnInformationQuestion =
+                /^(?:what|why|how|is|are|tell me|explain|to)\b/i.test(rawPlaybackPrompt) ||
+                (/^(?:can|could|would|should|do|does|did)\b/i.test(rawPlaybackPrompt) &&
+                    normalizedPlaybackPrompt === rawPlaybackPrompt);
+
+            const asksMultipleStreams =
+                /\b(?:two|multiple|several|\d+)\s+(?:different\s+)?(?:videos?|streams?|audio streams?)\b|\b(?:at the same time|simultaneously)\b/i.test(rawPlaybackPrompt);
+
+            const isMediaQuestionOrMultiRequest =
+                asksAnInformationQuestion || asksMultipleStreams;
+
+            const explicitPlaybackCommand = !isMediaQuestionOrMultiRequest &&
+                /^(?:play|stream|listen to|watch|show|open)\s+.+/i.test(normalizedPlaybackPrompt);
+
             const explicitVideoRequest =
                 /\b(?:open|launch|watch|play|show|stream|search|find)\b[\s\S]{0,80}\b(?:video|clip|movie|trailer|lecture|interview|documentary|youtube|highlights|match|sports?|fight|boxing|ufc|racing|f1)\b/i.test(pLow) ||
                 /\b(?:video|clip|movie|trailer|lecture|interview|documentary)\b[\s\S]{0,60}\b(?:about|of|on)\b/i.test(pLow);
 
-            const isVideo =
+            const isVideo = explicitPlaybackCommand && (
                 ytIntents.some(yi => pLow.includes(yi)) ||
                 explicitVideoRequest ||
                 videoMarkers.some(vm => {
@@ -11544,10 +11609,11 @@ button,
                         "\\b",
                         "i"
                     ).test(pLow);
-                });
+                })
+            );
 
             const musicIntents = ["play music", "play some music", "play lofi", "play lo-fi", "play chill", "play synthwave", "play jazz", "play classical", "play ambient", "play song", "play track", "listen to music", "study music", "background music", "play audio"];
-            const isMusic = !isVideo && (musicIntents.some(mi => pLow.startsWith(mi) || pLow.includes(mi)) || ["lofi", "lo-fi", "synthwave", "ambient", "soundtrack", "beats"].some(g => pLow.includes(g)));
+            const isMusic = explicitPlaybackCommand && !isVideo && (musicIntents.some(mi => pLow.startsWith(mi) || pLow.includes(mi)) || ["lofi", "lo-fi", "synthwave", "ambient", "soundtrack", "beats"].some(g => pLow.includes(g)));
 
             const mediaBody = matchedPreset ? `https://www.youtube.com/watch?v=${matchedPreset.id}` : cleanTopic;
 
@@ -12455,7 +12521,30 @@ button,
             clearAttachments();
 
             // Direct movie/media playback interceptor:
-            const mediaMatch = text.match(/^(?:play|watch|stream|listen to)\s+(.+)/i);
+            const rawPlaybackText = text.trim();
+            const normalizedPlaybackText = rawPlaybackText.replace(
+                /^(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)/i,
+                ""
+            ).trim();
+
+            const asksAnInformationQuestion =
+                /^(?:what|why|how|is|are|tell me|explain|to)\b/i.test(rawPlaybackText) ||
+                (/^(?:can|could|would|should|do|does|did)\b/i.test(rawPlaybackText) &&
+                    normalizedPlaybackText === rawPlaybackText);
+
+            const asksMultipleStreams =
+                /\b(?:two|multiple|several|\d+)\s+(?:different\s+)?(?:videos?|streams?|audio streams?)\b|\b(?:at the same time|simultaneously)\b/i.test(rawPlaybackText);
+
+            const isMediaQuestionOrMultiRequest =
+                asksAnInformationQuestion || asksMultipleStreams;
+
+            const explicitPlaybackCommand = !isMediaQuestionOrMultiRequest &&
+                /^(?:play|watch|stream|listen to|show|open)\s+.+/i.test(normalizedPlaybackText);
+
+            const mediaMatch = explicitPlaybackCommand
+                ? normalizedPlaybackText.match(/^(?:play|watch|stream|listen to)\s+(.+)/i)
+                : null;
+
             if (mediaMatch && !text.includes("game") && !text.includes("code") && !text.includes("canvas")) {
                 const mediaQuery = mediaMatch[1].trim();
                 if (typeof window.playVideoInline === "function") {
@@ -12603,7 +12692,7 @@ button,
 
                 // Async-resolve any unresolved media cards via backend SearchYouTube RPC
                 const hasUnresolvedCards = content.querySelectorAll('iframe[src="about:blank"], a[href*="results?search_query"]').length > 0;
-                if (hasUnresolvedCards) {
+                if (explicitPlaybackCommand && hasUnresolvedCards) {
                     let resolveTopic = text.replace(/(?:can you\s+)?(?:please\s+)?(?:play|show|open|stream|watch|listen to)\s+(?:me\s+)?(?:some\s+)?(?:a\s+)?(?:video\s+about\s+|on\s+youtube\s+|youtube\s+)?/gi, "").replace(/["']/g, "").trim();
                     if (!resolveTopic || resolveTopic.length < 2) resolveTopic = "lofi study music";
                     resolveAndUpdateMediaCards(content, resolveTopic, resolveTopic.toUpperCase());
@@ -14154,7 +14243,7 @@ button,
             try {
                 const [agentRes, taskRes] = await Promise.all([
                     sendRPC("ListAgents", {}),
-                    sendRPC("ListTasks", {})
+                    sendRPC("ListDashboardTasks", {})
                 ]);
                 const agents = Array.isArray(agentRes?.agents) ? agentRes.agents : [];
                 const registered = agents.length;
@@ -15568,7 +15657,7 @@ button,
             if (!listEl) return;
 
             try {
-                const data = await sendRPC("ListTasks", {});
+                const data = await sendRPC("ListDashboardTasks", {});
                 const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
                 if (countEl) countEl.textContent = tasks.length;
 
@@ -15579,25 +15668,22 @@ button,
 
                 let html = "";
                 tasks.forEach(t => {
+                    const taskId = String(t.taskId || "");
                     const state = String(t.status || "UNKNOWN").toUpperCase();
                     const statusText = state;
                     const badgeClass = state === "COMPLETED" ? "good" : (["FAILED","CANCELLED"].includes(state) ? "warn" : "running");
-                    let payloadStr = t.payload;
-                    try {
-                        const parsed = typeof t.payload === "string" ? JSON.parse(t.payload) : (t.payload || {});
-                        payloadStr = parsed.directive || parsed.text || parsed.prompt || parsed.error || JSON.stringify(parsed);
-                    } catch (e) {}
+                    const payloadStr = String(t.summary || t.taskType || "Background task");
 
                     html += `
                         <div class="drawer-card">
                             <div class="drawer-card-header">
-                                <span style="font-weight:700; color:var(--cyan);">${escapeHtml(t.task_id)}</span>
+                                <span style="font-weight:700; color:var(--cyan);">${escapeHtml(taskId || "UNKNOWN")}</span>
                                 <span class="drawer-badge ${badgeClass}">${statusText}</span>
                             </div>
                             <div style="font-size:11px; color:#fff; word-break:break-word;">${escapeHtml(payloadStr)}</div>
                             <div style="display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); flex-wrap:wrap; gap:6px;">
-                                <span>${escapeHtml(t.sender_agent_id || "WORKER")} · ${t.tokens_consumed || 0} Tok · ${escapeHtml(t.created_at || "")}</span>
-                                <button class="browser-action-btn" onclick="injectTaskToChat('${escapeHtml(t.task_id)}', '${escapeHtml(payloadStr).replace(/'/g, "\\'")}', '${statusText}', ${t.tokens_consumed || 0})" style="padding:2px 8px; font-size:9px;">POST TO CHAT</button>
+                                <span>${escapeHtml(t.assignedWorkerId || "WORKER")} · ${escapeHtml(t.createdAt || "")}</span>
+                                <button class="browser-action-btn" onclick="injectTaskToChat('${escapeHtml(taskId || "UNKNOWN")}', '${escapeHtml(payloadStr).replace(/'/g, "\\'")}', '${statusText}', 0)" style="padding:2px 8px; font-size:9px;">POST TO CHAT</button>
                             </div>
                         </div>
                     `;
