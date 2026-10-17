@@ -304,7 +304,7 @@ class BrowserRuntime:
             "browserProcess": "ONLINE" if browser_online else "OFFLINE",
         }
 
-    def _create_context(self, width: int = 1280, height: int = 800):
+    def _create_context(self, width: int = 1280, height: int = 800, extra_http_headers: dict[str, str] | None = None):
         if self.browser is None:
             raise RuntimeError("browser_service_unavailable")
 
@@ -313,6 +313,7 @@ class BrowserRuntime:
             viewport={"width": width, "height": height},
             java_script_enabled=True,
             service_workers="block",
+            extra_http_headers=extra_http_headers or {},
         )
 
         def route_handler(route: Any) -> None:
@@ -578,10 +579,17 @@ class BrowserRuntime:
         url: str,
         wait_seconds: float = 2.0,
         max_routes: int = 50,
+        headers: dict[str, str] | None = None,
+        cookies: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         target = validate_url(url)
         started = time.perf_counter()
-        context = self._create_context()
+        context = self._create_context(extra_http_headers=headers)
+        if cookies and isinstance(cookies, list):
+            try:
+                context.add_cookies(cookies)
+            except Exception as ce:
+                LOG.warning("Failed to inject custom cookies: %s", ce)
         endpoints_map: dict[str, dict[str, Any]] = {}
 
         try:
@@ -1124,7 +1132,9 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path in ("/spec", "/specification"):
                 wait_sec = float(request.get("waitSeconds", request.get("wait_seconds", 2.0)))
                 max_rt = int(request.get("maxRoutes", request.get("max_routes", 50)))
-                result = BROWSER.extract_specification(url, wait_seconds=wait_sec, max_routes=max_rt)
+                custom_headers = request.get("headers") or {}
+                custom_cookies = request.get("cookies") or []
+                result = BROWSER.extract_specification(url, wait_seconds=wait_sec, max_routes=max_rt, headers=custom_headers, cookies=custom_cookies)
                 self._send(200, result)
             elif self.path == "/session":
                 self._send(200, BROWSER.open_session(str(request.get("sessionId") or "")))

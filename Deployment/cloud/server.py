@@ -2817,8 +2817,28 @@ def sarembok_process_dialogue(
     if spec_url_match or prompt_clean.startswith("/spec"):
         target_url = spec_url_match.group(1).strip() if spec_url_match else prompt_clean.split(maxsplit=1)[1].strip() if len(prompt_clean.split()) > 1 else ""
         if target_url:
+            # Strip any trailing CLI flags from target_url if present
+            target_url = target_url.split(" --")[0].strip()
+            custom_headers = {}
+            custom_cookies = []
+            auth_match = re.search(r"--(?:auth|token)\s+[\"']?([^\"'\s]+)[\"']?", prompt_clean)
+            if auth_match:
+                tok = auth_match.group(1).strip()
+                custom_headers["Authorization"] = f"Bearer {tok}" if not tok.startswith("Bearer ") else tok
+            hdr_matches = re.findall(r"--header\s+[\"']?([^\"':\s]+)\s*:\s*([^\"'\r\n]+)[\"']?", prompt_clean)
+            for hk, hv in hdr_matches:
+                custom_headers[hk.strip()] = hv.strip()
+            cookie_matches = re.findall(r"--cookie\s+[\"']?([^\"'=;\s]+)\s*=\s*([^\"';\r\n]+)[\"']?", prompt_clean)
+            for ck, cv in cookie_matches:
+                custom_cookies.append({"name": ck.strip(), "value": cv.strip(), "url": target_url})
+
             try:
-                spec_res = dispatch("ExtractSystemSpecification", {"url": target_url, "sessionId": session_id})
+                spec_res = dispatch("ExtractSystemSpecification", {
+                    "url": target_url,
+                    "sessionId": session_id,
+                    "headers": custom_headers,
+                    "cookies": custom_cookies,
+                })
                 if spec_res.get("ok"):
                     endpoints = spec_res.get("discoveredEndpoints", [])
                     forms = spec_res.get("discoveredForms", [])
@@ -4037,6 +4057,8 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
                     "url": url,
                     "waitSeconds": float(params.get("waitSeconds", 2.0)),
                     "maxRoutes": int(params.get("maxRoutes", 50)),
+                    "headers": params.get("headers") or {},
+                    "cookies": params.get("cookies") or [],
                 }).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
             )
@@ -7065,11 +7087,27 @@ async def process_http_request(connection: Any, request: Any) -> Any:
                 target = str(body_json.get("target") or body_json.get("url") or "").strip()
             except Exception:
                 pass
-        if not target:
-            return make_api_response(400, {"error": "target_url_required", "detail": "Provide ?target=https://... or JSON payload with url"})
+        custom_headers = {}
+        custom_cookies = []
+        if isinstance(body_json, dict):
+            if isinstance(body_json.get("headers"), dict):
+                custom_headers.update(body_json["headers"])
+            if isinstance(body_json.get("cookies"), list):
+                custom_cookies.extend(body_json["cookies"])
+            if body_json.get("token") or body_json.get("auth"):
+                tok = str(body_json.get("token") or body_json.get("auth")).strip()
+                custom_headers["Authorization"] = f"Bearer {tok}" if not tok.startswith("Bearer ") else tok
+        auth_param = str(q.get("auth", [""])[0] or q.get("token", [""])[0]).strip()
+        if auth_param:
+            custom_headers["Authorization"] = f"Bearer {auth_param}" if not auth_param.startswith("Bearer ") else auth_param
 
         try:
-            spec_res = await asyncio.to_thread(dispatch, "ExtractSystemSpecification", {"url": target, "waitSeconds": 2.0})
+            spec_res = await asyncio.to_thread(dispatch, "ExtractSystemSpecification", {
+                "url": target,
+                "waitSeconds": 2.0,
+                "headers": custom_headers,
+                "cookies": custom_cookies,
+            })
             return make_api_response(200 if spec_res.get("ok") else 502, spec_res)
         except Exception as exc:
             return make_api_response(500, {"error": "spec_extraction_error", "detail": str(exc)})

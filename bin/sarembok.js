@@ -24,10 +24,22 @@ function printBanner() {
     console.log('\x1b[36m%s\x1b[0m', '=======================================================');
 }
 
-function fetchJson(url) {
+function fetchJson(url, postData = null, extraHeaders = {}) {
     return new Promise((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
-        client.get(url, { headers: { 'User-Agent': 'SarembokCLI/1.0 (Node.js)' } }, (res) => {
+        const urlObj = new URL(url);
+        const options = {
+            hostname: urlObj.hostname,
+            port: urlObj.port || (url.startsWith('https') ? 443 : 80),
+            path: urlObj.pathname + urlObj.search,
+            method: postData ? 'POST' : 'GET',
+            headers: {
+                'User-Agent': 'SarembokCLI/1.0 (Node.js)',
+                ...(postData ? { 'Content-Type': 'application/json' } : {}),
+                ...extraHeaders
+            }
+        };
+        const req = client.request(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
@@ -41,6 +53,10 @@ function fetchJson(url) {
                 }
             });
         }).on('error', reject);
+        if (postData) {
+            req.write(JSON.stringify(postData));
+        }
+        req.end();
     });
 }
 
@@ -72,20 +88,41 @@ async function handleSpec(args) {
 
     let outFile = null;
     let format = 'openapi';
+    let headers = {};
 
     for (let i = 1; i < args.length; i++) {
         if (args[i] === '--out' || args[i] === '-o') {
             outFile = args[++i];
         } else if (args[i] === '--format' || args[i] === '-f') {
             format = args[++i];
+        } else if (args[i] === '--header' || args[i] === '-H') {
+            const h = args[++i] || '';
+            const idx = h.indexOf(':');
+            if (idx > -1) {
+                headers[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
+            }
+        } else if (args[i] === '--token' || args[i] === '--auth') {
+            const tok = args[++i] || '';
+            headers['Authorization'] = tok.startsWith('Bearer ') ? tok : `Bearer ${tok}`;
         }
     }
 
     console.log(`\x1b[33m⚡ Dispatched Playwright Chromium verification to cluster: ${target}...\x1b[0m`);
+    if (Object.keys(headers).length > 0) {
+        console.log(`\x1b[36m  Injected Headers:\x1b[0m ${Object.keys(headers).join(', ')}`);
+    }
     const t0 = Date.now();
 
     try {
-        const endpoint = `${SAREMBOK_HOST}/api/spec?target=${encodeURIComponent(target)}`;
+        let endpoint = `${SAREMBOK_HOST}/api/spec?target=${encodeURIComponent(target)}`;
+        if (headers['Authorization']) {
+            endpoint += `&token=${encodeURIComponent(headers['Authorization'])}`;
+        }
+        for (const [k, v] of Object.entries(headers)) {
+            if (k.toLowerCase() !== 'authorization') {
+                endpoint += `&header=${encodeURIComponent(k + ':' + v)}`;
+            }
+        }
         const result = await fetchJson(endpoint);
         const duration = Date.now() - t0;
 
@@ -114,9 +151,31 @@ async function handleAudit(args) {
         process.exit(1);
     }
 
+    let headers = {};
+    for (let i = 1; i < args.length; i++) {
+        if (args[i] === '--header' || args[i] === '-H') {
+            const h = args[++i] || '';
+            const idx = h.indexOf(':');
+            if (idx > -1) {
+                headers[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
+            }
+        } else if (args[i] === '--token' || args[i] === '--auth') {
+            const tok = args[++i] || '';
+            headers['Authorization'] = tok.startsWith('Bearer ') ? tok : `Bearer ${tok}`;
+        }
+    }
+
     console.log(`\x1b[33m🛡️ [CI/CD GATE] Auditing target contract: ${target}...\x1b[0m`);
     try {
-        const endpoint = `${SAREMBOK_HOST}/api/spec?target=${encodeURIComponent(target)}`;
+        let endpoint = `${SAREMBOK_HOST}/api/spec?target=${encodeURIComponent(target)}`;
+        if (headers['Authorization']) {
+            endpoint += `&token=${encodeURIComponent(headers['Authorization'])}`;
+        }
+        for (const [k, v] of Object.entries(headers)) {
+            if (k.toLowerCase() !== 'authorization') {
+                endpoint += `&header=${encodeURIComponent(k + ':' + v)}`;
+            }
+        }
         const result = await fetchJson(endpoint);
 
         if (!result.verified) {
