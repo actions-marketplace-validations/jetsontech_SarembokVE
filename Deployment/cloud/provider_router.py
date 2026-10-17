@@ -243,13 +243,18 @@ class ProviderRouter:
             return 'VISION', 'paligemma'
         if 'codegemma' in text:
             return 'CODE', 'codegemma'
-        if 'gemma' in text:
+        if 'gemma2' in text or 'gemma-2' in text or 'ollama' in text:
             return 'GENERAL', 'gemma-2-2b'
 
-        # 4. Fast conversational / default. Gemma is the local-first default
-        # for ordinary text chat; explicit model selections and specialized
-        # code/reasoning/synthesis/vision routes above remain unchanged.
-        return 'FAST', 'gemma-2-2b'
+        # 4. Fast conversational / default. Route to high-speed cloud flash by default for instant sub-second response.
+        # Prefer local gemma only if explicitly configured via SAREMBOK_ENABLE_LOCAL_DEFAULT or SAREMBOK_PREFER_LOCAL.
+        if (
+            os.getenv('SAREMBOK_ENABLE_LOCAL_DEFAULT', 'false').strip().lower() in ('true', '1')
+            or os.getenv('SAREMBOK_PREFER_LOCAL', 'false').strip().lower() in ('true', '1')
+            or os.getenv('SAREMBOK_LOCAL_ONLY_MODE', 'false').strip().lower() in ('true', '1')
+        ):
+            return 'FAST', 'gemma-2-2b'
+        return 'FAST', 'fast'
 
     MODEL_ALIASES: dict[str, str] = {
         'gpt-4o-mini': 'openai/gpt-4o-mini',
@@ -430,25 +435,29 @@ class ProviderRouter:
         router = os.getenv('OPENROUTER_API_KEY', '').strip()
         if router:
             primary_model = target_model or os.getenv('OPENROUTER_MODEL', 'openai/gpt-4o-mini')
+            if 'gemini' in primary_model.lower() and not primary_model.startswith('google/'):
+                primary_model = 'google/' + primary_model
             result['OpenRouter'] = ProviderSpec('OpenRouter', primary_model, 'openai', 'https://openrouter.ai/api/v1/chat/completions', router)
         groq = os.getenv('GROQ_API_KEY', '').strip()
         if groq:
-            result['Groq'] = ProviderSpec('Groq', os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b'), 'openai', 'https://api.groq.com/openai/v1/chat/completions', groq)
+            groq_model = target_model if (target_model and any(g in target_model.lower() for g in ('llama', 'mixtral', 'gemma', 'groq', 'oss', 'qwen'))) else os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+            result['Groq'] = ProviderSpec('Groq', groq_model, 'openai', 'https://api.groq.com/openai/v1/chat/completions', groq)
         gemini = os.getenv('GEMINI_API_KEY', '').strip()
         if gemini:
-            result['Gemini'] = ProviderSpec('Gemini', os.getenv('GEMINI_MODEL', 'gemini-3.8-flash'), 'gemini', 'https://generativelanguage.googleapis.com/v1beta/interactions', gemini)
+            gem_model = self._normalize_gemini_model(target_model or os.getenv('GEMINI_MODEL', 'gemini-3.8-flash'))
+            result['Gemini'] = ProviderSpec('Gemini', gem_model, 'gemini', 'https://generativelanguage.googleapis.com/v1beta/interactions', gemini)
         custom = os.getenv('LLM_ENDPOINT_URL', '').strip()
         if custom:
             result['Custom'] = ProviderSpec('Custom', os.getenv('LLM_MODEL', 'llama-3.1-8b'), 'openai', custom, os.getenv('LLM_API_KEY', 'dummy'))
         order = [x.strip() for x in os.getenv('SAREMBOK_PROVIDER_ORDER', 'Gemini,LocalGemma,OpenRouter,Groq,OpenAI,Custom').split(',') if x.strip()]
 
-        # When Gemma model, local, muse, or glimmer is specifically requested, prioritize LocalGemma or OpenRouter
-        if target_model and any(m in target_model.lower() for m in ('gemma', 'local', 'muse', 'glimmer')):
+        # When local inference is specifically requested, prioritize LocalGemma
+        if target_model and any(m in target_model.lower() for m in ('local', 'ollama', 'gemma2:2b', 'local/')):
             if 'LocalGemma' in result:
                 order = ['LocalGemma'] + [x for x in order if x != 'LocalGemma']
 
         # Gemini 3.8 Flash is the latency-first native path.
-        if target_model == 'google/gemini-3.8-flash':
+        if target_model in ('google/gemini-3.8-flash', 'gemini-3.8-flash', 'fast', 'gemini-flash'):
             order = ['Gemini'] + [x for x in order if x != 'Gemini']
 
         # Prioritize user-provided dynamic keys at top of dispatch chain
@@ -467,6 +476,17 @@ class ProviderRouter:
             specs = free_specs
 
         return specs
+
+    @staticmethod
+    def _normalize_gemini_model(model_name: str | None) -> str:
+        m = str(model_name or "").strip()
+        if m.startswith("google/"):
+            m = m[7:].strip()
+        if m.startswith("models/"):
+            m = m[7:].strip()
+        if not m or "gemini" not in m.lower():
+            m = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+        return m
 
     @staticmethod
     def _extract_gemini(payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
@@ -661,14 +681,15 @@ class ProviderRouter:
             if clean_b64:
                 user_parts.append({'inline_data': {'mime_type': 'image/jpeg', 'data': clean_b64}})
 
+            gemini_model = self._normalize_gemini_model(spec.model)
             if self.gemini_api == 'generatecontent':
-                url = f'https://generativelanguage.googleapis.com/v1beta/models/{spec.model}:generateContent'
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent'
                 data = {'system_instruction': {'parts': [{'text': system_prompt}]}, 'contents': [{'role': 'user', 'parts': user_parts}], 'generationConfig': {'maxOutputTokens': self.max_output_tokens}}
                 headers = {'Content-Type': 'application/json', 'x-goog-api-key': spec.key}
                 api_name = 'generateContent'
             else:
                 url = spec.endpoint
-                data = {'model': spec.model, 'system_instruction': system_prompt, 'input': prompt, 'store': False, 'generation_config': {'thinking_level': self.gemini_thinking, 'max_output_tokens': self.max_output_tokens}}
+                data = {'model': gemini_model, 'system_instruction': system_prompt, 'input': prompt, 'store': False, 'generation_config': {'thinking_level': self.gemini_thinking, 'max_output_tokens': self.max_output_tokens}}
                 headers = {'Content-Type': 'application/json', 'x-goog-api-key': spec.key}
                 api_name = 'interactions'
         else:
@@ -715,8 +736,9 @@ class ProviderRouter:
             if clean_b64:
                 user_parts.append({'inline_data': {'mime_type': 'image/jpeg', 'data': clean_b64}})
 
+            gemini_model = self._normalize_gemini_model(spec.model)
             if self.gemini_api == 'generatecontent':
-                url = f'https://generativelanguage.googleapis.com/v1beta/models/{spec.model}:streamGenerateContent?alt=sse'
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:streamGenerateContent?alt=sse'
                 data = {
                     'system_instruction': {'parts': [{'text': system_prompt}]},
                     'contents': [{'role': 'user', 'parts': user_parts}],
@@ -727,7 +749,7 @@ class ProviderRouter:
             else:
                 url = spec.endpoint
                 data = {
-                    'model': spec.model,
+                    'model': gemini_model,
                     'system_instruction': system_prompt,
                     'input': prompt,
                     'store': False,

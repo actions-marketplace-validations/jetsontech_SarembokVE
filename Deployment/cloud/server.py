@@ -98,6 +98,7 @@ except Exception:
     pass
 _FILE_REGISTRY: dict[str, dict[str, Any]] = {}
 _TTS_MEMORY_CACHE: dict[str, bytes] = {}
+_SPEC_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 
 def sanitize_filename(filename: str) -> str:
     filename = os.path.basename((filename or "").strip())
@@ -4095,6 +4096,8 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
             except Exception as mem_err:
                 LOG.warning("Failed to persist spec to memory: %s", mem_err)
 
+            if len(_SPEC_CACHE) > 200:
+                _SPEC_CACHE.clear()
             _SPEC_CACHE[cache_key] = (now_ts, spec_data)
             return spec_data
         except urllib.error.HTTPError as e:

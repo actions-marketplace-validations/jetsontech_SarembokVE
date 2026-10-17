@@ -82,6 +82,7 @@ class TestLocalInferenceMode(unittest.TestCase):
             'GEMINI_API_KEY': 'test-gemini-key',
             'OPENROUTER_API_KEY': 'test-openrouter-key',
             'GROQ_API_KEY': 'test-groq-key',
+            'SAREMBOK_ENABLE_LOCAL_DEFAULT': 'true',
         }):
             router = ProviderRouter()
             task_category, model_alias = router.classify_task_intent(
