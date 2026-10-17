@@ -23,6 +23,58 @@ logger = logging.getLogger("sarembok.provider_router")
 _PROVIDER_COOLDOWNS: dict[str, float] = {}
 _LOCAL_INFERENCE_SEMAPHORE = threading.Semaphore(int(os.getenv('SAREMBOK_LOCAL_MAX_CONCURRENCY', '1')))
 
+# Providers billed to the operator's API keys. LocalGemma (own hardware) and
+# User* (caller-supplied keys) are not counted against the budget.
+PAID_PROVIDERS = frozenset({'Gemini', 'OpenRouter', 'OpenRouterFallback', 'Groq', 'OpenAI', 'Custom'})
+
+
+class DailyPaidCallBudget:
+    """Hard cap on operator-paid LLM calls per UTC day.
+
+    SAREMBOK_DAILY_PAID_CALL_BUDGET=0 disables the cap. Counts are in-memory,
+    so a restart resets the day's count; set the cap with that in mind.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._day = ''
+        self._count = 0
+
+    @staticmethod
+    def limit() -> int:
+        try:
+            return max(0, int(os.getenv('SAREMBOK_DAILY_PAID_CALL_BUDGET', '0') or 0))
+        except ValueError:
+            return 0
+
+    def _roll(self) -> None:
+        today = time.strftime('%Y-%m-%d', time.gmtime())
+        if today != self._day:
+            self._day, self._count = today, 0
+
+    def exhausted(self) -> bool:
+        cap = self.limit()
+        if cap <= 0:
+            return False
+        with self._lock:
+            self._roll()
+            return self._count >= cap
+
+    def record(self, provider_name: str) -> None:
+        if provider_name not in PAID_PROVIDERS:
+            return
+        with self._lock:
+            self._roll()
+            self._count += 1
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            self._roll()
+            return {'day': self._day, 'used': self._count, 'limit': self.limit()}
+
+
+PAID_BUDGET = DailyPaidCallBudget()
+
 
 def set_stream_callback(callback: Callable[[str], None] | None):
     return _STREAM_CALLBACK.set(callback)
@@ -402,7 +454,12 @@ class ProviderRouter:
         # If a specific model was requested and OpenRouter is available, also add the baseline fallback spec
         if target_model and router and target_model != 'openai/gpt-4o-mini':
             specs.append(ProviderSpec('OpenRouterFallback', 'openai/gpt-4o-mini', 'openai', 'https://openrouter.ai/api/v1/chat/completions', router))
-            
+
+        if PAID_BUDGET.exhausted():
+            free_specs = [s for s in specs if s.name not in PAID_PROVIDERS]
+            logger.warning('paid_budget_exhausted budget=%s remaining_providers=%s', PAID_BUDGET.snapshot(), [s.name for s in free_specs])
+            specs = free_specs
+
         return specs
 
     @staticmethod
@@ -793,6 +850,7 @@ class ProviderRouter:
                 latency_ms = round((time.monotonic() - started) * 1000, 1)
                 record = {'provider': spec.name, 'model': spec.model, 'latency_ms': latency_ms, 'ttft_ms': ttft_ms, 'attempts': 1, 'api': api_name, 'ok': True, 'task_category': task_category, 'timestamp': time.time()}
                 self._history.append(record)
+                PAID_BUDGET.record(spec.name)
                 logger.info('provider_success provider=%s model=%s task=%s latency_ms=%s ttft_ms=%s api=%s finish_reason=%s', spec.name, spec.model, task_category, latency_ms, ttft_ms, api_name, usage.get('_finish_reason'))
                 return ProviderResult(text, spec.name, spec.model, latency_ms, 1, api_name, usage, ttft_ms, task_category=task_category)
             except Exception as exc:
@@ -840,6 +898,7 @@ class ProviderRouter:
                 text, usage, api_name = self._request(spec, system_prompt, prompt, messages, deadline, image_frame=image_frame)
                 latency_ms = round((time.monotonic() - started) * 1000, 1)
                 self._history.append({'provider': spec.name, 'model': spec.model, 'latency_ms': latency_ms, 'attempts': 1, 'api': api_name, 'ok': True, 'task_category': task_category, 'timestamp': time.time()} )
+                PAID_BUDGET.record(spec.name)
                 logger.info('provider_success provider=%s model=%s task=%s latency_ms=%s api=%s finish_reason=%s', spec.name, spec.model, task_category, latency_ms, api_name, usage.get('_finish_reason'))
                 return ProviderResult(text, spec.name, spec.model, latency_ms, 1, api_name, usage, task_category=task_category)
             except Exception as exc:
@@ -856,4 +915,4 @@ class ProviderRouter:
         entries = list(self._history)
         ok = [e for e in entries if e.get('ok')]
         cooldowns = {name: max(0, round(until - time.monotonic(), 1)) for name, until in _PROVIDER_COOLDOWNS.items() if until > time.monotonic()}
-        return {'configuredProviders': [{'name': p.name, 'model': p.model, 'api': self.gemini_api if p.kind == 'gemini' else 'chat.completions'} for p in self.configured()], 'samples': len(entries), 'successes': len(ok), 'failures': len(entries) - len(ok), 'cooldowns': cooldowns, 'recent': entries[-20:]}
+        return {'configuredProviders': [{'name': p.name, 'model': p.model, 'api': self.gemini_api if p.kind == 'gemini' else 'chat.completions'} for p in self.configured()], 'samples': len(entries), 'successes': len(ok), 'failures': len(entries) - len(ok), 'cooldowns': cooldowns, 'paidBudget': PAID_BUDGET.snapshot(), 'recent': entries[-20:]}

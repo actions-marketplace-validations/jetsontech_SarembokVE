@@ -2188,290 +2188,76 @@ def _query_local_media_catalog(query: str) -> Optional[dict[str, Any]]:
     return None
 
 
-VERIFIED_REAL_MOVIES = {
-    "spiderman": {
-        "url": "https://tubitv.com/movies/100063704/spider-man-far-from-home",
-        "title": "Spider-Man: Far From Home",
-        "year": 2019,
-        "genre": "Action · Sci-Fi · Adventure",
-        "rating": "PG-13",
-        "duration": "2h 9m",
-        "synopsis": "Spider-Man's European vacation takes a dangerous turn when Nick Fury recruits him to investigate mysterious attacks across the continent.",
-        "poster": "https://canvas-lb.tubitv.com/opts/pOHmdqM4ERuoXg==/a5b9cc51-9ac2-444a-905d-d3dbc9a483f5/CNcHEKgEOgUxLjEuOQ==",
-        "trailer_yt": "Nt9L1jCKGnE",
-        "platform": "tubi",
-    },
-    "spider-man": {
-        "url": "https://tubitv.com/movies/100063704/spider-man-far-from-home",
-        "title": "Spider-Man: Far From Home",
-        "year": 2019,
-        "genre": "Action · Sci-Fi · Adventure",
-        "rating": "PG-13",
-        "duration": "2h 9m",
-        "synopsis": "Spider-Man's European vacation takes a dangerous turn when Nick Fury recruits him to investigate mysterious attacks across the continent.",
-        "poster": "https://canvas-lb.tubitv.com/opts/pOHmdqM4ERuoXg==/a5b9cc51-9ac2-444a-905d-d3dbc9a483f5/CNcHEKgEOgUxLjEuOQ==",
-        "trailer_yt": "Nt9L1jCKGnE",
-        "platform": "tubi",
-    },
-    "rise": {
-        "url": "https://tubitv.com/movies/300624/rise-blood-hunter",
-        "title": "Rise: Blood Hunter",
-        "year": 2007,
-        "genre": "Action · Thriller · Horror",
-        "rating": "R",
-        "duration": "1h 37m",
-        "synopsis": "A reporter wakes up in a morgue after being killed by a vampire cult and vows revenge against the bloodsucking predators who took her life.",
-        "poster": "https://m.media-amazon.com/images/M/MV5BMjA4ODUyNTYyMl5BMl5BanBnXkFtZTcwMjE0NzkxMQ@@._V1_.jpg",
-        "trailer_yt": "w51Shn78CGA",
-        "platform": "tubi",
-    },
-    "the matrix": {
-        "url": "https://tubitv.com/movies/515204/matrix",
-        "title": "The Matrix",
-        "year": 1999,
-        "genre": "Sci-Fi · Action",
-        "rating": "R",
-        "duration": "2h 16m",
-        "synopsis": "A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers.",
-        "poster": "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_.jpg",
-        "trailer_yt": "vKQi3bBA1y8",
-        "platform": "tubi",
-    },
-    "matrix": {
-        "url": "https://tubitv.com/movies/515204/matrix",
-        "title": "The Matrix",
-        "year": 1999,
-        "genre": "Sci-Fi · Action",
-        "rating": "R",
-        "duration": "2h 16m",
-        "synopsis": "A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers.",
-        "poster": "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_.jpg",
-        "trailer_yt": "vKQi3bBA1y8",
-        "platform": "tubi",
-    },
-    "the terminator": {
-        "url": "https://tubitv.com/movies/301815/the-terminator",
-        "title": "The Terminator",
-        "year": 1984,
-        "genre": "Sci-Fi · Action",
-        "rating": "R",
-        "duration": "1h 47m",
-        "synopsis": "A human soldier is sent from 2029 to 1984 to stop an almost indestructible cyborg killing machine sent to eliminate Sarah Connor.",
-        "poster": "https://m.media-amazon.com/images/M/MV5BYTViNzMxZjEtZGEwNy00MDNiLNy00MDNiLWI4NzQtNmIyN2E5OTZmYjBiXkEyXkFqcGdeQXVyNzkwFDA1ODg@._V1_.jpg",
-        "trailer_yt": "k64P4l2Wmeg",
-        "platform": "tubi",
-    },
-    "terminator": {
-        "url": "https://tubitv.com/movies/301815/the-terminator",
-        "title": "The Terminator",
-        "year": 1984,
-        "genre": "Sci-Fi · Action",
-        "rating": "R",
-        "duration": "1h 47m",
-        "synopsis": "A human soldier is sent from 2029 to 1984 to stop an almost indestructible cyborg killing machine sent to eliminate Sarah Connor.",
-        "poster": "https://m.media-amazon.com/images/M/MV5BYTViNzMxZjEtZGEwNy00MDNiLNy00MDNiLWI4NzQtNmIyN2E5OTZmYjBiXkEyXkFqcGdeQXVyNzkwFDA1ODg@._V1_.jpg",
-        "trailer_yt": "k64P4l2Wmeg",
-        "platform": "tubi",
-    },
-    "oceans": {
-        "url": "https://vjs.zencdn.net/v/oceans.mp4",
-        "title": "Oceans",
-        "year": 2009,
-        "genre": "Documentary · Nature",
-        "rating": "G",
-        "duration": "1h 24m",
-        "synopsis": "An awe-inspiring deep-sea cinematic documentary diving beneath the earth's oceans to reveal astounding aquatic wonders.",
-        "poster": "https://vjs.zencdn.net/v/oceans.png",
-        "platform": "direct_stream",
-    },
-    "elephants dream": {
-        "url": "https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4",
-        "title": "Elephants Dream",
-        "year": 2006,
-        "genre": "Sci-Fi · 3D Animation",
-        "rating": "PG",
-        "duration": "11m",
-        "synopsis": "Two travelers explore the surreal, mechanical labyrinth of a gigantic organic machine with unexpected discoveries.",
-        "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Elephants_Dream_poster.png/800px-Elephants_Dream_poster.png",
-        "platform": "direct_stream",
-    },
-    "real movie": {
-        "url": "https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4",
-        "title": "Elephants Dream",
-        "year": 2006,
-        "genre": "Sci-Fi · 3D Animation",
-        "rating": "PG",
-        "duration": "11m",
-        "synopsis": "Two travelers explore the surreal, mechanical labyrinth of a gigantic organic machine with unexpected discoveries.",
-        "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Elephants_Dream_poster.png/800px-Elephants_Dream_poster.png",
-        "platform": "direct_stream",
-    },
-    "a real movie": {
-        "url": "https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4",
-        "title": "Elephants Dream",
-        "year": 2006,
-        "genre": "Sci-Fi · 3D Animation",
-        "rating": "PG",
-        "duration": "11m",
-        "synopsis": "Two travelers explore the surreal, mechanical labyrinth of a gigantic organic machine with unexpected discoveries.",
-        "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Elephants_Dream_poster.png/800px-Elephants_Dream_poster.png",
-        "platform": "direct_stream",
-    },
-}
-
-
 def resolve_media_stream(query: str, platform: str = "auto") -> dict[str, Any]:
-    """Resolves media stream with direct Tubi stealth routing and local database fallback.
-    Enforces native DOM selector routing and blocks YouTube fallback loops for movies."""
+    """Resolve a media request to a public link.
+
+    SarembokVE does not stream, proxy, or scrape long-form films. Movie
+    requests return an unverified "where to watch" search link; everything
+    else goes through the YouTube search resolver.
+    """
     clean_query = str(query or "").strip()
     clean_lower = clean_query.lower()
-
-    # Instant check for verified real movies
-    for key, item in VERIFIED_REAL_MOVIES.items():
-        if key in clean_lower:
-            return {
-                "platform": item["platform"],
-                "url": item["url"],
-                "title": item["title"],
-                "year": item.get("year"),
-                "genre": item.get("genre"),
-                "rating": item.get("rating"),
-                "duration": item.get("duration"),
-                "synopsis": item.get("synopsis"),
-                "poster": item.get("poster"),
-                "trailer_yt": item.get("trailer_yt"),
-                "verified": True,
-                "directStream": item["platform"] == "direct_stream",
-                "directSlug": item["url"],
-                "stealthShield": True,
-            }
-
-    is_movie = platform == "tubi" or any(term in clean_lower for term in (
-        "movie", "film", "stream", "spiderman", "spider-man", "batman", "avengers", "cinema", "full movie", "the matrix", "matrix"
-    ))
-
+    is_movie = platform == "tubi" or any(
+        term in clean_lower for term in ("movie", "film", "full movie", "cinema")
+    )
     if is_movie:
-        # Check SQLite-WAL local catalog first for pre-seeded or verified assets
-        local_match = _query_local_media_catalog(clean_query)
-        if local_match:
-            return local_match
-
-        from tubi_streaming_bridge import TubiStreamingBridge
-        bridge = TubiStreamingBridge()
-        direct_slug_url = bridge.construct_direct_slug_url(clean_query)
-        LOG.info("Tubi stealth bridge routing query %r to direct slug %r", clean_query, direct_slug_url)
-
-        try:
-            res = asyncio.run(bridge.launch_stream(clean_query)) if hasattr(asyncio, "run") else {}
-        except Exception as bridge_err:
-            LOG.warning("Tubi streaming bridge launch notice: %s", bridge_err)
-            res = {}
-
-        if res.get("status") in ("streaming", "streaming_active", "resolved_routing") and res.get("resolved_url"):
-            return {
-                "platform": "tubi",
-                "url": res["resolved_url"],
-                "title": clean_query.title(),
-                "verified": True,
-                "directSlug": direct_slug_url,
-                "selector": "div[data-testid='video-thumbnail'] a",
-                "stealthShield": True,
-            }
-
-        # ENFORCE NATIVE DOM SELECTOR ROUTING & BLOCK YOUTUBE LOOP:
-        # Fail back to direct Tubi search URL rather than YouTube
-        fallback_tubi_url = f"https://tubitv.com/search/{urllib.parse.quote(clean_query)}"
         return {
-            "platform": "tubi",
-            "url": fallback_tubi_url,
-            "title": clean_query.title(),
-            "verified": True,
-            "selector": "div[data-testid='video-thumbnail'] a",
-            "fallbackBlocked": True,
+            "platform": "search",
+            "url": f"https://www.justwatch.com/us/search?q={urllib.parse.quote(clean_query)}",
+            "title": f"Where to watch: {clean_query}",
+            "verified": False,
         }
-
     return resolve_youtube_search(clean_query)
 
 
 def get_visual_engine_status() -> dict[str, Any]:
-    """Returns the configuration and readiness of all 3 visual synthesis tiers."""
+    """Report which image backends are actually configured, under their real names."""
     comfy_url = os.getenv("COMFYUI_URL", os.getenv("SOVEREIGN_GPU_ENDPOINT", "http://127.0.0.1:8188")).strip().rstrip("/")
     comfy_online = False
     try:
-        req = urllib.request.Request(f"{comfy_url}/system_stats", headers={"User-Agent": "Sarembok/1.0"})
+        req = urllib.request.Request(f"{comfy_url}/system_stats", headers={"User-Agent": "SarembokVE/1.0"})
         with urllib.request.urlopen(req, timeout=0.8) as resp:
-            if resp.status == 200:
-                comfy_online = True
+            comfy_online = resp.status == 200
     except Exception:
         comfy_online = False
 
     fal_configured = bool(os.getenv("FAL_KEY") or os.getenv("FAL_API_KEY"))
     together_configured = bool(os.getenv("TOGETHER_API_KEY"))
     openai_configured = bool(os.getenv("OPENAI_API_KEY"))
+    pollinations_enabled = os.getenv("SAREMBOK_ENABLE_POLLINATIONS", "true").strip().lower() in ("1", "true", "yes")
 
-    active_tier = "SarembokVE Sovereign Neural Fabric"
     if comfy_online:
-        active_tier = "Tier 1 (SarembokVE Dedicated Silicon)"
-    elif fal_configured or together_configured or openai_configured:
-        active_tier = "Tier 2 (SarembokVE Enterprise Visual Core)"
+        active = "Self-hosted ComfyUI"
+    elif fal_configured:
+        active = "fal.ai"
+    elif together_configured:
+        active = "Together AI"
+    elif openai_configured:
+        active = "OpenAI"
+    elif pollinations_enabled:
+        active = "Pollinations.ai (third-party, free)"
     else:
-        active_tier = "Tier 3 (SarembokVE Neural Cluster)"
+        active = "none"
 
     return {
-        "activeTier": active_tier,
+        "activeTier": active,
         "tier1_sovereign": {
-            "name": "SarembokVE Dedicated Silicon",
+            "name": "Self-hosted ComfyUI",
             "endpoint": comfy_url,
-            "status": "ONLINE" if comfy_online else "STANDBY",
-            "capabilities": ["photorealistic", "commercial-mockups", "3d-product", "cad-render", "studio-lighting"],
+            "status": "ONLINE" if comfy_online else "OFFLINE",
         },
         "tier2_enterprise": {
-            "sarembokve_neural": {"configured": True, "model": "sarembokve-ultra-hd"},
-            "fal": {"configured": fal_configured, "model": "sarembokve-neural-core"},
-            "together": {"configured": together_configured, "model": "sarembokve-neural-core"},
-            "openai": {"configured": openai_configured, "model": "sarembokve-neural-core"},
+            "fal": {"configured": fal_configured, "model": "flux.1-schnell"},
+            "together": {"configured": together_configured, "model": "black-forest-labs/FLUX.1-schnell"},
+            "openai": {"configured": openai_configured, "model": "dall-e-3"},
         },
         "tier3_community": {
-            "name": "SarembokVE Neural Cluster",
-            "status": "ONLINE",
-            "model": "sarembokve-visual-synthesis",
-            "unlimited": True,
-            "zeroKeyRequired": True,
+            "name": "Pollinations.ai (third-party, free)",
+            "status": "ONLINE" if pollinations_enabled else "DISABLED",
+            "model": "flux",
+            "thirdParty": True,
         },
     }
-
-
-def _brand_sarembok_image(img_bytes: bytes) -> bytes:
-    """Ensure generated image contains no third-party watermark and is branded with SarembokVE."""
-    try:
-        import cv2
-        import numpy as np
-        arr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-        if img is None:
-            return img_bytes
-        h, w = img.shape[:2]
-        wm_h = min(46, max(30, h // 16))
-        wm_w = min(230, max(120, w // 4))
-        mask = np.zeros((h, w), dtype=np.uint8)
-        mask[h - wm_h:h, w - wm_w:w] = 255
-        cleaned = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
-        text = "SAREMBOKVE"
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        scale = max(0.42, w / 2000.0)
-        thickness = 1
-        (tw, th), _ = cv2.getTextSize(text, font, scale, thickness)
-        tx = w - tw - 16
-        ty = h - 14
-        overlay = cleaned.copy()
-        cv2.rectangle(overlay, (tx - 8, ty - th - 6), (tx + tw + 8, ty + 6), (10, 15, 25), -1)
-        cv2.addWeighted(overlay, 0.75, cleaned, 0.25, 0, cleaned)
-        cv2.putText(cleaned, text, (tx, ty), font, scale, (255, 240, 0), thickness, cv2.LINE_AA)
-        _, encoded = cv2.imencode(".jpg", cleaned, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-        return encoded.tobytes()
-    except Exception as exc:
-        LOG.debug("SarembokVE image branding skipped: %s", exc)
-        return img_bytes
 
 
 def resolve_image_generation(
@@ -2481,7 +2267,7 @@ def resolve_image_generation(
     preferred_engine: str | None = None,
 ) -> dict[str, Any]:
     """Generate high-fidelity frontier image using multi-tier adaptive routing:
-    Tier 1: Sovereign GPU Node (ComfyUI / Dedicated Silicon)
+    Tier 1: Self-hosted ComfyUI GPU node
     Tier 2: Enterprise Cloud API (Fal.ai FLUX.1 / Together AI FLUX.1 / OpenAI DALL-E 3)
     Tier 3: Guaranteed Community Cluster (Pollinations FLUX.1)
     """
@@ -2501,37 +2287,6 @@ def resolve_image_generation(
     cleaned_prompt = re.sub(r"(?i)^(?:a\s+|an\s+)?(?:image|picture|photo|artwork|rendering)\s+(?:of\s+)?", "", cleaned_prompt).strip()
     if not cleaned_prompt:
         cleaned_prompt = p_clean or "cybernetic neural AI core in sovereign computing matrix"
-
-    p_lower = prompt.lower()
-    if ("z & k" in p_lower or "z&k" in p_lower or "z and k" in p_lower) and "gloss" in p_lower:
-        if any(w in p_lower for w in ("retail", "store", "display", "counter", "pos")):
-            return {
-                "url": "/api/download?fileId=zk_retail_display",
-                "prompt": cleaned_prompt,
-                "title": "Z & K GLOSS · RETAIL POINT-OF-SALE DISPLAY",
-                "width": 1280,
-                "height": 720,
-                "seed": 101102,
-                "model": "sarembokve-neural-visual",
-                "provider": "SarembokVE Visual Synthesis Engine",
-                "tier": "SarembokVE Sovereign Neural Fabric",
-                "badge": "⚡ SAREMBOKVE VISUAL SYNTHESIS",
-                "latencyMs": 42.0,
-            }
-        else:
-            return {
-                "url": "/api/download?fileId=zk_gloss_mockup",
-                "prompt": cleaned_prompt,
-                "title": "Z & K GLOSS · PRIMARY PACKAGING MOCKUP",
-                "width": 1024,
-                "height": 1024,
-                "seed": 101101,
-                "model": "sarembokve-neural-visual",
-                "provider": "SarembokVE Visual Synthesis Engine",
-                "tier": "SarembokVE Sovereign Neural Fabric",
-                "badge": "⚡ SAREMBOKVE VISUAL SYNTHESIS",
-                "latencyMs": 45.0,
-            }
 
     width = 1024
     height = 1024
@@ -2613,7 +2368,7 @@ def resolve_image_generation(
                                 "seed": actual_seed,
                                 "model": "flux.1-schnell",
                                 "provider": "Sovereign ComfyUI Node",
-                                "tier": "Tier 1 (Sovereign Dedicated Silicon)",
+                                "tier": "Self-hosted ComfyUI",
                                 "badge": "⚡ SOVEREIGN GPU (COMFYUI)",
                                 "latencyMs": latency_ms,
                             }
@@ -2769,7 +2524,7 @@ def resolve_image_generation(
     # Tier 3: SarembokVE Neural Render Matrix
     # Guaranteed high-fidelity visual synthesis with local media caching
     # -------------------------------------------------------------
-    if engine in ("auto", "pollinations", "community", "flux", "sarembok", "sarembokve"):
+    if engine in ("auto", "pollinations", "community", "flux") and get_visual_engine_status()["tier3_community"]["status"] == "ONLINE":
         try:
             encoded_prompt = urllib.parse.quote(cleaned_prompt)
             flux_model = "flux"
@@ -2778,14 +2533,13 @@ def resolve_image_generation(
             elif any(w in cleaned_prompt.lower() for w in ("3d", "render", "product", "cad", "isometric", "mockup", "display", "packaging")):
                 flux_model = "flux-3d"
 
-            poll_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={actual_seed}&model={flux_model}&nologo=true"
+            poll_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={actual_seed}&model={flux_model}"
             local_url = poll_url
             try:
                 img_req = urllib.request.Request(poll_url, headers={"User-Agent": "SarembokVE/1.0"})
                 with urllib.request.urlopen(img_req, timeout=6.0) as img_resp:
                     img_bytes = img_resp.read()
                 if img_bytes and len(img_bytes) > 1000:
-                    img_bytes = _brand_sarembok_image(img_bytes)
                     safe_name = f"sarembokve_visual_{int(time.time())}_{actual_seed}.jpg"
                     f_meta = save_uploaded_file(safe_name, img_bytes, mime_type="image/jpeg")
                     local_url = f"/api/download?fileId={f_meta['fileId']}"
@@ -2801,10 +2555,10 @@ def resolve_image_generation(
                 "width": width,
                 "height": height,
                 "seed": actual_seed,
-                "model": "sarembokve-neural-visual",
-                "provider": "SarembokVE Visual Synthesis Engine",
-                "tier": "SarembokVE Sovereign Neural Fabric",
-                "badge": "⚡ SAREMBOKVE VISUAL SYNTHESIS",
+                "model": flux_model,
+                "provider": "Pollinations.ai (third-party)",
+                "tier": "Third-party free tier",
+                "badge": "Generated via Pollinations.ai",
                 "latencyMs": latency_ms,
             }
         except Exception as exc:
@@ -2818,37 +2572,8 @@ def resolve_video_generation(
     prompt: str,
     seed: int | None = None,
 ) -> dict[str, Any]:
-    """Generate or synthesize AI video/motion design."""
-    import urllib.parse
-    import time
-    import random
-    start_time = time.perf_counter()
-    p_clean = prompt.strip().strip('"\'`“”‘’')
-    cleaned_prompt = re.sub(
-        r"(?i)^(?:can you\s+)?(?:please\s+)?(?:generate|create|render|make|synthesize)\s+(?:an?\s+)?(?:ai\s+|cinematic\s+)?(?:video|animation|motion|clip)?\s+(?:of|about\s+)?",
-        "",
-        p_clean,
-    ).strip()
-    if not cleaned_prompt:
-        cleaned_prompt = p_clean or "cinematic futuristic motion sequence"
-    title = cleaned_prompt[:60].strip()
-    if len(cleaned_prompt) > 60:
-        title += "..."
-    actual_seed = seed if seed is not None else random.randint(100000, 9999999)
-    encoded = urllib.parse.quote(cleaned_prompt)
-    video_url = f"https://video.pollinations.ai/prompt/{encoded}?seed={actual_seed}"
-    latency_ms = round((time.perf_counter() - start_time) * 1000.0, 1)
-    return {
-        "url": video_url,
-        "prompt": cleaned_prompt,
-        "title": title,
-        "seed": actual_seed,
-        "model": "neural-video-flux",
-        "provider": "Sarembok Neural Video Engine",
-        "tier": "Frontier Video Synthesis",
-        "badge": "⚡ NEURAL AI VIDEO GENERATION",
-        "latencyMs": latency_ms,
-    }
+    """Video generation is not offered. No backend is configured."""
+    raise RuntimeError("video_generation_unavailable: no video generation backend is configured")
 
 
 def _enrich_multimodal_reply(prompt: str, rep: str) -> str:
@@ -2856,17 +2581,6 @@ def _enrich_multimodal_reply(prompt: str, rep: str) -> str:
     prompt_clean = (prompt or "").strip()
     rep = (rep or "").strip()
 
-    # Clean up standard provider refusals since Sarembok enriches with live visual/mockup cards!
-    rep = re.sub(
-        r"(?i)(?:I(?:\s*['’]m| am)?\s+sorry,?\s+(?:but\s+)?)?(?:I\s+(?:do\s+not|don't)\s+have\s+the\s+ability\s+to\s+generate\s+(?:visual\s+)?images?(?:\s+or\s+mockups?)?[^.\n]*[.\n]?)",
-        "",
-        rep,
-    ).strip()
-    rep = re.sub(
-        r"(?i)(?:As an AI text model|As a language model|I cannot create or generate images)[^.\n]*[.\n]?",
-        "",
-        rep,
-    ).strip()
 
     # Extract topic for dynamic video search embedding
     topic = re.sub(r"(?i)^(?:can you\s+)?(?:please\s+)?(?:play|show|open|stream|watch|listen to)\s+(?:me\s+)?(?:some\s+)?(?:a\s+)?(?:video\s+about\s+|on\s+youtube\s+|youtube\s+)?", "", prompt).strip()
@@ -3062,16 +2776,15 @@ def _enrich_multimodal_reply(prompt: str, rep: str) -> str:
                 img_badge = img_data.get("badge", "VERIFIED IMAGE GENERATION")
                 rep = f"Synthesized **{img_data['title']}** via {img_data.get('provider', 'Verified provider')} ({img_data.get('latencyMs', 0)}ms):\n\n:::image {img_data['title'].upper()} · {img_badge}\n{img_data['url']}\n:::\n\nResolution: {img_data.get('width', 1024)}x{img_data.get('height', 1024)} · Tier: {img_data.get('tier', 'verified')}"
             except Exception:
-                rep = "Visual synthesis is ready. Specify details for your image or mockup."
+                rep = "Image generation is not available right now: no image backend is reachable."
         elif is_video_gen:
-            vid_data = resolve_video_generation(prompt)
-            rep = f"Synthesized AI video motion sequence for **{vid_data['title']}**:\n\n:::video {vid_data['title'].upper()} · {vid_data.get('badge', 'NEURAL AI VIDEO GENERATION')}\n{vid_data['url']}\n:::"
+            rep = "Video generation is not available in SarembokVE."
         elif is_video:
             rep = f"No verified video result matched **{topic.upper()}**. I did not substitute a different video. Search results: {resolved.get('searchUrl', real_url)}"
         elif is_music:
             rep = f"No verified music result matched **{topic.upper()}**. I did not substitute a different track. Search results: {resolved.get('searchUrl', real_url)}"
         else:
-            rep = "Cyber audio & multimodal synthesis initialized. Active streaming channels and interface components are ready."
+            rep = "I couldn't produce a response for that request. Please try rephrasing."
 
     return rep
 
@@ -3358,11 +3071,9 @@ def sarembok_process_dialogue(
         "==================== SAREMBOK RESPONSE TRUTH BOUNDARY ====================",
         "Answer the user's actual question directly and preserve all material parts of the answer.",
         "SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction. When asked who built or created SarembokVE, state this truth clearly.",
-        "Sarembok VE has active, verified multimodal generation engines:",
-        "- Visual Image Synthesis: Generates photorealistic images, 3D renders, product packaging, and commercial mockups via the in-house SarembokVE Visual Synthesis Engine.",
-        "- Neural Video Synthesis: Generates AI video clips and motion graphics via SarembokVE Neural Video Matrix.",
-        "- Interactive UI/UX Mockups & Prototypes: Generates live, clickable HTML/CSS web and mobile app mockups via :::mockup blocks.",
-        "NEVER state that you cannot generate images, videos, mockups, or designs. You ARE equipped with these live engines powered by SarembokVE proprietary technology.",
+        "Capabilities: text chat with persistent memory, web retrieval when it succeeds, and image generation only when an image backend reports ONLINE in the runtime context (the free tier is the third-party Pollinations.ai service; attribute it as such).",
+        "Video generation is not available. If asked for something you cannot do, say so plainly.",
+        "Never describe any third-party model or service as SarembokVE proprietary technology.",
         "NEVER output inline data URIs or raw base64 image strings (e.g. data:image/png;base64,...) in responses, as raw binary strings corrupt and truncate output. When creating design mockups, visual packaging concepts, or schematics, use structured :::product or :::mockup containers, SVG vector graphics, or complete CSS/HTML design systems.",
         "Use Runtime Authority for Sarembok identity, capabilities, status, workers, memory, and provider facts.",
         "Use live retrieval/tool evidence for current web or repository content; if retrieval fails, say so instead of fabricating content.",
