@@ -1189,6 +1189,22 @@
             }
 
             html += formatPlainReply(source.slice(cursor));
+
+            // If the message is a verified system specification, append export actions
+            const specMatch = source.match(/###\s*(?:🌐\s*)?VERIFIED SYSTEM SPECIFICATION:\s*(https?:\/\/[^\s\n]+)/i);
+            if (specMatch) {
+                const targetUrl = specMatch[1].trim();
+                const encodedTarget = encodeURIComponent(targetUrl);
+                html += `
+                    <div class="spec-export-bar" style="margin-top:14px;padding:12px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-md);display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+                        <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">Artifacts:</span>
+                        <a href="/api/spec/export?target=${encodedTarget}&format=openapi" download="openapi.json" style="background:var(--accent);color:var(--text-inverse);text-decoration:none;font-family:var(--font-sans);font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;">📥 Download OpenAPI 3.1 JSON</a>
+                        <a href="/api/spec/export?target=${encodedTarget}&format=typescript" download="contracts.d.ts" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-hover);text-decoration:none;font-family:var(--font-sans);font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;">📥 Download TypeScript (.d.ts)</a>
+                        <button onclick="navigator.clipboard.writeText('curl -s &quot;https://sarembok.com/api/spec?target=${encodedTarget}&quot; | jq'); this.textContent='✓ Copied CLI';" style="background:none;border:1px solid var(--border-default);color:var(--text-secondary);cursor:pointer;font-family:var(--font-mono);font-size:11px;padding:6px 12px;border-radius:var(--radius-sm);">📋 Copy CI/CD cURL</button>
+                    </div>
+                `;
+            }
+
             return html;
         }
 

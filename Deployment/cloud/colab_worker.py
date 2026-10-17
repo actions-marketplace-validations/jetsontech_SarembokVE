@@ -25,8 +25,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from worker_task_executor import WorkerTaskExecutor
-
 logging.basicConfig(
     level=os.getenv("SAREMBOK_LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s [%(levelname)s] [Sarembok-Colab] %(message)s",
@@ -60,6 +58,8 @@ def get_colab_gpu() -> dict[str, Any]:
                 "cudaVersion": cuda_ver,
                 "availableMemoryMb": int(vram * 0.9),
                 "supportedModels": [
+                    "muse-glimmer-30b",
+                    "qwen-2.5-coder-32b",
                     "meta-human-v1",
                     "sarembok-reasoner-7b",
                     "whisper-large-v3",
@@ -89,6 +89,8 @@ def get_colab_gpu() -> dict[str, Any]:
                     "cudaVersion": "N/A",
                     "availableMemoryMb": int(vram * 0.9),
                     "supportedModels": [
+                        "muse-glimmer-30b",
+                        "qwen-2.5-coder-32b",
                         "meta-human-v1",
                         "sarembok-reasoner-7b",
                         "whisper-large-v3",

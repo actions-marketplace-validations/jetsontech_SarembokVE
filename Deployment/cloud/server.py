@@ -6998,6 +6998,82 @@ async def process_http_request(connection: Any, request: Any) -> Any:
         except Exception as exc:
             return make_api_response(500, {"error": str(exc)})
 
+    if path_only in ("/api/spec/export", "/spec/export"):
+        parsed = urllib.parse.urlparse(path)
+        q = urllib.parse.parse_qs(parsed.query)
+        target = str(q.get("target", [""])[0] or q.get("url", [""])[0]).strip()
+        fmt = str(q.get("format", ["openapi"])[0]).strip().lower()
+        if not target:
+            return make_api_response(400, {"error": "target_url_required", "detail": "Provide ?target=https://..."})
+
+        try:
+            spec_res = await asyncio.to_thread(dispatch, "ExtractSystemSpecification", {"url": target, "waitSeconds": 1.5})
+            if not spec_res.get("ok"):
+                return make_api_response(502, {"error": "specification_extraction_failed", "detail": spec_res.get("error")})
+
+            parsed_t = urllib.parse.urlparse(target)
+            host_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", parsed_t.netloc or "target")
+
+            if fmt in ("ts", "typescript", "dts"):
+                content = spec_res.get("typeScriptContracts", "// No contracts generated")
+                content_type = "text/plain; charset=utf-8"
+                filename = f"contracts_{host_slug}.d.ts"
+                body_bytes = content.encode("utf-8")
+            else:
+                content = json.dumps(spec_res.get("openApiSpec", {}), indent=2)
+                content_type = "application/json; charset=utf-8"
+                filename = f"openapi_{host_slug}.json"
+                body_bytes = content.encode("utf-8")
+
+            try:
+                from websockets.datastructures import Headers
+                from websockets.http11 import Response
+                return Response(
+                    200,
+                    "OK",
+                    Headers([
+                        ("Content-Type", content_type),
+                        ("Content-Disposition", f'attachment; filename="{filename}"'),
+                        ("Content-Length", str(len(body_bytes))),
+                        ("Access-Control-Allow-Origin", "*"),
+                        ("Cache-Control", "no-store"),
+                    ]),
+                    body_bytes,
+                )
+            except Exception:
+                return (
+                    200,
+                    [
+                        ("Content-Type", content_type),
+                        ("Content-Disposition", f'attachment; filename="{filename}"'),
+                        ("Content-Length", str(len(body_bytes))),
+                        ("Access-Control-Allow-Origin", "*"),
+                    ],
+                    body_bytes,
+                )
+        except Exception as exc:
+            return make_api_response(500, {"error": "export_error", "detail": str(exc)})
+
+    if path_only in ("/api/spec", "/api/spec/extract"):
+        # Headless REST API for CI/CD and automated audits
+        parsed = urllib.parse.urlparse(path)
+        q = urllib.parse.parse_qs(parsed.query)
+        target = str(q.get("target", [""])[0] or q.get("url", [""])[0]).strip()
+        if not target and hasattr(request, "body"):
+            try:
+                body_json = json.loads(request.body.decode("utf-8"))
+                target = str(body_json.get("target") or body_json.get("url") or "").strip()
+            except Exception:
+                pass
+        if not target:
+            return make_api_response(400, {"error": "target_url_required", "detail": "Provide ?target=https://... or JSON payload with url"})
+
+        try:
+            spec_res = await asyncio.to_thread(dispatch, "ExtractSystemSpecification", {"url": target, "waitSeconds": 2.0})
+            return make_api_response(200 if spec_res.get("ok") else 502, spec_res)
+        except Exception as exc:
+            return make_api_response(500, {"error": "spec_extraction_error", "detail": str(exc)})
+
     if path_only in ("/api/view_tubi", "/api/view/tubi"):
         parsed = urllib.parse.urlparse(path)
         q_params = urllib.parse.parse_qs(parsed.query)
