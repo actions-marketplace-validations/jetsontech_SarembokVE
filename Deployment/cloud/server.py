@@ -2769,7 +2769,7 @@ def _enrich_multimodal_reply(prompt: str, rep: str) -> str:
         task_block = ":::tasks Multi-Task Parallel Execution\n" + "\n".join(tasks_lines) + "\n:::"
         rep = f"{task_block}\n\n{rep}".strip()
 
-    if not rep or len(rep.strip()) < 10:
+    if not rep or not rep.strip():
         if is_image or is_design or is_product_design:
             try:
                 img_data = resolve_image_generation(prompt)
