@@ -2,7 +2,7 @@
     email admin@sarembok.com
 }
 
-sarembok.com, www.sarembok.com {
+{$SAREMBOK_SITE_ADDRESS:sarembok.com} {
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options "nosniff"
