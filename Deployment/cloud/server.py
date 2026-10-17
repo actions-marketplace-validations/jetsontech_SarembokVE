@@ -4049,6 +4049,17 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
         url = str(params.get("url", "")).strip()
         if not url:
             raise ValueError("url is required for ExtractSystemSpecification")
+        force_refresh = bool(params.get("forceRefresh", False))
+        cache_key = f"{url}:{json.dumps(params.get('headers') or {}, sort_keys=True)}"
+        now_ts = time.time()
+        global _SPEC_CACHE
+        if not force_refresh and cache_key in _SPEC_CACHE:
+            cached_ts, cached_data = _SPEC_CACHE[cache_key]
+            if now_ts - cached_ts < 1800:
+                res = dict(cached_data)
+                res["cached"] = True
+                res["latencyMs"] = 1.0
+                return res
         browser_url = os.getenv("SAREMBOK_BROWSER_URL", "http://sarembok-browser:9100")
         try:
             req = urllib.request.Request(
@@ -4084,6 +4095,7 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
             except Exception as mem_err:
                 LOG.warning("Failed to persist spec to memory: %s", mem_err)
 
+            _SPEC_CACHE[cache_key] = (now_ts, spec_data)
             return spec_data
         except urllib.error.HTTPError as e:
             try:

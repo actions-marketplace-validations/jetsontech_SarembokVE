@@ -2678,7 +2678,7 @@
 
             if(typeof window.consoleVoiceInterrupt==='function')window.consoleVoiceInterrupt();
             if(typeof window.clearNativeOutputAudio==='function'){try{window.clearNativeOutputAudio();}catch(_){}}
-            appendMessage('user','You',text);const thinkingEl=showThinking();let streamedText='',assistantContent=null,assistantSender=null;
+            appendMessage('user','You',text);const thinkingEl=showThinking(text);let streamedText='',assistantContent=null,assistantSender=null;
             const updateStreamUi=(delta)=>{streamedText+=String(delta||'');if(!assistantContent){thinkingEl.innerHTML='<div class="msg-sender agent" id="streaming-assistant-sender">Sarembok</div><div class="msg-body" id="streaming-assistant-content"></div>';assistantSender=thinkingEl.querySelector('#streaming-assistant-sender');assistantContent=thinkingEl.querySelector('#streaming-assistant-content');}assistantContent.innerHTML=formatReply(streamedText);const scroll=document.getElementById('conversation-scroll');scroll.scrollTop=scroll.scrollHeight;};
             try{const result=await sendRPC('SarembokChat',{prompt:text,sessionId:sessionId,stream:true},updateStreamUi);const finalText=String(result?.response||result?.audioText||streamedText||'Response received.');
                 let assistantGroup=thinkingEl;
@@ -2726,14 +2726,17 @@
             return group;
         }
 
-        function showThinking() {
+        function showThinking(promptText) {
             const scroll = document.getElementById('conversation-scroll');
             const el = document.createElement('div');
             el.className = 'msg-group';
+            const isSpec = promptText && (promptText.startsWith('/spec') || promptText.includes('spec '));
+            const subText = isSpec ? '⚡ Ephemeral Chromium Crawler active · Extracting schema contracts…' : '';
             el.innerHTML = `
-                <div class="msg-sender agent">Sarembok</div>
-                <div class="thinking-indicator">
+                <div class="msg-sender agent">Sarembok <span class="msg-model-tag">${isSpec ? 'crawler' : 'engine'}</span></div>
+                <div class="thinking-indicator" style="display:flex;align-items:center;gap:10px;">
                     <div class="thinking-dots"><span></span><span></span><span></span></div>
+                    ${subText ? `<span style="font-family:var(--font-mono);font-size:11.5px;color:var(--accent);">${subText}</span>` : ''}
                 </div>
             `;
             scroll.appendChild(el);

@@ -108,8 +108,8 @@ class ProviderResult:
 
 class ProviderRouter:
     def __init__(self) -> None:
-        self.provider_timeout = max(3, int(os.getenv('SAREMBOK_LLM_PROVIDER_TIMEOUT_SECONDS', '25')))
-        self.total_timeout = max(5, int(os.getenv('SAREMBOK_LLM_TOTAL_TIMEOUT_SECONDS', '35')))
+        self.provider_timeout = max(3, int(os.getenv('SAREMBOK_LLM_PROVIDER_TIMEOUT_SECONDS', '10')))
+        self.total_timeout = max(5, int(os.getenv('SAREMBOK_LLM_TOTAL_TIMEOUT_SECONDS', '15')))
         self.gemini_api = os.getenv('SAREMBOK_GEMINI_API', 'generatecontent').strip().lower()
         self.gemini_thinking = os.getenv('SAREMBOK_GEMINI_THINKING_LEVEL', 'low').strip().lower()
         if self.gemini_thinking not in {'low', 'medium', 'high'}:
@@ -119,7 +119,7 @@ class ProviderRouter:
             self.openrouter_reasoning = 'low'
         self.max_output_tokens = max(64, int(os.getenv('SAREMBOK_LLM_MAX_OUTPUT_TOKENS', '2048')))
         self.local_only_mode = os.getenv('SAREMBOK_LOCAL_ONLY_MODE', 'false').strip().lower() in ('true', '1', 'yes', 'on')
-        self.local_timeout = max(3, int(os.getenv('SAREMBOK_LOCAL_TIMEOUT_SECONDS', '30')))
+        self.local_timeout = max(3, int(os.getenv('SAREMBOK_LOCAL_TIMEOUT_SECONDS', '5')))
         self.local_max_tokens = max(16, int(os.getenv('SAREMBOK_LOCAL_MAX_OUTPUT_TOKENS', '512')))
         self.local_max_context_chars = max(1000, int(os.getenv('SAREMBOK_LOCAL_MAX_CONTEXT_CHARS', '12000')))
         self._history: deque[dict[str, Any]] = deque(maxlen=200)
@@ -596,12 +596,21 @@ class ProviderRouter:
                             break
                     normalized_messages = sys_msg + pruned
 
+        # Pin local models in memory with keep_alive: -1 so Ollama never drops them to disk
+        if spec.name == 'LocalGemma':
+            max_tok = min(self.local_max_tokens, max_tok)
+        elif spec.name in ('OpenRouter', 'OpenRouterFallback'):
+            # Bound tokens to avoid 402 insufficient balance on free/pay-as-you-go keys
+            max_tok = min(max_tok, int(os.getenv('SAREMBOK_OPENROUTER_MAX_TOKENS', '128')))
+
         data: dict[str, Any] = {
             'model': spec.model,
             'messages': normalized_messages,
             'max_tokens': max_tok,
             'temperature': 0.7,
         }
+        if spec.name == 'LocalGemma':
+            data['keep_alive'] = -1
         if streaming:
             data['stream'] = True
         if tools:
