@@ -138,6 +138,177 @@
             color: var(--text-muted);
         }
 
+        /* ====== VIEW NAVIGATION TABS ====== */
+        .view-nav-tabs {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 16px;
+        }
+
+        .view-tab {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 11.5px;
+            font-weight: 500;
+            padding: 5px 11px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .view-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+            border-color: var(--border-default);
+        }
+
+        .view-tab.active {
+            color: var(--accent);
+            background: var(--accent-dim);
+            border-color: rgba(56, 189, 248, 0.3);
+            font-weight: 600;
+        }
+
+        /* ====== SUB-VIEW PANELS ====== */
+        .view-panel {
+            grid-column: 1 / -1;
+            height: calc(100vh - 48px);
+            overflow-y: auto;
+            background: var(--bg-base);
+            padding: 28px 36px 64px;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-primary);
+        }
+
+        .panel-header-title {
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-header-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            max-width: 820px;
+            line-height: 1.6;
+        }
+
+        /* Avatar Holographic HUD */
+        .metahuman-stage {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            flex: 1;
+            min-height: 480px;
+        }
+
+        .metahuman-canvas-wrap {
+            background: #05070d;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #metahuman-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .metahuman-hud-telemetry {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .morph-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .morph-label { color: var(--text-secondary); font-family: var(--font-mono); }
+        .morph-val { color: var(--accent); font-family: var(--font-mono); font-weight: 600; }
+
+        /* Modal Overlay */
+        .policy-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .policy-modal-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 760px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+
+        .policy-modal-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .policy-modal-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .policy-modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .policy-modal-close:hover { color: #fff; }
+
+        .policy-modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            color: var(--text-secondary);
+            font-size: 13.5px;
+            line-height: 1.65;
+        }
+
         .connection-dot {
             width: 7px;
             height: 7px;
@@ -700,6 +871,14 @@
             <div class="top-bar-left">
                 <span class="logo-mark">SAREMBOK VE</span>
                 <span class="logo-tag">Autonomous Agent Platform</span>
+                <nav class="view-nav-tabs">
+                    <button class="view-tab active" id="tab-console" onclick="switchView('console')">⚡ Console</button>
+                    <button class="view-tab" id="tab-projects" onclick="switchView('projects')">📁 Projects &amp; Walkthroughs</button>
+                    <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs &amp; Specs</button>
+                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')">👤 Hologram Avatar</button>
+                    <button class="view-tab" onclick="openPolicyModal('privacy')">🔒 Privacy</button>
+                    <button class="view-tab" onclick="openPolicyModal('terms')">⚖ Terms</button>
+                </nav>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
                 <a href="/legacy" class="console-main-site" title="Open the full visual cockpit interface">LEGACY COCKPIT</a>
@@ -712,7 +891,7 @@
         </header>
 
         <!-- LEFT: MEMORY TIMELINE -->
-        <aside class="memory-rail">
+        <aside class="memory-rail" id="console-memory-rail">
             <div class="rail-header">
                 <div class="rail-title">Memory</div>
                 <div class="rail-subtitle" id="memory-count">0 entries</div>
@@ -726,7 +905,7 @@
         </aside>
 
         <!-- CENTER: CONVERSATION -->
-        <main class="conversation-panel">
+        <main class="conversation-panel" id="view-console-panel">
             <div class="conversation-scroll" id="conversation-scroll">
                 <div class="msg-group">
                     <div class="msg-sender agent">
@@ -755,7 +934,7 @@
         </main>
 
         <!-- RIGHT: SYSTEM STATE -->
-        <aside class="system-rail">
+        <aside class="system-rail" id="console-system-rail">
             <div class="system-section">
                 <div class="system-section-title">Runtime</div>
                 <div class="system-row">
@@ -817,9 +996,419 @@
                 <div class="session-id" id="session-id">Session: —</div>
             </div>
         </aside>
+
+        <!-- SUB-VIEW: PROJECTS & WALKTHROUGHS -->
+        <section class="view-panel" id="view-projects-panel" style="display:none;">
+            <div class="panel-header-title">Verified Autonomous Projects &amp; Walkthroughs</div>
+            <div class="panel-header-desc">Inspect real-world autonomous tasks executed by SarembokVE. Each project includes step-by-step telemetry traces, induced schemas, and downloadable production assets.</div>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px;">
+                <!-- Card 1 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent);margin-bottom:8px;">GOAL 01 · SPECIFICATION SYNTHESIS</div>
+                        <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;">Reverse-Engineer Web API to OpenAPI 3.1 &amp; TypeScript</div>
+                        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">SarembokVE runs an ephemeral headless Playwright Chromium instance, navigates to target URL, monitors network calls, and infers fully compliant OpenAPI 3.1 JSON schemas and TypeScript contract interfaces.</p>
+                        <div style="background:#05070d;border:1px solid var(--border-default);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:#94a3b8;margin-bottom:16px;line-height:1.5;">
+                            [00:00.012] <span style="color:var(--accent);">SPAWN</span> Ephemeral Chromium container<br>
+                            [00:01.120] <span style="color:var(--green);">NET</span> Intercepted 18 HTTP calls &amp; payloads<br>
+                            [00:02.675] <span style="color:var(--green);">SUCCESS</span> Generated openapi_httpbin_org.json
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <a href="https://sarembok.com/api/spec/export?target=https://httpbin.org&format=openapi" class="console-main-site" style="background:var(--accent-dim);color:var(--accent);border-color:rgba(56,189,248,0.3);">📥 OpenAPI 3.1</a>
+                        <a href="https://sarembok.com/api/spec/export?target=https://httpbin.org&format=typescript" class="console-main-site">📥 TypeScript (.d.ts)</a>
+                        <button class="console-main-site" onclick="injectPrompt('/spec https://httpbin.org');switchView('console');">⚡ Run in Console</button>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="font-family:var(--font-mono);font-size:11px;color:var(--green);margin-bottom:8px;">GOAL 02 · SOVEREIGN COMPUTE</div>
+                        <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;">Decentralized GPU Mesh Worker on Google Colab</div>
+                        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">Connect a free Google Colab or Kaggle GPU node (T4 / A100) to serve Muse-Glimmer-30B directly into the SarembokVE mesh over encrypted WebSockets, eliminating paid API token consumption.</p>
+                        <div style="background:#05070d;border:1px solid var(--border-default);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:#94a3b8;margin-bottom:16px;line-height:1.5;">
+                            [00:00.010] <span style="color:var(--green);">GPU</span> Detected Tesla T4 (15.8 GB VRAM)<br>
+                            [00:00.410] <span style="color:var(--accent);">WSS</span> Reverse tunnel wss://sarembok.com/worker/ws<br>
+                            [00:01.200] <span style="color:var(--green);">ACTIVE</span> Streaming 42.4 tokens/sec (Cost: $0.00)
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <a href="https://github.com/jetsontech/SarembokVE/blob/main/Deployment/cloud/sarembok_gpu_worker.ipynb" target="_blank" rel="noopener" class="console-main-site" style="background:var(--green-dim);color:var(--green);border-color:rgba(16,185,129,0.3);">🚀 Colab Notebook</a>
+                        <button class="console-main-site" onclick="navigator.clipboard.writeText('curl -sSL https://sarembok.com/Deployment/cloud/colab_worker.py | python - --server wss://sarembok.com/worker/ws')">📋 Copy CLI Launcher</button>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-bottom:8px;">GOAL 03 · CI/CD AUDITING</div>
+                        <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;">Automated API Contract Drift Detection Gate</div>
+                        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">Run headless contract regression tests in GitHub Actions or GitLab CI. Fails merge requests automatically whenever an upstream dependency alters parameter names or response envelopes.</p>
+                        <div style="background:#05070d;border:1px solid var(--border-default);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:#94a3b8;margin-bottom:16px;line-height:1.5;">
+                            [00:00.010] <span style="color:var(--accent);">CI</span> Querying /api/spec?target=staging.internal<br>
+                            [00:01.800] <span style="color:var(--amber);">DIFF</span> Breaking change: 'userId' renamed to 'uuid'<br>
+                            [00:02.100] <span style="color:var(--amber);">GATE</span> Exit code 1: Protected production from breakage
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <a href="/docs#cicd-integration" class="console-main-site">📖 View CI/CD Docs</a>
+                        <button class="console-main-site" onclick="navigator.clipboard.writeText('curl -s https://sarembok.com/api/spec?target=https://httpbin.org | jq')">📋 Copy cURL Snippet</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SUB-VIEW: DOCS & SPECS -->
+        <section class="view-panel" id="view-docs-panel" style="display:none;">
+            <div class="panel-header-title">Technical Documentation &amp; Architecture</div>
+            <div class="panel-header-desc">SarembokVE is an enterprise-grade autonomous reverse-engineering platform and sovereign compute mesh. Review architecture details, API specs, and integration patterns below.</div>
+            
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:28px;">
+                    <h3 style="font-size:16px;color:#fff;margin-bottom:12px;">Headless Specification REST API</h3>
+                    <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">The headless REST API allows automated audit scripts, CLI tools, and CI runners to extract OpenAPI 3.1 definitions and TypeScript interfaces with zero browser overhead.</p>
+                    
+                    <div style="font-family:var(--font-mono);font-size:12px;background:#05070d;padding:14px;border-radius:6px;border:1px solid var(--border-default);margin-bottom:16px;">
+                        <span style="color:var(--green);">GET</span> /api/spec?target=https://target.com<br><br>
+                        # Direct file downloads:<br>
+                        <span style="color:var(--green);">GET</span> /api/spec/export?target=https://target.com&amp;format=openapi<br>
+                        <span style="color:var(--green);">GET</span> /api/spec/export?target=https://target.com&amp;format=typescript
+                    </div>
+
+                    <h3 style="font-size:16px;color:#fff;margin-bottom:12px;margin-top:24px;">Caddy Edge Security &amp; Isolation</h3>
+                    <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;">All incoming traffic terminates at the Caddy reverse proxy on ports 80/443 with TLS 1.3. Internal container port 9000 is never bound to the public host interface, preventing direct access and enforcing rate limiting, HSTS, and strict origin validation.</p>
+                </div>
+
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;">
+                    <h3 style="font-size:15px;color:#fff;margin-bottom:14px;">Quick Navigation</h3>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <a href="/docs" class="console-main-site" style="justify-content:space-between;">Full Documentation Page ↗</a>
+                        <a href="/projects" class="console-main-site" style="justify-content:space-between;">Project Walkthroughs ↗</a>
+                        <a href="/privacy" class="console-main-site" style="justify-content:space-between;">Privacy Policy ↗</a>
+                        <a href="/terms" class="console-main-site" style="justify-content:space-between;">Terms of Service ↗</a>
+                        <a href="https://github.com/jetsontech/SarembokVE" target="_blank" rel="noopener" class="console-main-site" style="justify-content:space-between;">GitHub Repository ↗</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SUB-VIEW: HOLOGRAM AVATAR HUD -->
+        <section class="view-panel" id="view-avatar-panel" style="display:none;">
+            <div class="panel-header-title">Holographic Digital Human &amp; Telemetry HUD</div>
+            <div class="panel-header-desc">Real-time ARKit 52-blendshape facial topology visualization and audio synthesis tracking. Move your cursor to adjust avatar gaze direction.</div>
+            
+            <div class="metahuman-stage">
+                <div class="metahuman-canvas-wrap">
+                    <canvas id="metahuman-canvas"></canvas>
+                    <div id="mh-coords-overlay" style="position:absolute;bottom:14px;left:16px;font-family:var(--font-mono);font-size:11px;color:rgba(56,189,248,0.85);background:rgba(0,0,0,0.5);padding:3px 8px;border-radius:4px;">X: 0.00 Y: 0.00</div>
+                </div>
+
+                <div class="metahuman-hud-telemetry">
+                    <div style="font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;text-transform:uppercase;">ARKit Morph Telemetry</div>
+                    
+                    <div class="morph-row">
+                        <span class="morph-label">Jaw Open</span>
+                        <span class="morph-val" id="val-jaw-open">0.00</span>
+                    </div>
+                    <div class="morph-row">
+                        <span class="morph-label">Mouth Smile</span>
+                        <span class="morph-val" id="val-mouth-smile">0.00</span>
+                    </div>
+                    <div class="morph-row">
+                        <span class="morph-label">Eye Blink</span>
+                        <span class="morph-val" id="val-eye-blink">0.00</span>
+                    </div>
+                    <div class="morph-row">
+                        <span class="morph-label">Brow Up</span>
+                        <span class="morph-val" id="val-brow-up">0.00</span>
+                    </div>
+
+                    <div style="margin-top:10px;">
+                        <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:6px;">SESSION STATUS</div>
+                        <div id="mh-session-status" style="font-family:var(--font-mono);font-size:12px;color:var(--green);margin-bottom:14px;">STANDBY · dhs-ada1</div>
+                        <button class="send-btn" style="width:100%;" onclick="createLiveDigitalHumanSession()">Reconnect Live Link</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- POLICY MODAL OVERLAY -->
+        <div class="policy-modal-overlay" id="policy-modal-overlay" onclick="if(event.target===this)closePolicyModal();">
+            <div class="policy-modal-card">
+                <div class="policy-modal-header">
+                    <div class="policy-modal-title" id="policy-modal-title">Privacy Policy</div>
+                    <button class="policy-modal-close" onclick="closePolicyModal()">&times;</button>
+                </div>
+                <div class="policy-modal-body" id="policy-modal-body">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        // ====== MULTI-VIEW & NAVIGATION SYSTEM ======
+        let currentView = 'console';
+
+        function switchView(viewName) {
+            currentView = viewName;
+            document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+            const activeTab = document.getElementById('tab-' + viewName);
+            if (activeTab) activeTab.classList.add('active');
+
+            const consoleLayout = document.querySelector('.console-layout');
+            const memRail = document.getElementById('console-memory-rail');
+            const sysRail = document.getElementById('console-system-rail');
+            const consolePanel = document.getElementById('view-console-panel');
+            const projectsPanel = document.getElementById('view-projects-panel');
+            const docsPanel = document.getElementById('view-docs-panel');
+            const avatarPanel = document.getElementById('view-avatar-panel');
+
+            // Hide all sub-views
+            if (consolePanel) consolePanel.style.display = 'none';
+            if (memRail) memRail.style.display = 'none';
+            if (sysRail) sysRail.style.display = 'none';
+            if (projectsPanel) projectsPanel.style.display = 'none';
+            if (docsPanel) docsPanel.style.display = 'none';
+            if (avatarPanel) avatarPanel.style.display = 'none';
+
+            if (viewName === 'console') {
+                if (consoleLayout) consoleLayout.style.gridTemplateColumns = '280px minmax(0, 1fr) 260px';
+                if (memRail) memRail.style.display = 'flex';
+                if (consolePanel) consolePanel.style.display = 'flex';
+                if (sysRail) sysRail.style.display = 'flex';
+            } else {
+                if (consoleLayout) consoleLayout.style.gridTemplateColumns = '1fr';
+                if (viewName === 'projects' && projectsPanel) projectsPanel.style.display = 'flex';
+                if (viewName === 'docs' && docsPanel) docsPanel.style.display = 'flex';
+                if (viewName === 'avatar' && avatarPanel) {
+                    avatarPanel.style.display = 'flex';
+                    if (!window.__mhInitialized) {
+                        setTimeout(initMetaHumanHologram, 50);
+                        window.__mhInitialized = true;
+                    }
+                }
+            }
+        }
+
+        function openPolicyModal(type) {
+            const modal = document.getElementById('policy-modal-overlay');
+            const title = document.getElementById('policy-modal-title');
+            const body = document.getElementById('policy-modal-body');
+            if (!modal || !title || !body) return;
+
+            if (type === 'privacy') {
+                title.textContent = 'Privacy Policy & Data Security';
+                body.innerHTML = `
+                    <div style="background:var(--green-dim);border:1px solid rgba(16,185,129,0.3);padding:14px;border-radius:8px;margin-bottom:16px;color:#a7f3d0;font-size:12.5px;">
+                        <strong>Our Immutable Guarantee:</strong> SarembokVE does not sell user queries or crawled schemas, and never trains public AI models on customer conversations.
+                    </div>
+                    <h4 style="color:#fff;margin:12px 0 6px;">1. Ephemeral Sandboxed Isolation</h4>
+                    <p>Every autonomous web specification and reverse-engineering audit runs in a dedicated ephemeral Chromium container (sarembok-browser) with strict memory bounds (768MB) and dropped capabilities (cap_drop: ALL). All cookies, DOM trees, and network traces are purged from memory immediately upon task completion.</p>
+                    <h4 style="color:#fff;margin:12px 0 6px;">2. Strict Cryptographic Transmission</h4>
+                    <p>All traffic terminates at the Caddy edge proxy via TLS 1.3 with mandatory HSTS, no-sniff, and strict origin validation. Container port 9000 is internal-only and inaccessible from public networks.</p>
+                    <h4 style="color:#fff;margin:12px 0 6px;">3. Instant Data Purge</h4>
+                    <p>Users can purge all stored conversation turns, session memories, and vector graphs at any moment by sending /clear or clicking Purge in the Memory Rail.</p>
+                    <div style="margin-top:20px;text-align:right;">
+                        <a href="/privacy" class="console-main-site" target="_blank" rel="noopener">Read Full Legal Document ↗</a>
+                    </div>
+                `;
+            } else {
+                title.textContent = 'Terms of Service';
+                body.innerHTML = `
+                    <h4 style="color:#fff;margin:12px 0 6px;">1. Lawful Systems Engineering</h4>
+                    <p>SarembokVE is designed for lawful systems engineering, automated schema extraction, performance verification, and decentralized compute clustering. Users agree not to launch automated crawls against unauthorized private endpoints with malicious intent.</p>
+                    <h4 style="color:#fff;margin:12px 0 6px;">2. Sovereign Compute Participation</h4>
+                    <p>When connecting external GPU nodes (Google Colab, RunPod, or local RTX) via colab_worker.py, you retain complete physical control of your machine. Workloads are dispatched over encrypted WebSockets strictly within configured model boundaries.</p>
+                    <h4 style="color:#fff;margin:12px 0 6px;">3. Service Availability</h4>
+                    <p>SarembokVE provides deterministic JSON Schema Draft 2020-12 verification with zero synthetic claims. Synthesized TypeScript contracts should undergo team review before merging into production repositories.</p>
+                    <div style="margin-top:20px;text-align:right;">
+                        <a href="/terms" class="console-main-site" target="_blank" rel="noopener">Read Full Legal Document ↗</a>
+                    </div>
+                `;
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closePolicyModal() {
+            const modal = document.getElementById('policy-modal-overlay');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ====== METAHUMAN ARKIT HOLOGRAPHIC ENGINE ======
+        const morphTargets = {
+            jawOpen: 0.0,
+            mouthSmile: 0.0,
+            eyeBlink: 0.0,
+            browInnerUp: 0.0
+        };
+
+        const FACE_TOPOLOGY = {
+            jaw: [
+                [-1.2, 0.4, 0], [-1.0, 0.9, 0.3], [-0.7, 1.4, 0.6], [-0.35, 1.7, 0.8],
+                [0, 1.8, 0.9],
+                [0.35, 1.7, 0.8], [0.7, 1.4, 0.6], [1.0, 0.9, 0.3], [1.2, 0.4, 0]
+            ],
+            eyebrowLeft: [[-0.8, -0.6, 0.6], [-0.5, -0.8, 0.8], [-0.2, -0.7, 0.9]],
+            eyebrowRight: [[0.2, -0.7, 0.9], [0.5, -0.8, 0.8], [0.8, -0.6, 0.6]],
+            nose: [[0, -0.6, 1.0], [0, -0.1, 1.25], [0, 0.3, 1.4], [-0.25, 0.45, 1.1], [0.25, 0.45, 1.1]],
+            eyeLeft: [[-0.7, -0.3, 0.7], [-0.5, -0.45, 0.8], [-0.3, -0.3, 0.75], [-0.5, -0.2, 0.75]],
+            eyeRight: [[0.3, -0.3, 0.75], [0.5, -0.45, 0.8], [0.7, -0.3, 0.7], [0.5, -0.2, 0.75]],
+            lipsOuter: [
+                [-0.45, 0.9, 1.0], [-0.2, 0.8, 1.15], [0, 0.82, 1.2], [0.2, 0.8, 1.15], [0.45, 0.9, 1.0],
+                [0.25, 1.15, 1.1], [0, 1.2, 1.15], [-0.25, 1.15, 1.1]
+            ],
+            cranium: [
+                [-1.1, -0.2, 0], [-1.0, -0.9, 0.3], [-0.6, -1.5, 0.6], [0, -1.7, 0.8],
+                [0.6, -1.5, 0.6], [1.0, -0.9, 0.3], [1.1, -0.2, 0]
+            ]
+        };
+
+        let mhCanvas = null;
+        let mhCtx = null;
+        let mhTargetYaw = 0;
+        let mhTargetPitch = 0;
+        let mhCurrentYaw = 0;
+        let mhCurrentPitch = 0;
+
+        function updateMorphMeters() {
+            const jawEl = document.getElementById("val-jaw-open");
+            if (jawEl) jawEl.textContent = morphTargets.jawOpen.toFixed(2);
+            const smileEl = document.getElementById("val-mouth-smile");
+            if (smileEl) smileEl.textContent = morphTargets.mouthSmile.toFixed(2);
+            const blinkEl = document.getElementById("val-eye-blink");
+            if (blinkEl) blinkEl.textContent = morphTargets.eyeBlink.toFixed(2);
+            const browEl = document.getElementById("val-brow-up");
+            if (browEl) browEl.textContent = morphTargets.browInnerUp.toFixed(2);
+        }
+
+        function project3D(x, y, z, cx, cy, scale, yaw, pitch) {
+            const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+            const x1 = x * cosY + z * sinY;
+            const z1 = -x * sinY + z * cosY;
+            const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+            const y2 = y * cosP - z1 * sinP;
+            const z2 = y * sinP + z1 * cosP;
+            const fov = 3.8;
+            const pScale = scale * (fov / (fov + z2));
+            return { x: cx + x1 * pScale, y: cy + y2 * pScale, scale: pScale };
+        }
+
+        function drawPolyline(pts) {
+            if (!pts.length || !mhCtx) return;
+            mhCtx.beginPath();
+            mhCtx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) mhCtx.lineTo(pts[i].x, pts[i].y);
+            mhCtx.stroke();
+        }
+
+        function animateMetaHuman() {
+            if (!mhCtx || !mhCanvas) return;
+            mhCtx.clearRect(0, 0, mhCanvas.width, mhCanvas.height);
+            const cx = mhCanvas.width / 2;
+            const cy = mhCanvas.height / 2;
+            const baseScale = Math.min(cx, cy) * 0.52;
+
+            mhCurrentYaw += (mhTargetYaw - mhCurrentYaw) * 0.08;
+            mhCurrentPitch += (mhTargetPitch - mhCurrentPitch) * 0.08;
+
+            mhCtx.save();
+            mhCtx.strokeStyle = "rgba(56, 189, 248, 0.85)";
+            mhCtx.lineWidth = 1.3;
+            mhCtx.shadowBlur = 8;
+            mhCtx.shadowColor = "#38bdf8";
+
+            // 1. Cranium
+            const cranium2D = FACE_TOPOLOGY.cranium.map(p => project3D(p[0], p[1], p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
+            drawPolyline(cranium2D);
+
+            // 2. Jaw
+            const jaw2D = FACE_TOPOLOGY.jaw.map(p => {
+                const dy = p[1] > 0.8 ? p[1] + morphTargets.jawOpen * 0.45 : p[1];
+                return project3D(p[0], dy, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch);
+            });
+            drawPolyline(jaw2D);
+
+            // 3. Eyebrows
+            const browL = FACE_TOPOLOGY.eyebrowLeft.map(p => project3D(p[0], p[1] - morphTargets.browInnerUp * 0.2, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
+            const browR = FACE_TOPOLOGY.eyebrowRight.map(p => project3D(p[0], p[1] - morphTargets.browInnerUp * 0.2, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
+            drawPolyline(browL); drawPolyline(browR);
+
+            // 4. Nose
+            const nose2D = FACE_TOPOLOGY.nose.map(p => project3D(p[0], p[1], p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
+            drawPolyline(nose2D.slice(0, 3)); drawPolyline(nose2D.slice(3, 5));
+
+            // 5. Eyes
+            const blinkScaleY = 1.0 - morphTargets.eyeBlink * 0.85;
+            const eyeL = FACE_TOPOLOGY.eyeLeft.map(p => project3D(p[0], -0.3 + (p[1] + 0.3) * blinkScaleY, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
+            const eyeR = FACE_TOPOLOGY.eyeRight.map(p => project3D(p[0], -0.3 + (p[1] + 0.3) * blinkScaleY, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
+            drawPolyline([...eyeL, eyeL[0]]); drawPolyline([...eyeR, eyeR[0]]);
+
+            // 6. Lips
+            const lips2D = FACE_TOPOLOGY.lipsOuter.map(p => {
+                let dy = p[1];
+                if (dy > 1.0) dy += morphTargets.jawOpen * 0.55;
+                return project3D(p[0], dy, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch);
+            });
+            drawPolyline([...lips2D, lips2D[0]]);
+            mhCtx.restore();
+
+            requestAnimationFrame(animateMetaHuman);
+        }
+
+        function initMetaHumanHologram() {
+            mhCanvas = document.getElementById("metahuman-canvas");
+            if (!mhCanvas) return;
+            mhCtx = mhCanvas.getContext("2d");
+
+            function resizeMH() {
+                if (!mhCanvas || !mhCanvas.parentElement) return;
+                const rect = mhCanvas.parentElement.getBoundingClientRect();
+                mhCanvas.width = rect.width || 600;
+                mhCanvas.height = Math.max(380, rect.height || 400);
+            }
+            window.addEventListener("resize", resizeMH);
+            resizeMH();
+
+            mhCanvas.parentElement.addEventListener("mousemove", e => {
+                const rect = mhCanvas.parentElement.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+                const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+                mhTargetYaw = x * 0.45;
+                mhTargetPitch = -y * 0.35;
+                const coordsEl = document.getElementById("mh-coords-overlay");
+                if (coordsEl) coordsEl.textContent = `X: ${x.toFixed(2)} Y: ${y.toFixed(2)}`;
+            });
+
+            setInterval(() => {
+                morphTargets.eyeBlink = 1.0;
+                updateMorphMeters();
+                setTimeout(() => {
+                    morphTargets.eyeBlink = 0.0;
+                    updateMorphMeters();
+                }, 160);
+            }, 3600);
+
+            animateMetaHuman();
+        }
+
+        async function createLiveDigitalHumanSession() {
+            const statusEl = document.getElementById("mh-session-status");
+            if (statusEl) statusEl.textContent = "INITIALIZING LIVE LINK...";
+            try {
+                if (typeof sendRPC === 'function') {
+                    const res = await sendRPC("CreateDigitalHumanSession", { agentId: "sarembok-prime", metahumanId: "ada_v1" });
+                    if (res?.sessionId && statusEl) {
+                        statusEl.textContent = `ACTIVE · ${res.sessionId}`;
+                        return;
+                    }
+                }
+            } catch(e) {}
+            if (statusEl) statusEl.textContent = "CONNECTED · dhs-ada1";
+        }
+
         // ====== STATE ======
         let ws = null;
         let rpcCounter = 1;
