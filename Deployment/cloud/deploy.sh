@@ -80,22 +80,25 @@ sleep 15
 # 6. Post-deployment live smoke verification
 printf '\n[6/6] Verifying live services...\n'
 python3 - <<'PY'
-import json, sys, urllib.request, urllib.error
+import json, os, ssl, sys, urllib.request, urllib.error
 
-base = "http://127.0.0.1:9000"
+host = os.environ.get("SAREMBOK_PUBLIC_HOST", os.environ.get("SAREMBOK_SITE_ADDRESS", "sarembok.com"))
+base = f"https://{host}"
+ctx = ssl.create_default_context()
 
 # Verify /health
 try:
-    with urllib.request.urlopen(f"{base}/health", timeout=5) as resp:
-        data = json.loads(resp.read().decode())
-        print(f"  [PASS] Runtime Health: {data.get('status', 'OK')}")
+    h_req = urllib.request.Request(f"{base}/health", headers={"User-Agent": "SarembokDeployer/1.0"})
+    with urllib.request.urlopen(h_req, timeout=10, context=ctx) as resp:
+        body = resp.read().decode().strip()
+        print(f"  [PASS] Edge & Runtime Health: {body}")
 except Exception as exc:
     print(f"  [WARN] /health check: {exc}")
 
 # Verify /session
 try:
     req = urllib.request.Request(f"{base}/session", headers={"User-Agent": "SarembokDeployer/1.0"})
-    with urllib.request.urlopen(req, timeout=5) as resp:
+    with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
         sdata = json.loads(resp.read().decode())
         token = sdata.get("sessionToken")
         if token:
@@ -104,6 +107,18 @@ try:
             print("  [WARN] /session returned no sessionToken")
 except Exception as exc:
     print(f"  [WARN] /session check: {exc}")
+
+# Verify /api/spec
+try:
+    spec_req = urllib.request.Request(f"{base}/api/spec?target=https://httpbin.org", headers={"User-Agent": "SarembokDeployer/1.0"})
+    with urllib.request.urlopen(spec_req, timeout=15, context=ctx) as resp:
+        spec_data = json.loads(resp.read().decode())
+        if spec_data.get("verified"):
+            print(f"  [PASS] Headless Specification CI/CD API: Verified in {spec_data.get('latencyMs', 0):.0f}ms")
+        else:
+            print(f"  [WARN] /api/spec returned unverified payload")
+except Exception as exc:
+    print(f"  [WARN] /api/spec check: {exc}")
 
 PY
 
