@@ -3376,8 +3376,8 @@
         }
 
         function renderResearchDeck(text) {
-            if (!text.includes("LIVE PEER-REVIEWED & PREPRINT RESEARCH")) return null;
-            const paperPat = /-\s*\*\*\[(\d{4}-\d{2}-\d{2})\]\s*([^*]+)\*\*\s*(?:\n|\s)*\*Authors:\*\s*([^|]+)\|\s*\*Link:\*\s*\[([^\]]+)\]\(([^)]+)\)\s*(?:\n|\s)*\*Summary:\*\s*([\s\S]+?)(?=(?:-\s*\*\*\[|\n\n###|\n\n---|$))/gi;
+            if (!text.includes("LIVE PEER-REVIEWED & PREPRINT RESEARCH") && !text.includes("arxiv.org") && !text.includes("arXiv:")) return null;
+            const paperPat = /-\s*\*?\[?(\d{4}-\d{2}-\d{2})\]?\*?\s*([^\n\r*]+)\*?\s*(?:\n|\s)*\*Authors:\*\s*([^|]+)\|\s*\*Link:\*\s*\[([^\]]+)\]\(([^)]+)\)\s*(?:\n|\s)*\*Summary:\*\s*([\s\S]+?)(?=(?:-\s*\*?\[?\d{4}-\d{2}-\d{2}|\n\n###|\n\n---|$))/gi;
             
             let match;
             const papers = [];
@@ -3580,7 +3580,8 @@
             // 4. Real-Time ArXiv Research Literature Deck
             const researchDeck = renderResearchDeck(remainder);
             if (researchDeck) {
-                remainder = remainder.replace(/###\s*🔬\s*\[LIVE PEER-REVIEWED & PREPRINT RESEARCH[\s\S]+?(?=\n\n###|\n\n---|$)/i, "").trim();
+                remainder = remainder.replace(/###\s*🔬\s*\[LIVE PEER-REVIEWED & PREPRINT RESEARCH[\s\S]+?(?=\n\n###|\n\n---|$)/i, "")
+                                     .replace(/-\s*\*?\[?\d{4}-\d{2}-\d{2}[\s\S]+?(?=\n\n###|\n\n---|$)/i, "").trim();
                 html += researchDeck;
             }
 
