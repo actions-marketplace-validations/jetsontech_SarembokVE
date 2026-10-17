@@ -337,7 +337,7 @@ class ProviderRouter:
             return True
         if requested_model:
             rm = requested_model.strip().lower()
-            if rm in ('local', 'local-only', 'local_only') or rm.startswith(('local/', 'ollama/')) or rm in ('gemma2:2b', 'qwen2.5:3b', 'gemma-2-2b', 'qwen-2.5-3b'):
+            if rm in ('local', 'local-only', 'local_only') or rm.startswith(('local/', 'ollama/')):
                 return True
         return False
 
