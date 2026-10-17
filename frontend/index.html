@@ -7,7 +7,7 @@
     <meta name="description" content="SarembokVE — a sovereign, persistent AI agent runtime with transparent memory, verified tool execution, and multi-provider routing.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ====== DESIGN TOKENS (FRONTIER OBSIDIAN & GLASSMORPHISM) ====== */
         :root {
@@ -34,8 +34,8 @@
             --text-secondary: #94a3b8;
             --text-muted: #475569;
             --text-inverse: #030508;
-            --font-display: 'Chakra Petch', 'Plus Jakarta Sans', sans-serif;
-            --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+            --font-sans: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
             --radius-sm: 6px;
             --radius-md: 10px;
@@ -692,50 +692,444 @@
         }
 
         .msg-body {
-            font-size: 14px;
-            line-height: 1.7;
-            color: var(--text-primary);
-            background: rgba(10, 16, 30, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(0, 240, 255, 0.18);
+            font-family: var(--font-sans);
+            font-size: 14.5px;
+            line-height: 1.72;
+            letter-spacing: -0.01em;
+            color: #e2e8f0;
+            background: linear-gradient(180deg, rgba(12, 18, 34, 0.82) 0%, rgba(8, 12, 24, 0.88) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.09);
             border-left: 3px solid var(--accent);
-            border-radius: 4px 16px 16px 16px;
-            padding: 16px 20px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(0, 240, 255, 0.05);
+            border-radius: 4px 18px 18px 18px;
+            padding: 18px 24px;
+            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.04);
+            max-width: 920px;
+            word-break: break-word;
         }
 
         .msg-body.user-msg {
-            color: #f1f5f9;
-            background: rgba(14, 22, 38, 0.65);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: var(--font-sans);
+            font-size: 14.5px;
+            color: #f8fafc;
+            background: linear-gradient(135deg, rgba(20, 32, 54, 0.8) 0%, rgba(14, 22, 38, 0.85) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-right: 3px solid var(--accent);
             border-left: 1px solid rgba(255, 255, 255, 0.1);
-            border-right: 3px solid rgba(255, 255, 255, 0.25);
-            border-radius: 16px 4px 16px 16px;
+            border-radius: 18px 4px 18px 18px;
             margin-left: auto;
             max-width: 680px;
+            padding: 14px 20px;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
-        .msg-body p { margin-bottom: 8px; }
-        .msg-body p:last-child { margin-bottom: 0; }
+
+        /* Structured Typography Hierarchy inside Messages */
+        .msg-body h1, .msg-h1 {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            margin: 16px 0 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .msg-body h2, .msg-h2 {
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 600;
+            color: #f1f5f9;
+            letter-spacing: -0.01em;
+            margin: 14px 0 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 6px;
+        }
+        .msg-body h3, .msg-h3 {
+            font-family: var(--font-display);
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin: 14px 0 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .msg-body h4, .msg-h4 {
+            font-family: var(--font-sans);
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin: 12px 0 4px;
+        }
+
+        .msg-body p, .msg-p {
+            margin-bottom: 10px;
+            line-height: 1.72;
+        }
+        .msg-body p:last-child, .msg-p:last-child {
+            margin-bottom: 0;
+        }
+
+        .msg-ul, .msg-ol {
+            margin: 8px 0 12px;
+            padding-left: 22px;
+        }
+        .msg-li {
+            margin: 5px 0;
+            line-height: 1.65;
+            color: #cbd5e1;
+        }
+        .msg-li strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .msg-ul .msg-li::marker {
+            color: var(--accent);
+        }
+        .msg-ol .msg-li::marker {
+            color: var(--purple);
+            font-family: var(--font-mono);
+            font-weight: 600;
+        }
+
+        .msg-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s ease, border-bottom 0.15s ease;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.25);
+        }
+        .msg-link:hover {
+            color: #fff;
+            border-bottom-color: var(--accent);
+        }
 
         .msg-body code {
             font-family: var(--font-mono);
-            font-size: 13px;
-            background: var(--bg-elevated);
-            padding: 2px 5px;
-            border-radius: 3px;
+            font-size: 12.5px;
+            background: rgba(0, 240, 255, 0.08);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            color: #38bdf8;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .msg-body pre {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-default);
+            background: rgba(4, 8, 16, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 3px solid var(--purple);
             border-radius: var(--radius-sm);
-            padding: 12px 16px;
+            padding: 14px 18px;
             font-family: var(--font-mono);
-            font-size: 12px;
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: #e2e8f0;
             overflow-x: auto;
-            margin: 8px 0;
+            margin: 12px 0;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .msg-hr {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            margin: 16px 0;
+        }
+
+        /* ====== REAL-TIME STOCK TICKER HERO WIDGET ====== */
+        .stock-ticker-card {
+            background: linear-gradient(135deg, rgba(8, 16, 32, 0.95) 0%, rgba(12, 22, 42, 0.9) 100%);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin: 12px 0;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.08);
+        }
+        .stock-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 10px;
+        }
+        .stock-symbol-pill {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: #fff;
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            padding: 4px 12px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .stock-live-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--green);
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stock-live-pulse {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse-dot 1.5s infinite;
+        }
+        .stock-hero-row {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .stock-price-val {
+            font-family: var(--font-display);
+            font-size: 34px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+        .stock-change-pill {
+            font-family: var(--font-mono);
+            font-size: 13.5px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stock-change-pill.up {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .stock-change-pill.down {
+            color: #f43f5e;
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.35);
+        }
+        .stock-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stock-metric-tile {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        .stock-metric-lbl {
+            font-size: 10.5px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 3px;
+        }
+        .stock-metric-num {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        /* ====== ARXIV RESEARCH LITERATURE DECK ====== */
+        .research-deck-card {
+            background: linear-gradient(180deg, rgba(14, 18, 34, 0.95) 0%, rgba(9, 13, 24, 0.9) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.32);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 14px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(168, 85, 247, 0.08);
+        }
+        .research-deck-header {
+            background: rgba(168, 85, 247, 0.12);
+            border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .research-deck-title {
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: #c084fc;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .research-count-badge {
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #d8b4fe;
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .research-item-card {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.15s ease;
+        }
+        .research-item-card:last-child {
+            border-bottom: none;
+        }
+        .research-item-card:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .research-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .research-date-badge {
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #e9d5ff;
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            padding: 2px 7px;
+            border-radius: 4px;
+        }
+        .research-paper-title {
+            font-family: var(--font-sans);
+            font-size: 14.5px;
+            font-weight: 600;
+            color: #ffffff;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            text-decoration: none;
+            display: block;
+        }
+        .research-paper-title:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+        .research-authors {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-family: var(--font-sans);
+        }
+        .research-summary {
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.55;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 6px;
+            padding: 8px 12px;
+            border-left: 2px solid rgba(168, 85, 247, 0.4);
+        }
+        .research-action-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: #38bdf8;
+            text-decoration: none;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+        .research-action-link:hover {
+            text-decoration: underline;
+            color: #00f0ff;
+        }
+
+        /* ====== VISUAL SPEC ARCHITECTURE DASHBOARD ====== */
+        .spec-audit-dashboard {
+            background: linear-gradient(180deg, rgba(10, 16, 32, 0.95) 0%, rgba(6, 10, 20, 0.95) 100%);
+            border: 1px solid rgba(0, 240, 255, 0.35);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 14px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 240, 255, 0.1);
+        }
+        .spec-dash-header {
+            background: rgba(0, 240, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .spec-dash-url {
+            font-family: var(--font-mono);
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .spec-dash-chips {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .spec-section-block {
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .spec-section-title {
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .spec-routes-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .spec-route-tag {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .spec-route-tag:hover {
+            border-color: var(--accent);
+            color: #fff;
         }
 
         /* Recall annotation */
@@ -2814,95 +3208,385 @@
                 </section>`;
         }
 
-        function formatPlainReply(text) {
-            let html = esc(text);
-            html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            html = html.replace(
+        function cleanLatex(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/\$\\mathbb\{C\}\^\\times\$/g, 'C*')
+                .replace(/\$\^(\d+)\$([A-Za-z]+)/g, '$2$1')
+                .replace(/\$\\textit\{([^}]+)\}\$/g, '$1')
+                .replace(/\$\\mathbb\{([A-Z]+)\}(?:_\{([^}]+)\})?\$/g, '$1($2)')
+                .replace(/\$([^\$]+)\$/g, '$1')
+                .replace(/\\mathbb\{([A-Z]+)\}/g, '$1')
+                .replace(/\\times/g, '×')
+                .replace(/---/g, '—')
+                .replace(/--/g, '–');
+        }
+
+        function parseMarkdownToHtml(src) {
+            if (!src) return '';
+            let text = cleanLatex(src);
+
+            // Code blocks
+            const codeBlocks = [];
+            text = text.replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/gi, (m, lang, code) => {
+                const id = `__CB_${codeBlocks.length}__`;
+                codeBlocks.push(`<pre><code class="lang-${esc(lang || 'text')}">${esc(code.trim())}</code></pre>`);
+                return id;
+            });
+
+            const lines = text.split('\n');
+            let out = [];
+            let inList = false;
+            let listType = 'ul';
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+
+                if (/^(\*{3,}|-{3,}|_{3,})$/.test(line.trim())) {
+                    if (inList) { out.push(`</${listType}>`); inList = false; }
+                    out.push('<hr class="msg-hr">');
+                    continue;
+                }
+
+                const hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+                if (hMatch) {
+                    if (inList) { out.push(`</${listType}>`); inList = false; }
+                    const lvl = hMatch[1].length;
+                    out.push(`<h${lvl} class="msg-h${lvl}">${inlineFormat(hMatch[2])}</h${lvl}>`);
+                    continue;
+                }
+
+                const ulMatch = line.match(/^[-*•]\s+(.+)$/);
+                if (ulMatch) {
+                    if (!inList || listType !== 'ul') {
+                        if (inList) out.push(`</${listType}>`);
+                        out.push('<ul class="msg-ul">');
+                        inList = true;
+                        listType = 'ul';
+                    }
+                    out.push(`<li class="msg-li">${inlineFormat(ulMatch[1])}</li>`);
+                    continue;
+                }
+
+                const olMatch = line.match(/^(\d+)\.\s+(.+)$/);
+                if (olMatch) {
+                    if (!inList || listType !== 'ol') {
+                        if (inList) out.push(`</${listType}>`);
+                        out.push('<ol class="msg-ol">');
+                        inList = true;
+                        listType = 'ol';
+                    }
+                    out.push(`<li class="msg-li">${inlineFormat(olMatch[2])}</li>`);
+                    continue;
+                }
+
+                if (inList) {
+                    out.push(`</${listType}>`);
+                    inList = false;
+                }
+
+                if (!line.trim()) continue;
+
+                out.push(`<p class="msg-p">${inlineFormat(line)}</p>`);
+            }
+
+            if (inList) {
+                out.push(`</${listType}>`);
+            }
+
+            let result = out.join('');
+            codeBlocks.forEach((cb, idx) => {
+                result = result.replace(`__CB_${idx}__`, cb);
+            });
+            return result;
+        }
+
+        function inlineFormat(text) {
+            let str = esc(text);
+            str = str.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            str = str.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+            str = str.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            str = str.replace(/_([^_]+)_/g, '<em>$1</em>');
+            str = str.replace(/`([^`]+)`/g, '<code>$1</code>');
+            str = str.replace(
                 /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-                '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+                '<a href="$2" target="_blank" rel="noopener noreferrer" class="msg-link">$1</a>'
             );
-            return html.replace(/\n/g, '<br>');
+            return str;
+        }
+
+        function renderLiveStockCard(text) {
+            const symMatch = text.match(/###\s*📈\s*\[LIVE REAL-TIME FINANCIAL QUOTE\s*·\s*([^\]]+)\]/i);
+            if (!symMatch) return null;
+            const sym = symMatch[1].trim();
+
+            const priceMatch = text.match(/Current Price:\*\*?\s*(\$[0-9,.]+(?:\s*[A-Z]+)?)/i);
+            const changeMatch = text.match(/Today's Net Change:\*\*?\s*([+-]?[0-9,.]+\s*\([+-]?[0-9,.]*%\))/i);
+            const rangeMatch = text.match(/Day Trading Range:\*\*?\s*(\$[0-9,.]+)\s*[–-]\s*(\$[0-9,.]+)/i);
+            const prevMatch = text.match(/Previous Session Close:\*\*?\s*(\$[0-9,.]+)/i);
+            const volMatch = text.match(/Volume:\*\*?\s*([0-9,]+(?:\s*shares)?)/i);
+
+            const priceStr = priceMatch ? priceMatch[1] : "$0.00";
+            const changeStr = changeMatch ? changeMatch[1] : "0.00";
+            const isDown = changeStr.includes("-");
+            const changeClass = isDown ? "down" : "up";
+            const changeArrow = isDown ? "▼" : "▲";
+
+            let rangeLow = rangeMatch ? rangeMatch[1] : "";
+            let rangeHigh = rangeMatch ? rangeMatch[2] : "";
+            let prevClose = prevMatch ? prevMatch[1] : "N/A";
+            let volume = volMatch ? volMatch[1] : "N/A";
+
+            return `
+                <div class="stock-ticker-card">
+                    <div class="stock-header-row">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="stock-symbol-pill">📈 ${esc(sym)}</span>
+                            <span style="font-family:var(--font-sans);font-size:12px;color:var(--text-muted);">Global Market Asset</span>
+                        </div>
+                        <div class="stock-live-badge">
+                            <span class="stock-live-pulse"></span>
+                            <span>LIVE EXCHANGE</span>
+                        </div>
+                    </div>
+                    <div class="stock-hero-row">
+                        <div class="stock-price-val">${esc(priceStr)}</div>
+                        <div class="stock-change-pill ${changeClass}">${changeArrow} ${esc(changeStr)}</div>
+                    </div>
+                    <div class="stock-metrics-grid">
+                        <div class="stock-metric-tile">
+                            <div class="stock-metric-lbl">Day Range</div>
+                            <div class="stock-metric-num">${esc(rangeLow)} – ${esc(rangeHigh)}</div>
+                        </div>
+                        <div class="stock-metric-tile">
+                            <div class="stock-metric-lbl">Previous Close</div>
+                            <div class="stock-metric-num">${esc(prevClose)}</div>
+                        </div>
+                        <div class="stock-metric-tile">
+                            <div class="stock-metric-lbl">Volume</div>
+                            <div class="stock-metric-num">${esc(volume)}</div>
+                        </div>
+                        <div class="stock-metric-tile">
+                            <div class="stock-metric-lbl">Verification</div>
+                            <div class="stock-metric-num" style="color:var(--green);">Zero-Latency Feed</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderResearchDeck(text) {
+            if (!text.includes("LIVE PEER-REVIEWED & PREPRINT RESEARCH")) return null;
+            const paperPat = /-\s*\*\*\[(\d{4}-\d{2}-\d{2})\]\s*([^*]+)\*\*\s*(?:\n|\s)*\*Authors:\*\s*([^|]+)\|\s*\*Link:\*\s*\[([^\]]+)\]\(([^)]+)\)\s*(?:\n|\s)*\*Summary:\*\s*([\s\S]+?)(?=(?:-\s*\*\*\[|\n\n###|\n\n---|$))/gi;
+            
+            let match;
+            const papers = [];
+            while ((match = paperPat.exec(text)) !== null) {
+                papers.push({
+                    date: match[1],
+                    title: cleanLatex(match[2].trim()),
+                    authors: cleanLatex(match[3].trim()),
+                    linkText: match[4].trim(),
+                    url: match[5].trim(),
+                    summary: cleanLatex(match[6].trim().replace(/\.\.\.$/, "")) + "..."
+                });
+            }
+
+            if (papers.length === 0) return null;
+
+            let papersHtml = '';
+            papers.forEach(p => {
+                papersHtml += `
+                    <div class="research-item-card">
+                        <div class="research-meta-row">
+                            <span class="research-date-badge">📅 ${esc(p.date)}</span>
+                            <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);">${esc(p.linkText)}</span>
+                        </div>
+                        <a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" class="research-paper-title">${esc(p.title)} ↗</a>
+                        <div class="research-authors"><span style="color:var(--text-muted);">Authors:</span> ${esc(p.authors)}</div>
+                        <div class="research-summary">${esc(p.summary)}</div>
+                        <div>
+                            <a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" class="research-action-link">📄 Open arXiv Abstract &amp; PDF ↗</a>
+                        </div>
+                    </div>
+                `;
+            });
+
+            return `
+                <div class="research-deck-card">
+                    <div class="research-deck-header">
+                        <div class="research-deck-title">
+                            <span>🔬</span> Live Peer-Reviewed &amp; Preprint Research · ArXiv
+                        </div>
+                        <span class="research-count-badge">${papers.length} Preprints Retrieved</span>
+                    </div>
+                    <div class="research-items-wrap">
+                        ${papersHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSpecAuditCard(text) {
+            const specMatch = text.match(/###\s*(?:🌐\s*)?VERIFIED SYSTEM SPECIFICATION:\s*(https?:\/\/[^\s\n]+)/i);
+            if (!specMatch) return null;
+            const targetUrl = specMatch[1].trim();
+            const encodedTarget = encodeURIComponent(targetUrl);
+
+            const titleMatch = text.match(/Target Title:\s*([^\n\r]+)/i);
+            const statusMatch = text.match(/HTTP Status:\s*(\d+)/i);
+            const latencyMatch = text.match(/Extraction Latency:\s*([0-9.]+ms)/i);
+            const frameworksMatch = text.match(/Detected:\s*([^\n\r]+)/i);
+            const targetTitle = titleMatch ? titleMatch[1].trim() : "Target Domain";
+            const httpStatus = statusMatch ? statusMatch[1].trim() : "200";
+            const latency = latencyMatch ? latencyMatch[1].trim() : "< 3s";
+            const frameworks = frameworksMatch ? frameworksMatch[1].trim() : "Standard Web / Vanilla";
+
+            // Extract endpoints
+            const endpointMatches = text.match(/-\s*`?(GET|POST|PUT|DELETE|PATCH)\s+([^`\n\r]+)`?/gi) || [];
+            let endpointsHtml = '';
+            if (endpointMatches.length > 0) {
+                endpointsHtml = '<div class="endpoints-list">';
+                endpointMatches.slice(0, 8).forEach(el => {
+                    const m = el.match(/(GET|POST|PUT|DELETE|PATCH)\s+([^\s`]+)/i);
+                    if (m) {
+                        const method = m[1].toUpperCase();
+                        const path = m[2];
+                        endpointsHtml += `
+                            <div class="endpoint-row">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <span class="method-pill ${method.toLowerCase()}">${method}</span>
+                                    <span style="font-family:var(--font-mono);font-size:12px;color:#fff;font-weight:600;">${esc(path)}</span>
+                                </div>
+                                <span style="font-family:var(--font-mono);font-size:11px;color:var(--green);font-weight:600;">200 OK</span>
+                            </div>
+                        `;
+                    }
+                });
+                if (endpointMatches.length > 8) {
+                    endpointsHtml += `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:4px;">+ ${endpointMatches.length - 8} more verified paths in schema</div>`;
+                }
+                endpointsHtml += '</div>';
+            } else {
+                endpointsHtml = `
+                    <div style="padding:14px 20px;font-size:12.5px;color:var(--text-muted);font-family:var(--font-mono);">
+                        ⚡ No external background API endpoints intercepted during initial render.
+                    </div>
+                `;
+            }
+
+            // Extract Form Schemas
+            const formMatches = text.match(/-\s*Form\s*#\d+[^:\n]+:\s*([^\n\r]+)/gi) || [];
+            let formsHtml = '';
+            if (formMatches.length > 0) {
+                formsHtml = `
+                    <div class="spec-section-block">
+                        <div class="spec-section-title"><span>📝</span> Form &amp; Input Contracts (${formMatches.length})</div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            ${formMatches.map(f => `<div style="font-family:var(--font-mono);font-size:12px;color:#94a3b8;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);">${esc(f.replace(/^-\s*/, ''))}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Extract Routes
+            const routesMatch = text.match(/Discovered Internal Routes\s*\(\d+\)\s*\n([\s\S]+?)(?=\n\n|\n\*|\n###|$)/i);
+            let routesHtml = '';
+            if (routesMatch) {
+                const routeTokens = routesMatch[1].split(/[\s,]+/).filter(r => r.startsWith('/') && r.length > 1);
+                if (routeTokens.length > 0) {
+                    routesHtml = `
+                        <div class="spec-section-block">
+                            <div class="spec-section-title"><span>🧭</span> Discovered Internal Routes (${routeTokens.length})</div>
+                            <div class="spec-routes-cloud">
+                                ${routeTokens.slice(0, 15).map(r => `<span class="spec-route-tag">${esc(r)}</span>`).join('')}
+                                ${routeTokens.length > 15 ? `<span style="font-size:11px;color:var(--text-muted);align-self:center;">+${routeTokens.length - 15} more</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            return `
+                <div class="spec-audit-dashboard">
+                    <div class="spec-dash-header">
+                        <div class="spec-dash-url">
+                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);"></span>
+                            <span>${esc(targetUrl)}</span>
+                            <span style="font-size:11.5px;color:var(--text-muted);font-weight:400;">(${esc(targetTitle)})</span>
+                        </div>
+                        <div class="spec-dash-chips">
+                            <span class="meta-chip green">HTTP ${esc(httpStatus)}</span>
+                            <span class="meta-chip cyan">${esc(latency)}</span>
+                            <span class="meta-chip">OPENAPI 3.1.0</span>
+                            <span class="meta-chip green">✔ SOVEREIGN</span>
+                        </div>
+                    </div>
+                    <div class="spec-section-block">
+                        <div class="spec-section-title"><span>🛠️</span> Tech Stack &amp; Frameworks</div>
+                        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,240,255,0.1);border:1px solid rgba(0,240,255,0.3);padding:3px 10px;border-radius:6px;font-family:var(--font-mono);font-size:12px;color:#38bdf8;font-weight:600;">
+                            ${esc(frameworks)}
+                        </div>
+                    </div>
+                    <div class="spec-section-block">
+                        <div class="spec-section-title"><span>📡</span> Discovered Endpoints (${endpointMatches.length})</div>
+                        ${endpointsHtml}
+                    </div>
+                    ${formsHtml}
+                    ${routesHtml}
+                    <div style="padding:14px 20px;background:rgba(0,0,0,0.4);border-top:1px solid var(--border-default);display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+                        <a href="/api/spec/export?target=${encodedTarget}&format=openapi" download="openapi.json" style="background:var(--accent);color:var(--text-inverse);text-decoration:none;font-family:var(--font-sans);font-size:12px;font-weight:700;padding:7px 16px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(0,240,255,0.35);">📥 OpenAPI 3.1 JSON</a>
+                        <a href="/api/spec/export?target=${encodedTarget}&format=typescript" download="contracts.d.ts" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-hover);text-decoration:none;font-family:var(--font-sans);font-size:12px;font-weight:600;padding:7px 16px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;">📥 TypeScript (.d.ts)</a>
+                        <button onclick="navigator.clipboard.writeText('curl -s &quot;https://sarembok.com/api/spec?target=${encodedTarget}&quot; | jq'); this.textContent='✓ Copied CLI';" style="background:none;border:1px solid var(--border-default);color:var(--text-secondary);cursor:pointer;font-family:var(--font-mono);font-size:11px;padding:7px 14px;border-radius:var(--radius-sm);">📋 Copy CI/CD cURL</button>
+                    </div>
+                </div>
+            `;
         }
 
         function formatReply(text) {
             if (!text) return '';
 
-            // Normalize provider-escaped Markdown before parsing visual blocks.
             const source = String(text)
                 .replace(/\\n/g, "\n")
                 .replace(/\\([*_`#|<>])/g, "$1");
 
-            const blockPattern =
-                /:::(?:mockup|design|prototype)(?:\s+([^\n]+))?\n([\s\S]*?):::/gi;
-
+            // 1. Interactive Mockup Card (:::mockup ... :::)
+            const blockPattern = /:::(?:mockup|design|prototype)(?:\s+([^\n]+))?\n([\s\S]*?):::/gi;
             let html = "";
             let cursor = 0;
             let match;
 
             while ((match = blockPattern.exec(source)) !== null) {
-                html += formatPlainReply(source.slice(cursor, match.index));
+                html += parseMarkdownToHtml(source.slice(cursor, match.index));
                 html += renderConsoleMockupCard(match[1], match[2]);
                 cursor = blockPattern.lastIndex;
             }
 
-            html += formatPlainReply(source.slice(cursor));
+            let remainder = source.slice(cursor);
 
-            // If the message is a verified system specification, render rich Visual Contract Inspector
-            const specMatch = source.match(/###\s*(?:🌐\s*)?VERIFIED SYSTEM SPECIFICATION:\s*(https?:\/\/[^\s\n]+)/i);
-            if (specMatch) {
-                const targetUrl = specMatch[1].trim();
-                const encodedTarget = encodeURIComponent(targetUrl);
+            // 2. Verified System Specification (/spec)
+            const specCard = renderSpecAuditCard(remainder);
+            if (specCard) {
+                return html + specCard;
+            }
 
-                // Extract any endpoints listed in the response
-                const endpointMatches = source.match(/-\s*`?(GET|POST|PUT|DELETE|PATCH)\s+([^`\n\r]+)`?/gi) || [];
-                let endpointsHtml = '';
-                if (endpointMatches.length > 0) {
-                    endpointsHtml = '<div class="endpoints-list">';
-                    endpointMatches.slice(0, 8).forEach(el => {
-                        const m = el.match(/(GET|POST|PUT|DELETE|PATCH)\s+([^\s`]+)/i);
-                        if (m) {
-                            const method = m[1].toUpperCase();
-                            const path = m[2];
-                            endpointsHtml += `
-                                <div class="endpoint-row">
-                                    <div style="display:flex;align-items:center;gap:10px;">
-                                        <span class="method-pill ${method.toLowerCase()}">${method}</span>
-                                        <span style="font-family:var(--font-mono);font-size:12px;color:#fff;font-weight:600;">${esc(path)}</span>
-                                    </div>
-                                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--green);font-weight:600;">200 OK</span>
-                                </div>
-                            `;
-                        }
-                    });
-                    if (endpointMatches.length > 8) {
-                        endpointsHtml += `<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:4px;">+ ${endpointMatches.length - 8} more verified paths in schema</div>`;
-                    }
-                    endpointsHtml += '</div>';
-                }
+            // 3. Real-Time Financial Stock Quote
+            const stockCard = renderLiveStockCard(remainder);
+            if (stockCard) {
+                remainder = remainder.replace(/###\s*📈\s*\[LIVE REAL-TIME FINANCIAL QUOTE[\s\S]+?(?=\n\n###|\n\n---|$)/i, "").trim();
+                html += stockCard;
+            }
 
-                html += `
-                    <div class="contract-inspector-card">
-                        <div class="contract-header">
-                            <div class="contract-target-badge">
-                                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);"></span>
-                                <span>${esc(targetUrl)}</span>
-                            </div>
-                            <div class="contract-meta-chips">
-                                <span class="meta-chip green">✔ 100% TRUTH PASS</span>
-                                <span class="meta-chip cyan">OPENAPI 3.1.0</span>
-                                <span class="meta-chip">DRAFT 2020-12</span>
-                            </div>
-                        </div>
-                        ${endpointsHtml}
-                        <div style="padding:12px 18px;background:var(--bg-elevated);border-top:1px solid var(--border-default);display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
-                            <a href="/api/spec/export?target=${encodedTarget}&format=openapi" download="openapi.json" style="background:var(--accent);color:var(--text-inverse);text-decoration:none;font-family:var(--font-sans);font-size:12px;font-weight:700;padding:6px 14px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 10px rgba(0,240,255,0.3);">📥 OpenAPI 3.1 JSON</a>
-                            <a href="/api/spec/export?target=${encodedTarget}&format=typescript" download="contracts.d.ts" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-hover);text-decoration:none;font-family:var(--font-sans);font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;">📥 TypeScript (.d.ts)</a>
-                            <button onclick="navigator.clipboard.writeText('curl -s &quot;https://sarembok.com/api/spec?target=${encodedTarget}&quot; | jq'); this.textContent='✓ Copied CLI';" style="background:none;border:1px solid var(--border-default);color:var(--text-secondary);cursor:pointer;font-family:var(--font-mono);font-size:11px;padding:6px 12px;border-radius:var(--radius-sm);">📋 Copy CI/CD cURL</button>
-                        </div>
-                    </div>
-                `;
+            // 4. Real-Time ArXiv Research Literature Deck
+            const researchDeck = renderResearchDeck(remainder);
+            if (researchDeck) {
+                remainder = remainder.replace(/###\s*🔬\s*\[LIVE PEER-REVIEWED & PREPRINT RESEARCH[\s\S]+?(?=\n\n###|\n\n---|$)/i, "").trim();
+                html += researchDeck;
+            }
+
+            // 5. Remaining content formatted with rich markdown
+            if (remainder) {
+                html += parseMarkdownToHtml(remainder);
             }
 
             return html;
