@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import concurrent.futures
 import hashlib
 import html as _html
 import hmac as _hmac
@@ -381,6 +382,8 @@ def _is_fast_conversational_turn(prompt: str, image_frame: str | None = None, ad
         return False
     text = (prompt or "").strip().lower()
     if not text or len(text) > 400:
+        return False
+    if _is_realtime_query(text):
         return False
     return not any(marker in text for marker in FAST_LANE_BLOCKERS)
 
@@ -1498,54 +1501,237 @@ def fetch_web_search(query: str, max_results: int = 5) -> dict[str, Any]:
     }
 
 
+def fetch_live_stock_quote(query: str) -> str | None:
+    """Fetch live real-time market quote from Yahoo Finance v8 chart API."""
+    q_low = str(query or "").lower().strip()
+    ticker_map = {
+        "tesla": "TSLA", "tsla": "TSLA",
+        "apple": "AAPL", "aapl": "AAPL",
+        "nvidia": "NVDA", "nvda": "NVDA",
+        "microsoft": "MSFT", "msft": "MSFT",
+        "google": "GOOGL", "googl": "GOOGL", "alphabet": "GOOGL",
+        "amazon": "AMZN", "amzn": "AMZN",
+        "meta": "META", "facebook": "META",
+        "netflix": "NFLX", "nflx": "NFLX",
+        "amd": "AMD", "intel": "INTC", "intc": "INTC",
+        "bitcoin": "BTC-USD", "btc": "BTC-USD",
+        "ethereum": "ETH-USD", "eth": "ETH-USD",
+        "solana": "SOL-USD", "sol": "SOL-USD",
+        "dogecoin": "DOGE-USD", "doge": "DOGE-USD",
+        "spy": "SPY", "s&p": "SPY", "s&p 500": "SPY",
+        "nasdaq": "QQQ", "qqq": "QQQ", "dow": "DIA", "dow jones": "DIA"
+    }
+    ticker = None
+    for k, v in ticker_map.items():
+        if re.search(r"\b" + re.escape(k) + r"\b", q_low):
+            ticker = v
+            break
+    if not ticker:
+        m = re.search(r"\b([A-Z]{1,5}(?:-USD)?)\b", query)
+        if m and any(f in q_low for f in ("stock", "share", "shares", "price", "quote", "market", "crypto", "coin", "trading", "valuation")):
+            ticker = m.group(1).upper()
+
+    if not ticker:
+        return None
+
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
+            price = meta.get("regularMarketPrice", 0.0)
+            prev = meta.get("chartPreviousClose", price)
+            change = round(price - prev, 2)
+            pct = round((change / prev) * 100, 2) if prev else 0.0
+            cur = meta.get("currency", "USD")
+            sym = meta.get("symbol", ticker)
+            d_high = meta.get("regularMarketDayHigh", price)
+            d_low = meta.get("regularMarketDayLow", price)
+            vol = meta.get("regularMarketVolume", 0)
+
+            lines = [
+                f"### 📈 [LIVE REAL-TIME FINANCIAL QUOTE · {sym}]",
+                f"- **Current Price:** ${price:,.2f} {cur}",
+                f"- **Today's Net Change:** {change:+,.2f} ({pct:+,.2f}%)",
+                f"- **Day Trading Range:** ${d_low:,.2f} – ${d_high:,.2f}",
+                f"- **Previous Session Close:** ${prev:,.2f}",
+            ]
+            if vol:
+                lines.append(f"- **Volume:** {vol:,} shares")
+            lines.append("- **Verification:** Live Real-Time Global Market Exchange Feed")
+            return "\n".join(lines)
+    except Exception as exc:
+        LOG.debug("Live stock quote fetch failed for %s: %s", ticker, exc)
+        return None
+
+
+def fetch_live_arxiv_research(query: str, max_results: int = 3) -> str | None:
+    """Fetch live peer-reviewed and preprint scientific research from ArXiv API."""
+    q_low = str(query or "").lower().strip()
+    research_triggers = (
+        "research", "paper", "papers", "study", "studies", "arxiv", "scientific",
+        "findings", "literature", "quantum", "neural", "physics", "biology",
+        "ai ", "ml ", "biotech", "algorithm", "theory", "discovery", "discoveries"
+    )
+    if not any(k in q_low for k in research_triggers):
+        return None
+
+    try:
+        clean = re.sub(
+            r"\b(?:what is the latest|what is|tell me about|find|search|get|show me|latest|recent|about|on|research|papers?|studies|study)\b",
+            "",
+            q_low,
+            flags=re.IGNORECASE
+        ).strip()
+        search_term = clean if len(clean) >= 3 else query
+        url = f"http://export.arxiv.org/api/query?search_query=all:{urllib.parse.quote(search_term)}&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder=descending"
+        req = urllib.request.Request(url, headers={"User-Agent": "SarembokVE/1.0"})
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            xml_data = resp.read()
+            root = ET.fromstring(xml_data)
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            entries = root.findall("atom:entry", ns)
+            if not entries:
+                return None
+            lines = ["### 🔬 [LIVE PEER-REVIEWED & PREPRINT RESEARCH · ARXIV]:"]
+            for e in entries[:max_results]:
+                t = e.find("atom:title", ns).text.strip().replace("\n", " ")
+                d = e.find("atom:published", ns).text[:10]
+                aid = e.find("atom:id", ns).text.strip()
+                authors = [a.find("atom:name", ns).text for a in e.findall("atom:author", ns) if a.find("atom:name", ns) is not None]
+                auth_str = ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
+                s = e.find("atom:summary", ns).text.strip().replace("\n", " ")[:220]
+                lines.append(f"- **[{d}] {t}**\n  *Authors:* {auth_str} | *Link:* [arXiv:{aid.split('/')[-1]}]({aid})\n  *Summary:* {s}...")
+            return "\n".join(lines)
+    except Exception as exc:
+        LOG.debug("ArXiv research fetch failed: %s", exc)
+        return None
+
+
+def _is_realtime_query(prompt: str) -> bool:
+    low = (prompt or "").strip().lower()
+    if not low:
+        return False
+    if is_identity_query(low) or is_capability_query(low) or is_self_state_query(low) or is_limitation_query(low):
+        return False
+    if low.startswith("/admin") or low.startswith("/exec") or low.startswith("/py") or low.startswith("/sh") or low.startswith("/spec"):
+        return False
+    realtime_triggers = (
+        "stock", "stocks", "share", "shares", "price", "prices", "crypto", "bitcoin", "btc", "ethereum", "eth", "solana", "sol",
+        "ticker", "nasdaq", "dow", "s&p", "market", "markets", "trading", "valuation",
+        "research", "paper", "papers", "study", "studies", "arxiv", "scientific", "findings", "literature", "discovery", "discoveries",
+        "news", "headline", "headlines", "current event", "current events", "happened", "happening",
+        "today", "yesterday", "this week", "this month", "latest", "recent", "update", "updates",
+        "weather", "forecast", "score", "scores", "record", "records", "standing", "standings",
+        "who won", "did they win", "game", "election", "president", "world", "breaking",
+        "flying car", "elon musk", "tesla", "spacex", "apple", "nvidia", "openai", "google", "meta", "starship", "cybercab",
+        "what is happening", "what happened", "what's new", "whats new", "who is", "status of", "tell me about",
+        "current", "now", "released", "announced", "unveiled"
+    )
+    if any(k in low for k in realtime_triggers):
+        return True
+    if any(low.startswith(q) for q in ("who ", "what is ", "what are ", "when did ", "where is ", "why did ", "how is ")):
+        return True
+    return False
+
+
 def _fetch_realtime_data(query: str) -> str | None:
-    """Multi-tiered real-time data engine: Live Web Search + Google News RSS + Wikipedia."""
-    clean_q = query.strip()
+    """Multi-tiered real-time intelligence engine:
+    1. Real-time Live Financial Quotes (Yahoo Finance chart API)
+    2. Real-time Scientific Research (ArXiv API)
+    3. Real-time Web Search (DuckDuckGo live HTML parser)
+    4. Real-time Breaking News (Google News RSS)
+    5. Factual Intelligence (Wikipedia Summary & DuckDuckGo Instant Answers)
+    Executed concurrently in sub-second parallel threads.
+    """
+    clean_q = (query or "").strip()
     if not clean_q:
         return None
-    results = []
 
-    # 1. Real-time Live Web Search (Instant Web Grounding for sports records, scores, facts, etc.)
-    try:
-        web_res = fetch_web_search(clean_q, max_results=5)
-        if web_res.get("snippets"):
-            lines = [f"- {s}" for s in web_res["snippets"][:5]]
-            results.append("### [LIVE REAL-TIME VERIFIED WEB GROUNDING]:\n" + "\n".join(lines))
-    except Exception as exc:
-        LOG.debug("Live web search grounding failed: %s", exc)
+    results: list[str] = []
 
-    # 2. Real-Time News & Current Events (Google News RSS)
-    terms = _extract_search_terms(clean_q)
-    is_news_intent = any(k in clean_q.lower() for k in ("news", "headline", "headlines", "current event", "breaking", "update", "happening"))
-    if not terms and not is_news_intent:
-        if results:
-            return "\n\n".join(results)
+    def _task_stock():
+        return fetch_live_stock_quote(clean_q)
+
+    def _task_arxiv():
+        return fetch_live_arxiv_research(clean_q)
+
+    def _task_web():
+        try:
+            web_res = fetch_web_search(clean_q, max_results=5)
+            if web_res.get("snippets"):
+                lines = [f"- {s}" for s in web_res["snippets"][:5]]
+                return "### [LIVE REAL-TIME VERIFIED WEB GROUNDING]:\n" + "\n".join(lines)
+        except Exception as exc:
+            LOG.debug("Live web search grounding failed: %s", exc)
         return None
 
-    try:
-        if terms and terms.lower() not in ("news", "the news", "current events", ""):
-            rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(terms)}&hl=en-US&gl=US&ceid=US:en"
-        else:
-            rss_url = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+    def _task_news():
+        terms = _extract_search_terms(clean_q)
+        q_low = clean_q.lower()
+        is_news = any(k in q_low for k in ("news", "headline", "headlines", "current event", "breaking", "update", "happening", "announced", "latest"))
+        if not terms and not is_news:
+            return None
+        try:
+            if terms and terms.lower() not in ("news", "the news", "current events", ""):
+                rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(terms)}&hl=en-US&gl=US&ceid=US:en"
+            else:
+                rss_url = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+            req = urllib.request.Request(rss_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
+                root = ET.fromstring(resp.read())
+                items = root.findall(".//item")[:5]
+                news_lines = []
+                for it in items:
+                    t = it.find("title").text if it.find("title") is not None else ""
+                    p = it.find("pubDate").text if it.find("pubDate") is not None else ""
+                    src = it.find("source").text if it.find("source") is not None else "Verified News"
+                    if t:
+                        news_lines.append(f"- **[{src}]** {t} *({p})*")
+                if news_lines:
+                    return "### [LIVE REAL-TIME VERIFIED NEWS & CURRENT EVENTS]:\n" + "\n".join(news_lines)
+        except Exception as exc:
+            LOG.debug("News RSS fetch failed: %s", exc)
+        return None
 
-        req = urllib.request.Request(rss_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-        with urllib.request.urlopen(req, timeout=3.0) as resp:
-            root = ET.fromstring(resp.read())
-            items = root.findall(".//item")[:5]
-            news_lines = []
-            for it in items:
-                t = it.find("title").text if it.find("title") is not None else ""
-                p = it.find("pubDate").text if it.find("pubDate") is not None else ""
-                src = it.find("source").text if it.find("source") is not None else "Verified News"
-                if t:
-                    news_lines.append(f"- **[{src}]** {t} *({p})*")
-            if news_lines:
-                results.append("### [LIVE REAL-TIME VERIFIED NEWS & CURRENT EVENTS]:\n" + "\n".join(news_lines))
-    except Exception as exc:
-        LOG.debug("News RSS fetch failed: %s", exc)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="srbk_rt_") as ex:
+        f_stock = ex.submit(_task_stock)
+        f_arxiv = ex.submit(_task_arxiv)
+        f_web = ex.submit(_task_web)
+        f_news = ex.submit(_task_news)
 
-    # 2. Wikipedia Summary for Entities / Concepts / Research (Only if valid non-stopword entity exists)
-    if terms:
+        try:
+            stock_res = f_stock.result(timeout=3.5)
+            if stock_res:
+                results.append(stock_res)
+        except Exception:
+            pass
+
+        try:
+            arxiv_res = f_arxiv.result(timeout=3.5)
+            if arxiv_res:
+                results.append(arxiv_res)
+        except Exception:
+            pass
+
+        try:
+            web_res = f_web.result(timeout=4.0)
+            if web_res:
+                results.append(web_res)
+        except Exception:
+            pass
+
+        try:
+            news_res = f_news.result(timeout=3.5)
+            if news_res:
+                results.append(news_res)
+        except Exception:
+            pass
+
+    # Fallback to Wikipedia Summary if needed
+    terms = _extract_search_terms(clean_q)
+    if terms and len(results) < 2:
         try:
             entity = terms if len(terms.split()) <= 4 else ""
             if entity:
@@ -1559,23 +1745,10 @@ def _fetch_realtime_data(query: str) -> str | None:
         except Exception:
             pass
 
-    # 3. DuckDuckGo Instant Answers
-    try:
-        encoded = urllib.parse.quote(terms or clean_q)
-        ddg_url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_html=1&skip_disambig=1"
-        req = urllib.request.Request(ddg_url, headers={"User-Agent": "SarembokVE-Runtime/2.0"})
-        with urllib.request.urlopen(req, timeout=2.0) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            abstract = data.get("AbstractText") or data.get("Abstract")
-            if abstract:
-                src = data.get("AbstractSource", "Web Knowledge")
-                results.append(f"### [WEB INTELLIGENCE] [{src}]:\n{abstract}")
-    except Exception:
-        pass
-
     if results:
         return "\n\n".join(results)
     return None
+
 
 
 
@@ -2899,6 +3072,46 @@ def sarembok_process_dialogue(
                 _save_conversation(session_id, prompt_clean, err_text)
                 return {"response": err_text, "audioText": err_text, "source": "specification_engine"}
 
+    # 0a. Dedicated Real-Time Financial Quote Intent /stock
+    if prompt_clean.startswith("/stock ") or prompt_clean.lower().startswith("stock ") or prompt_clean.lower().startswith("quote "):
+        ticker_target = re.sub(r"^(?:/stock|stock|quote)\s+", "", prompt_clean, flags=re.IGNORECASE).strip().upper()
+        quote_res = fetch_live_stock_quote(ticker_target)
+        if quote_res:
+            _save_conversation(session_id, prompt_clean, quote_res)
+            return {
+                "response": quote_res,
+                "audioText": f"Live market quote for {ticker_target}: {quote_res.splitlines()[1] if len(quote_res.splitlines()) > 1 else quote_res}",
+                "source": "realtime_finance",
+                "model": "yahoo-finance-live",
+                "action": {"type": "REALTIME_STOCK_QUOTE", "ticker": ticker_target},
+                "structuredResponse": build_structured_response(quote_res, provider="realtime_finance", model="yahoo-finance-live"),
+                "metadata": {"provider": "realtime_finance", "live": True}
+            }
+        else:
+            err_text = f"Could not retrieve real-time financial market quote for symbol `{ticker_target}`. Please verify the ticker symbol (e.g. `TSLA`, `NVDA`, `BTC-USD`)."
+            _save_conversation(session_id, prompt_clean, err_text)
+            return {"response": err_text, "audioText": err_text, "source": "realtime_finance"}
+
+    # 0b. Dedicated Real-Time Research / Preprint Intent /research or /arxiv
+    if prompt_clean.startswith("/research ") or prompt_clean.startswith("/arxiv ") or prompt_clean.lower().startswith("arxiv "):
+        topic_target = re.sub(r"^(?:/research|/arxiv|arxiv)\s+", "", prompt_clean, flags=re.IGNORECASE).strip()
+        arxiv_res = fetch_live_arxiv_research(topic_target, max_results=5)
+        if arxiv_res:
+            _save_conversation(session_id, prompt_clean, arxiv_res)
+            return {
+                "response": arxiv_res,
+                "audioText": f"Retrieved live scientific research and peer-reviewed preprints for {topic_target}.",
+                "source": "arxiv_research",
+                "model": "arxiv-live-feed",
+                "action": {"type": "REALTIME_RESEARCH_QUERY", "query": topic_target},
+                "structuredResponse": build_structured_response(arxiv_res, provider="arxiv_research", model="arxiv-live-feed"),
+                "metadata": {"provider": "arxiv_research", "live": True}
+            }
+        else:
+            err_text = f"No live preprint papers found for query `{topic_target}` on ArXiv. Try broadening your research terms."
+            _save_conversation(session_id, prompt_clean, err_text)
+            return {"response": err_text, "audioText": err_text, "source": "arxiv_research"}
+
     # 1. Tool Intent: Create Agent
     if re.search(r"\b(?:create|spawn|build|deploy)\s+(?:an?\s+)?(?:agent|helper|assistant|bot)\b", prompt_lower):
         name_match = re.search(r"(?:named|called)\s+([a-zA-Z0-9_\-\s]+)", prompt_clean, re.IGNORECASE)
@@ -3193,21 +3406,19 @@ def sarembok_process_dialogue(
             system_context_parts.append(f"\nPersistent Recalled Memories & Context:\n{mem_summary}\n")
             recalled_memories_payload = [{"key": r[0], "value": r[1], "tier": r[2], "recalledFrom": r[3]} for r in recalled_rows]
 
-    # Real-Time Data Integration: Live search for news, current events, live topics
-    realtime_triggers = (
-        "news", "headline", "headlines", "current event", "current events", "happened", "happening",
-        "today", "yesterday", "this week", "this month", "latest", "recent", "update", "updates",
-        "stock", "price", "crypto", "weather", "score", "scores", "record", "records", "standing", "standings",
-        "falcons", "nfl", "nba", "mlb", "who won", "did they win", "football record", "current record",
-        "game", "election", "president", "market", "research", "search", "browse", "find out",
-        "look up", "world", "breaking", "what's going on", "whats going on", "what's new", "whats new"
-    )
+    # Real-Time Data Integration: Live multi-source grounding for stocks, preprints, news, web, and current events
     live_data = None
-    if not (is_identity_query(prompt_clean) or is_capability_query(prompt_clean) or is_self_state_query(prompt_clean)):
-        if any(trig in prompt_lower for trig in realtime_triggers):
-            live_data = _fetch_realtime_data(prompt_clean)
-            if live_data:
-                system_context_parts.append(f"\nREAL-TIME LIVE INTELLIGENCE RETRIEVAL:\n{live_data}\n")
+    if _is_realtime_query(prompt_clean):
+        live_data = _fetch_realtime_data(prompt_clean)
+        if live_data:
+            system_context_parts.append(
+                f"\n=== MANDATORY REAL-TIME GROUNDING DIRECTIVE ===\n"
+                f"You have verified, live real-time intelligence retrieved at this exact second from global financial exchange feeds, ArXiv scientific preprints, Google News, and the live web.\n"
+                f"NEVER state 'I do not have real-time access' or 'My knowledge cutoff is...'.\n"
+                f"Ground your answer DIRECTLY on the live intelligence data below, citing exact current prices, recent preprints, or breaking news developments:\n"
+                f"{live_data}\n"
+                f"=== END REAL-TIME INTELLIGENCE ===\n"
+            )
 
     # Broader Language Support (Enhancement 8): Multi-language system directive
     LANG_NAMES = {
