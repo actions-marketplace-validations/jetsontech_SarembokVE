@@ -45,6 +45,7 @@ RPC_CAPABILITIES = {
     "BrowserSessionInspect": ("browser", "Inspect the current persistent browser page and interactive controls."),
     "BrowserAction": ("browser", "Execute a verified browser action such as click, fill, type, select, navigate, scroll, or wait."),
     "BrowserSessionClose": ("browser", "Close a persistent browser session."),
+    "ExtractSystemSpecification": ("specification", "Deep-audit web targets and extract OpenAPI schemas, TypeScript data contracts, and frameworks."),
     "CallMcpTool": ("integration", "Execute a tool exposed by a configured external MCP server."),
     "CreateDigitalHumanSession": ("avatar", "Create an active digital human session."),
     "GetDigitalHumanSession": ("avatar", "Get digital human session status and voice profile."),

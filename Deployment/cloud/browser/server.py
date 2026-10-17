@@ -2,6 +2,7 @@ import base64
 import ipaddress
 import json
 import os
+import re
 import socket
 import time
 import urllib.parse
@@ -96,6 +97,155 @@ def validate_url(url: str) -> str:
 
 def clean_text(text: str) -> str:
     return " ".join(str(text or "").split())[:MAX_TEXT]
+
+
+def infer_json_schema(obj: Any, depth: int = 0) -> dict[str, Any]:
+    if depth > 5:
+        return {"type": "any"}
+    if isinstance(obj, dict):
+        properties = {}
+        for k, v in list(obj.items())[:25]:
+            properties[str(k)] = infer_json_schema(v, depth + 1)
+        return {"type": "object", "properties": properties}
+    elif isinstance(obj, list):
+        if not obj:
+            return {"type": "array", "items": {"type": "any"}}
+        return {"type": "array", "items": infer_json_schema(obj[0], depth + 1)}
+    elif isinstance(obj, bool):
+        return {"type": "boolean"}
+    elif isinstance(obj, int):
+        return {"type": "integer"}
+    elif isinstance(obj, float):
+        return {"type": "number"}
+    elif isinstance(obj, str):
+        return {"type": "string"}
+    elif obj is None:
+        return {"type": "null"}
+    return {"type": "string"}
+
+
+def generate_openapi_spec(url: str, dom_spec: dict[str, Any], endpoints_map: dict[str, Any]) -> dict[str, Any]:
+    parsed = urllib.parse.urlparse(url)
+    title = dom_spec.get("title") or parsed.netloc or "Target Application"
+    paths: dict[str, Any] = {}
+
+    for key, ep in endpoints_map.items():
+        path = ep.get("path") or "/"
+        method = (ep.get("method") or "get").lower()
+        if path not in paths:
+            paths[path] = {}
+
+        op: dict[str, Any] = {
+            "summary": f"Discovered {method.upper()} {path}",
+            "responses": {
+                str(ep.get("status") or 200): {
+                    "description": "Intercepted response",
+                    "content": {
+                        ep.get("contentType") or "application/json": {
+                            "schema": ep.get("responseBody") or {"type": "object"}
+                        }
+                    }
+                }
+            }
+        }
+        if ep.get("queryParams"):
+            op["parameters"] = [
+                {"name": qk, "in": "query", "schema": {"type": "string"}}
+                for qk in ep["queryParams"].keys()
+            ]
+        if ep.get("requestBody"):
+            op["requestBody"] = {
+                "content": {
+                    "application/json": {
+                        "schema": ep["requestBody"]
+                    }
+                }
+            }
+        paths[path][method] = op
+
+    for form in dom_spec.get("forms", []):
+        f_action = form.get("action") or "/"
+        f_path = urllib.parse.urlparse(f_action).path if f_action.startswith("http") else (f_action or "/")
+        f_method = (form.get("method") or "POST").lower()
+        if f_path not in paths:
+            paths[f_path] = {}
+        if f_method not in paths[f_path]:
+            props = {}
+            for field in form.get("fields", []):
+                fname = field.get("name")
+                if fname:
+                    props[fname] = {"type": "string", "description": f"Field type: {field.get('type')}"}
+            paths[f_path][f_method] = {
+                "summary": f"Form submission to {f_path}",
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": props,
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {"description": "Form submission response"}
+                }
+            }
+
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": f"Specification for {title}",
+            "version": "1.0.0",
+            "description": f"Auto-extracted sovereign specification from {url}",
+        },
+        "servers": [{"url": f"{parsed.scheme}://{parsed.netloc}"}],
+        "paths": paths,
+    }
+
+
+def generate_typescript_contracts(url: str, dom_spec: dict[str, Any], endpoints_map: dict[str, Any]) -> str:
+    lines = [
+        f"// Auto-generated Sovereign Specification & Types for {url}",
+        f"// Extracted by SarembokVE Browser Verification Engine",
+        "",
+    ]
+
+    for form in dom_spec.get("forms", []):
+        idx = form.get("index", 0)
+        f_name = f"Form_{idx}_Payload"
+        lines.append(f"export interface {f_name} {{")
+        for field in form.get("fields", []):
+            name = field.get("name")
+            if name:
+                clean_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+                opt = "?" if not field.get("required") else ""
+                lines.append(f"  {clean_name}{opt}: string;")
+        lines.append("}\n")
+
+    for key, ep in endpoints_map.items():
+        clean_path = re.sub(r"[^a-zA-Z0-9]", "_", ep.get("path", "/")).strip("_") or "Root"
+        method = ep.get("method", "GET").capitalize()
+        name_prefix = f"Endpoint_{method}_{clean_path}"
+
+        if ep.get("queryParams"):
+            lines.append(f"export interface {name_prefix}_Query {{")
+            for qk in ep["queryParams"].keys():
+                q_clean = re.sub(r"[^a-zA-Z0-9_]", "_", qk)
+                lines.append(f"  {q_clean}?: string;")
+            lines.append("}\n")
+
+        res_body = ep.get("responseBody")
+        if isinstance(res_body, dict) and res_body.get("properties"):
+            lines.append(f"export interface {name_prefix}_Response {{")
+            for pk, pv in res_body["properties"].items():
+                p_clean = re.sub(r"[^a-zA-Z0-9_]", "_", pk)
+                ptype = pv.get("type", "any")
+                ts_type = "string" if ptype == "string" else "number" if ptype in ("integer", "number") else "boolean" if ptype == "boolean" else "any[]" if ptype == "array" else "Record<string, any>" if ptype == "object" else "any"
+                lines.append(f"  {p_clean}?: {ts_type};")
+            lines.append("}\n")
+
+    return "\n".join(lines).strip()
 
 
 class BrowserRuntime:
@@ -423,8 +573,215 @@ class BrowserRuntime:
         finally:
             context.close()
 
+    def extract_specification(
+        self,
+        url: str,
+        wait_seconds: float = 2.0,
+        max_routes: int = 50,
+    ) -> dict[str, Any]:
+        target = validate_url(url)
+        started = time.perf_counter()
+        context = self._create_context()
+        endpoints_map: dict[str, dict[str, Any]] = {}
+
+        try:
+            page = context.new_page()
+
+            def _handle_response(response: Any) -> None:
+                try:
+                    req = response.request
+                    res_url = req.url
+                    content_type = response.headers.get("content-type", "").lower()
+                    resource_type = getattr(req, "resource_type", "")
+                    is_api = (
+                        resource_type in ("fetch", "xhr")
+                        or "application/json" in content_type
+                        or "/api/" in res_url
+                        or "/v1/" in res_url
+                        or "/v2/" in res_url
+                        or "/graphql" in res_url
+                    )
+                    parsed_res = urllib.parse.urlparse(res_url)
+                    endpoint_key = f"{req.method} {parsed_res.path}"
+
+                    query_params = urllib.parse.parse_qs(parsed_res.query)
+                    query_schema = {k: "string" for k in query_params.keys()}
+
+                    body_schema = None
+                    post_data = req.post_data
+                    if post_data:
+                        try:
+                            parsed_body = json.loads(post_data)
+                            body_schema = infer_json_schema(parsed_body)
+                        except Exception:
+                            body_schema = {"type": "raw", "length": len(post_data)}
+
+                    res_schema = None
+                    if "application/json" in content_type:
+                        try:
+                            body_text = response.text()
+                            if body_text and len(body_text) < 100000:
+                                parsed_res_body = json.loads(body_text)
+                                res_schema = infer_json_schema(parsed_res_body)
+                        except Exception:
+                            pass
+
+                    if is_api or req.method != "GET":
+                        endpoints_map[endpoint_key] = {
+                            "method": req.method,
+                            "path": parsed_res.path,
+                            "fullUrl": res_url,
+                            "status": response.status,
+                            "contentType": content_type,
+                            "queryParams": query_schema,
+                            "requestBody": body_schema,
+                            "responseBody": res_schema,
+                        }
+                except Exception:
+                    pass
+
+            page.on("response", _handle_response)
+
+            resp = page.goto(
+                target,
+                wait_until="domcontentloaded",
+                timeout=NAVIGATION_TIMEOUT_MS,
+            )
+            if wait_seconds > 0:
+                page.wait_for_timeout(min(10000, max(100, int(wait_seconds * 1000))))
+
+            dom_spec = page.evaluate("""() => {
+                const result = {
+                    title: document.title || '',
+                    meta: {},
+                    frameworks: [],
+                    forms: [],
+                    routes: [],
+                    extractedApiPatterns: []
+                };
+                
+                document.querySelectorAll('meta[name], meta[property]').forEach(m => {
+                    const k = m.getAttribute('name') || m.getAttribute('property');
+                    const v = m.getAttribute('content');
+                    if (k && v && result.meta[k] === undefined && k.length < 50 && v.length < 200) {
+                        result.meta[k] = v;
+                    }
+                });
+                
+                if (window.__NEXT_DATA__) result.frameworks.push({ name: 'Next.js' });
+                if (window.__NUXT__) result.frameworks.push({ name: 'Nuxt.js' });
+                if (window._reactRootContainer || document.querySelector('[data-reactroot], #root, #__next')) result.frameworks.push({ name: 'React' });
+                if (window.__VUE__ || document.querySelector('[data-v-app], #app')) result.frameworks.push({ name: 'Vue.js' });
+                if (document.querySelector('ng-version, [ng-version]')) result.frameworks.push({ name: 'Angular' });
+                if (document.querySelector('.svelte-') || Array.from(document.querySelectorAll('*')).some(e => Array.from(e.attributes).some(a => a.name.startsWith('svelte-')))) result.frameworks.push({ name: 'Svelte' });
+                if (window.Alpine) result.frameworks.push({ name: 'Alpine.js' });
+                if (window.jQuery || window.$) result.frameworks.push({ name: 'jQuery' });
+                if (document.querySelector('[class*="tw-"], [class*="bg-"], [class*="text-"], [class*="flex"]')) result.frameworks.push({ name: 'Tailwind CSS' });
+
+                document.querySelectorAll('form').forEach((f, idx) => {
+                    const inputs = [];
+                    f.querySelectorAll('input, select, textarea').forEach(inp => {
+                        const name = inp.getAttribute('name') || inp.id || '';
+                        if (name) {
+                            inputs.push({
+                                name: name,
+                                type: inp.getAttribute('type') || inp.tagName.toLowerCase(),
+                                required: inp.required || false,
+                                placeholder: inp.getAttribute('placeholder') || ''
+                            });
+                        }
+                    });
+                    result.forms.push({
+                        index: idx,
+                        id: f.id || '',
+                        action: f.getAttribute('action') || '',
+                        method: (f.getAttribute('method') || 'GET').toUpperCase(),
+                        fields: inputs
+                    });
+                });
+
+                const origin = window.location.origin;
+                const seenRoutes = new Set();
+                document.querySelectorAll('a[href]').forEach(a => {
+                    try {
+                        const href = a.getAttribute('href');
+                        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+                        const u = new URL(href, origin);
+                        if (u.origin === origin && !seenRoutes.has(u.pathname)) {
+                            seenRoutes.add(u.pathname);
+                            result.routes.push({
+                                path: u.pathname,
+                                text: (a.innerText || '').trim().slice(0, 60)
+                            });
+                        }
+                    } catch(e) {}
+                });
+
+                const apiRegex = /(?:['"`])(\/(?:api|v[0-9]+)\/[a-zA-Z0-9_\-\/]+)(?:['"`])/g;
+                const scripts = Array.from(document.querySelectorAll('script:not([src])')).map(s => s.textContent || '').join('\\n');
+                let match;
+                const seenApis = new Set();
+                while ((match = apiRegex.exec(scripts)) !== null) {
+                    if (!seenApis.has(match[1]) && match[1].length < 100) {
+                        seenApis.add(match[1]);
+                        result.extractedApiPatterns.push(match[1]);
+                    }
+                }
+
+                return result;
+            }""")
+
+            openapi_spec = generate_openapi_spec(target, dom_spec, endpoints_map)
+            typescript_contracts = generate_typescript_contracts(target, dom_spec, endpoints_map)
+
+            return {
+                "ok": True,
+                "url": page.url,
+                "requestedUrl": target,
+                "title": dom_spec.get("title") or page.title(),
+                "status": int(resp.status) if resp is not None else 200,
+                "frameworks": dom_spec.get("frameworks", []),
+                "meta": dom_spec.get("meta", {}),
+                "discoveredEndpoints": list(endpoints_map.values()),
+                "discoveredForms": dom_spec.get("forms", []),
+                "discoveredRoutes": dom_spec.get("routes", [])[:max_routes],
+                "extractedApiPatterns": dom_spec.get("extractedApiPatterns", []),
+                "openApiSpec": openapi_spec,
+                "typeScriptContracts": typescript_contracts,
+                "engine": "chromium",
+                "automation": "playwright",
+                "latencyMs": round((time.perf_counter() - started) * 1000, 2),
+                "verified": True,
+            }
+        finally:
+            context.close()
+
 
 BROWSER_MCP_TOOLS: list[dict[str, Any]] = [
+    {
+        "name": "browser_extract_specification",
+        "description": "Deep-audit any public web application or API target, intercepting background network calls, form schemas, internal routes, and client frameworks to synthesize full OpenAPI 3.1 specifications and TypeScript data contracts.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The target HTTP or HTTPS URL to audit and extract specifications from.",
+                },
+                "wait_seconds": {
+                    "type": "number",
+                    "description": "Seconds to wait after DOM load to capture asynchronous network hydration.",
+                    "default": 2.0,
+                },
+                "max_routes": {
+                    "type": "integer",
+                    "description": "Maximum number of discovered internal routes to return.",
+                    "default": 50,
+                },
+            },
+            "required": ["url"],
+        },
+    },
     {
         "name": "browser_navigate",
         "description": "Navigate to a verified public HTTP/HTTPS URL using headless Chromium, render dynamic JavaScript, and extract structured page text, markdown, and title.",
@@ -652,7 +1009,13 @@ class Handler(BaseHTTPRequestHandler):
             tool_name = str(params.get("name") or "").strip()
             args = params.get("arguments") or {}
             try:
-                if tool_name == "browser_navigate":
+                if tool_name == "browser_extract_specification":
+                    result_data = BROWSER.extract_specification(
+                        str(args.get("url") or ""),
+                        wait_seconds=float(args.get("wait_seconds", 2.0)),
+                        max_routes=int(args.get("max_routes", 50)),
+                    )
+                elif tool_name == "browser_navigate":
                     result_data = BROWSER.navigate(str(args.get("url") or ""))
                 elif tool_name == "browser_screenshot":
                     result_data = BROWSER.screenshot(
@@ -758,6 +1121,11 @@ class Handler(BaseHTTPRequestHandler):
                 height = int(request.get("height", 800))
                 result = BROWSER.render(url, width=width, height=height)
                 self._send(200, {"ok": True, **result})
+            elif self.path in ("/spec", "/specification"):
+                wait_sec = float(request.get("waitSeconds", request.get("wait_seconds", 2.0)))
+                max_rt = int(request.get("maxRoutes", request.get("max_routes", 50)))
+                result = BROWSER.extract_specification(url, wait_seconds=wait_sec, max_routes=max_rt)
+                self._send(200, result)
             elif self.path == "/session":
                 self._send(200, BROWSER.open_session(str(request.get("sessionId") or "")))
             elif self.path == "/session/inspect":

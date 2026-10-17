@@ -276,6 +276,12 @@ class ProviderRouter:
         'gemma2:2b': 'gemma2:2b',
         'qwen2.5:3b': 'qwen2.5:3b',
         'qwen-2.5-3b': 'qwen2.5:3b',
+        'muse': 'muse-glimmer-30b',
+        'muse-glimmer': 'muse-glimmer-30b',
+        'muse-glimmer-30b': 'muse-glimmer-30b',
+        'glimmer': 'muse-glimmer-30b',
+        'qwen-32b': 'qwen/qwen-2.5-coder-32b-instruct',
+        'qwen-coder-32b': 'qwen/qwen-2.5-coder-32b-instruct',
     }
 
     def _configured_local_model(self, candidate: str | None = None) -> str:

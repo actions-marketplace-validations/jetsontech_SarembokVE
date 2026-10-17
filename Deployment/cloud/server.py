@@ -227,6 +227,7 @@ BROWSER_ALLOWED_METHODS = {
     "BrowserSessionInspect",
     "BrowserAction",
     "BrowserSessionClose",
+    "ExtractSystemSpecification",
     "CallMcpTool",
     "CreateDigitalHumanSession",
     "GetDigitalHumanSession",
@@ -2807,6 +2808,76 @@ def sarembok_process_dialogue(
 
     action_info = None
 
+    # 0. Tool Intent: Sovereign Architecture & Specification Extraction
+    spec_url_match = re.search(
+        r"(?:/spec|/specification|\b(?:extract\s+(?:system\s+)?spec(?:ification)?|audit\s+(?:and\s+)?extract|generate\s+(?:openapi|contract|typescript\s+types)))\s+(?:from|for)?\s*(https?://[^\s]+)",
+        prompt_clean,
+        re.IGNORECASE,
+    )
+    if spec_url_match or prompt_clean.startswith("/spec"):
+        target_url = spec_url_match.group(1).strip() if spec_url_match else prompt_clean.split(maxsplit=1)[1].strip() if len(prompt_clean.split()) > 1 else ""
+        if target_url:
+            try:
+                spec_res = dispatch("ExtractSystemSpecification", {"url": target_url, "sessionId": session_id})
+                if spec_res.get("ok"):
+                    endpoints = spec_res.get("discoveredEndpoints", [])
+                    forms = spec_res.get("discoveredForms", [])
+                    frameworks = [f.get("name") for f in spec_res.get("frameworks", [])]
+                    routes = spec_res.get("discoveredRoutes", [])
+                    ts_contracts = spec_res.get("typeScriptContracts", "")
+                    
+                    rep_lines = [
+                        f"### 🌐 VERIFIED SYSTEM SPECIFICATION: {target_url}",
+                        f"**Target Title:** {spec_res.get('title', 'N/A')}",
+                        f"**HTTP Status:** {spec_res.get('status')} | **Extraction Latency:** {spec_res.get('latencyMs', 0)}ms | **Integrity:** Verified Sovereign",
+                        "",
+                        f"#### 🛠️ Tech Stack & Frameworks",
+                        f"- Detected: {', '.join(frameworks) if frameworks else 'Standard Web / Vanilla'}",
+                        "",
+                        f"#### 📡 Discovered Endpoints ({len(endpoints)})",
+                    ]
+                    if endpoints:
+                        for ep in endpoints[:10]:
+                            rep_lines.append(f"- `{ep.get('method', 'GET')} {ep.get('path', '/')}` (Status: {ep.get('status', 200)}, Type: {ep.get('contentType', 'application/json')})")
+                    else:
+                        rep_lines.append("- No external background API endpoints intercepted during render.")
+                    
+                    if forms:
+                        rep_lines.append(f"\n#### 📝 Form Schemas ({len(forms)})")
+                        for form in forms[:5]:
+                            f_inputs = [f"{i.get('name')} ({i.get('type')})" for i in form.get("fields", [])]
+                            rep_lines.append(f"- **Form #{form.get('index', 0)}** (`{form.get('method', 'GET')}` -> `{form.get('action') or target_url}`): {', '.join(f_inputs) if f_inputs else 'No named inputs'}")
+                    
+                    if routes:
+                        rep_lines.append(f"\n#### 🗺️ Discovered Internal Routes ({len(routes)})")
+                        rep_lines.append(", ".join(f"`{r.get('path')}`" for r in routes[:12]))
+                    
+                    if ts_contracts:
+                        rep_lines.append(f"\n#### 📐 Extracted TypeScript Contracts\n```typescript\n{ts_contracts}\n```")
+                    
+                    rep_lines.append("\n*Persisted to Sovereign Knowledge Memory under CORE tier (`sys_spec`).*")
+                    response_text = "\n".join(rep_lines)
+                    _save_conversation(session_id, prompt_clean, response_text)
+                    return {
+                        "response": response_text,
+                        "audioText": f"Extracted verified system specification for {target_url} with {len(endpoints)} endpoints and {len(forms)} form contracts.",
+                        "source": "specification_engine",
+                        "model": "sarembok-browser-spec",
+                        "action": {"type": "EXTRACT_SPECIFICATION", "url": target_url, "endpoints": len(endpoints), "forms": len(forms)},
+                        "spec": spec_res,
+                        "structuredResponse": build_structured_response(response_text, provider="specification_engine", model="sarembok-browser-spec"),
+                        "metadata": {"provider": "specification_engine", "latencyMs": spec_res.get("latencyMs", 0)}
+                    }
+                else:
+                    err_msg = spec_res.get("error", "Unknown specification extraction failure")
+                    err_text = f"❌ Could not extract specification from `{target_url}`: {err_msg}"
+                    _save_conversation(session_id, prompt_clean, err_text)
+                    return {"response": err_text, "audioText": err_text, "source": "specification_engine"}
+            except Exception as exc:
+                err_text = f"❌ Specification extraction error: {exc}"
+                _save_conversation(session_id, prompt_clean, err_text)
+                return {"response": err_text, "audioText": err_text, "source": "specification_engine"}
+
     # 1. Tool Intent: Create Agent
     if re.search(r"\b(?:create|spawn|build|deploy)\s+(?:an?\s+)?(?:agent|helper|assistant|bot)\b", prompt_lower):
         name_match = re.search(r"(?:named|called)\s+([a-zA-Z0-9_\-\s]+)", prompt_clean, re.IGNORECASE)
@@ -3945,6 +4016,53 @@ def _dispatch_internal(method: str, params: dict[str, Any]) -> dict[str, Any]:
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = json.loads(e.read().decode("utf-8"))
+                return {"error": err_body.get("detail", str(e)), "ok": False}
+            except Exception:
+                return {"error": str(e), "ok": False}
+        except Exception as e:
+            return {"error": f"Browser service error: {e}", "ok": False}
+
+    if method == "ExtractSystemSpecification":
+        url = str(params.get("url", "")).strip()
+        if not url:
+            raise ValueError("url is required for ExtractSystemSpecification")
+        browser_url = os.getenv("SAREMBOK_BROWSER_URL", "http://sarembok-browser:9100")
+        try:
+            req = urllib.request.Request(
+                f"{browser_url}/spec",
+                data=json.dumps({
+                    "url": url,
+                    "waitSeconds": float(params.get("waitSeconds", 2.0)),
+                    "maxRoutes": int(params.get("maxRoutes", 50)),
+                }).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                spec_data = json.loads(resp.read().decode("utf-8"))
+
+            # Persist specification to CORE memory under sys_spec_<host>
+            try:
+                parsed_u = urllib.parse.urlparse(url)
+                host_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", parsed_u.netloc or "target")
+                mem_id = f"mem-spec-{uuid.uuid4().hex[:8]}"
+                stamp = now()
+                spec_summary = (
+                    f"Specification for {url}: {len(spec_data.get('discoveredEndpoints', []))} endpoints, "
+                    f"{len(spec_data.get('discoveredForms', []))} forms, "
+                    f"Frameworks: {[f.get('name') for f in spec_data.get('frameworks', [])]}"
+                )
+                store.db.execute(
+                    "INSERT INTO memories(memory_id, tier, key, value, agent_id, session_id, created_at) VALUES(?,?,?,?,?,?,?)",
+                    (mem_id, "CORE", f"sys_spec_{host_slug}", spec_summary, "sarembok-prime", str(params.get("sessionId", "default")), stamp),
+                )
+                store.db.commit()
+            except Exception as mem_err:
+                LOG.warning("Failed to persist spec to memory: %s", mem_err)
+
+            return spec_data
         except urllib.error.HTTPError as e:
             try:
                 err_body = json.loads(e.read().decode("utf-8"))

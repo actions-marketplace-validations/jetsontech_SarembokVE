@@ -734,11 +734,16 @@
                         <span class="msg-model-tag">system</span>
                     </div>
                     <div class="msg-body">
-                        Ready. Ask me something — or say <code>remember that …</code> to store a fact I'll recall later.
+                        Sovereign Autonomous Systems Verification Engine ready. Audit and extract OpenAPI schemas &amp; TypeScript contracts with <code>/spec &lt;url&gt;</code>, or converse with sovereign edge workers.
                     </div>
                 </div>
             </div>
             <div class="input-area">
+                <div class="quick-pills" style="display:flex;gap:8px;margin-bottom:8px;overflow-x:auto;padding-bottom:2px;">
+                    <button class="pill-btn" onclick="injectPrompt('/spec https://news.ycombinator.com')" title="Extract OpenAPI &amp; TypeScript specs from target" style="background:var(--bg-elevated);border:1px solid var(--border-default);color:var(--accent);font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;">⚡ /spec https://news.ycombinator.com</button>
+                    <button class="pill-btn" onclick="injectPrompt('/spec https://httpbin.org')" title="Extract API schema from target" style="background:var(--bg-elevated);border:1px solid var(--border-default);color:var(--text-secondary);font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;">🔍 /spec https://httpbin.org</button>
+                    <button class="pill-btn" onclick="injectPrompt('remember that our sovereign edge model is Muse-Glimmer-30B')" title="Store persistent fact" style="background:var(--bg-elevated);border:1px solid var(--border-default);color:var(--text-muted);font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;">💾 remember that …</button>
+                </div>
                 <div class="input-row">
                     <button class="voice-btn" id="dialogue-mic-btn" type="button" onclick="toggleLiveConversation()" title="Start two-way live voice">🎙 2-WAY</button>
                     <div class="voice-btn live-voice-status" id="hud-live-2way-btn" role="status" aria-live="polite" title="Gemini Live is the console voice authority">LIVE VOICE · GEMINI LIVE</div>
@@ -823,6 +828,14 @@
         localStorage.setItem('sarembok_active_session_id', sessionId);
         let sessionToken = null;
         let memories = [];
+
+        function injectPrompt(text) {
+            const inp = document.getElementById('chat-input');
+            if (inp) {
+                inp.value = text;
+                inp.focus();
+            }
+        }
 
         // ====== SESSION INITIALIZATION ======
         async function initSession() {
