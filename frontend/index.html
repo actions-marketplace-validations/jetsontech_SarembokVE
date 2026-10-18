@@ -1802,9 +1802,24 @@
             font-size: 11px;
             color: var(--accent);
         }
-        /* ====== MOBILE NAVIGATION (<=768px) ====== */
+        /* ====== SLEEK SCROLLBARS ====== */
+        .memory-rail, .system-rail, .view-panel, .conversation-scroll, .palette-results {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+        }
+        .memory-rail::-webkit-scrollbar, .system-rail::-webkit-scrollbar, .view-panel::-webkit-scrollbar, .conversation-scroll::-webkit-scrollbar, .palette-results::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .memory-rail::-webkit-scrollbar-thumb, .system-rail::-webkit-scrollbar-thumb, .view-panel::-webkit-scrollbar-thumb, .conversation-scroll::-webkit-scrollbar-thumb, .palette-results::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 4px;
+        }
+
+        /* ====== MOBILE NAVIGATION & RESPONSIVE (<=768px) ====== */
         .mobile-menu-btn { display: none; }
         .mobile-scrim { display: none; }
+        .sheet-pull-handle { display: none; }
         @media (max-width: 768px) {
             .logo-tag, .console-main-site, .rail-toggle-btn kbd, .connection-indicator #connection-text { display: none !important; }
             .top-bar { gap: 6px; padding: 0 8px; overflow: visible; }
@@ -1815,43 +1830,163 @@
                 width: 40px; height: 40px; flex: 0 0 40px;
                 background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
                 border-radius: 10px; color: var(--text-primary); font-size: 18px; cursor: pointer;
+                transition: background 0.15s, border-color 0.15s, color 0.15s;
+            }
+            body.nav-open .mobile-menu-btn {
+                background: rgba(0, 240, 255, 0.15);
+                border-color: rgba(0, 240, 255, 0.4);
+                color: var(--accent);
             }
             .rail-toggle-group { gap: 4px; }
             .rail-toggle-btn { min-width: 40px; height: 40px; padding: 0 10px; }
             .rail-toggle-btn span:nth-of-type(2) { display: none; }
+            body.nav-open .top-bar {
+                z-index: 100 !important;
+                position: relative;
+            }
             .view-nav-tabs {
                 display: none !important;
-                position: fixed; top: 48px; left: 0; right: 0; z-index: 90;
-                flex-direction: column; gap: 2px; padding: 8px;
+                position: fixed; top: 48px; left: 0; right: 0; z-index: 105 !important;
+                flex-direction: column; gap: 4px; padding: 12px 10px;
                 background: rgba(6,10,18,0.98); backdrop-filter: blur(24px);
+                -webkit-backdrop-filter: blur(24px);
                 border-bottom: 1px solid rgba(255,255,255,0.1);
                 box-shadow: 0 24px 48px rgba(0,0,0,0.6);
+                max-height: calc(100vh - 48px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                pointer-events: auto !important;
             }
             body.nav-open .view-nav-tabs { display: flex !important; }
             .view-nav-tabs .view-tab {
-                width: 100%; min-height: 48px; justify-content: flex-start;
-                font-size: 15px; padding: 0 16px; border-radius: 10px; text-align: left;
+                width: 100%; min-height: 44px; justify-content: flex-start;
+                font-size: 14.5px; padding: 0 16px; border-radius: 8px; text-align: left;
+                pointer-events: auto !important;
+                cursor: pointer;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: rgba(0, 240, 255, 0.2);
             }
             .floating-edge-tab { display: none !important; }
             .mobile-scrim {
-                position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,0.55);
+                position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,0.65);
                 opacity: 0; pointer-events: none; transition: opacity .2s;
             }
             body.nav-open .mobile-scrim, body.sheet-open .mobile-scrim { display: block; opacity: 1; pointer-events: auto; }
+            .sheet-pull-handle {
+                display: block;
+                width: 40px;
+                height: 4px;
+                border-radius: 2px;
+                background: rgba(255, 255, 255, 0.25);
+                margin: 8px auto 4px;
+            }
             .memory-rail, .system-rail {
                 display: flex !important; position: fixed; left: 0; right: 0; bottom: 0; top: auto;
-                width: 100% !important; max-height: 78dvh; z-index: 80;
-                border: 0; border-top: 1px solid rgba(255,255,255,0.14);
-                border-radius: 18px 18px 0 0; overflow-y: auto;
-                opacity: 1 !important; pointer-events: auto !important;
+                width: 100% !important; max-height: 82dvh; z-index: 80;
+                border: 0; border-top: 1px solid rgba(0, 240, 255, 0.3);
+                border-radius: 20px 20px 0 0; overflow-y: auto;
+                box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85), 0 -2px 10px rgba(0, 240, 255, 0.15);
+                opacity: 1 !important; pointer-events: none !important;
                 transform: translateY(105%) !important; transition: transform .28s cubic-bezier(.16,1,.3,1);
-                padding-bottom: env(safe-area-inset-bottom, 0px);
+                padding-bottom: env(safe-area-inset-bottom, 16px);
             }
-            .memory-rail.mobile-open, .system-rail.mobile-open { transform: translateY(0) !important; }
+            .memory-rail.mobile-open, .system-rail.mobile-open {
+                transform: translateY(0) !important;
+                pointer-events: auto !important;
+            }
+            .rail-collapse-btn {
+                width: 30px !important;
+                height: 30px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 50% !important;
+                background: rgba(255, 255, 255, 0.08) !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                font-size: 0 !important;
+                cursor: pointer;
+            }
+            .rail-collapse-btn::before {
+                content: '✕';
+                font-size: 13px;
+                font-family: var(--font-sans);
+                font-weight: 700;
+                color: var(--text-secondary);
+            }
             .chat-input { font-size: 16px; } /* prevents iOS zoom on focus */
             .conversation-scroll { overflow-x: hidden; }
             .conversation-scroll * { max-width: 100%; }
             .stock-ticker-card, .research-deck-card, .spec-audit-dashboard { max-width: 100%; overflow-x: auto; }
+
+            /* View panels responsive resets */
+            .view-panel {
+                padding: 16px 14px 56px !important;
+                overflow-x: hidden !important;
+                height: calc(100dvh - 48px) !important;
+            }
+            .panel-header-title { font-size: 20px !important; line-height: 1.25 !important; }
+            .panel-header-desc { font-size: 13px !important; margin-bottom: 16px !important; }
+
+            /* Docs Subview grid responsive */
+            .docs-subview-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
+                gap: 16px !important;
+                min-width: 0 !important;
+            }
+            .docs-subview-grid > div {
+                min-width: 0 !important;
+                max-width: 100% !important;
+                padding: 18px 16px !important;
+            }
+            .docs-subview-grid code, .docs-subview-grid div[style*="font-family:var(--font-mono)"] {
+                overflow-x: auto !important;
+                white-space: pre-wrap !important;
+                word-break: break-all !important;
+                max-width: 100% !important;
+            }
+
+            /* Holographic Digital Human HUD responsive */
+            .metahuman-stage {
+                grid-template-columns: 1fr !important;
+                min-height: auto !important;
+                gap: 16px !important;
+            }
+            .metahuman-canvas-wrap {
+                height: 280px !important;
+            }
+
+            /* Card grids responsive */
+            .playground-cards-grid, .mesh-cards-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Quick Audit Target bar responsive */
+            .quick-target-bar {
+                padding: 8px 12px !important;
+                gap: 8px !important;
+            }
+            .quick-target-bar input#quick-target-url {
+                min-width: 100% !important;
+                order: 2;
+            }
+            .quick-target-bar span.audit-target-label {
+                order: 1;
+            }
+            .quick-target-bar .audit-actions-row {
+                order: 3;
+                display: flex;
+                gap: 8px;
+                width: 100%;
+            }
+            .quick-target-bar .audit-actions-row button {
+                flex: 1;
+                justify-content: center;
+                text-align: center;
+            }
+            .auth-drawer-grid {
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+            }
         }
     </style>
 </head>
@@ -1868,7 +2003,6 @@
                     <button class="view-tab" id="tab-mesh" onclick="switchView('mesh')">🌐 Mesh</button>
                     <button class="view-tab" id="tab-projects" onclick="switchView('projects')">🚀 Playground</button>
                     <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs</button>
-                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')" title="Experimental">👤 HUD (experimental)</button>
                     <button class="view-tab" onclick="openPolicyModal('privacy')">🔒 Privacy</button>
                     <button class="view-tab" onclick="openPolicyModal('terms')">⚖ Terms</button>
                     <a class="view-tab" href="/status" style="text-decoration:none">Status</a>
@@ -1910,6 +2044,7 @@
 
         <!-- LEFT: MEMORY TIMELINE -->
         <aside class="memory-rail" id="console-memory-rail">
+            <span class="sheet-pull-handle" aria-hidden="true"></span>
             <div class="rail-header" style="display:flex;align-items:center;justify-content:space-between;">
                 <div>
                     <div class="rail-title">Memory Timeline</div>
@@ -1929,14 +2064,16 @@
         <main class="conversation-panel" id="view-console-panel">
             <!-- QUICK TARGET AUDIT BAR WITH AUTH DRAWER -->
             <div style="background:var(--bg-surface);border-bottom:1px solid var(--border-default);z-index:5;">
-                <div style="padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;white-space:nowrap;">AUDIT TARGET:</span>
+                <div class="quick-target-bar" style="padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span class="audit-target-label" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;white-space:nowrap;">AUDIT TARGET:</span>
                     <input type="text" id="quick-target-url" value="https://httpbin.org" placeholder="https://api.target.com" style="flex:1;min-width:200px;background:#05070d;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#fff;font-family:var(--font-mono);font-size:12px;padding:6px 12px;outline:none;">
-                    <button id="btn-auth-drawer-toggle" onclick="toggleAuthDrawer()" style="background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:var(--text-secondary);font-size:11px;font-family:var(--font-mono);padding:6px 10px;cursor:pointer;">🔐 Auth &amp; Headers ▾</button>
-                    <button onclick="triggerQuickAudit()" style="background:linear-gradient(135deg,#0284c7,#38bdf8);border:none;border-radius:var(--radius-sm);color:#080a0f;font-weight:700;font-size:12px;padding:6px 16px;cursor:pointer;white-space:nowrap;box-shadow:0 0 12px rgba(56,189,248,0.25);">⚡ Reverse-Engineer</button>
+                    <div class="audit-actions-row" style="display:flex;gap:8px;align-items:center;">
+                        <button id="btn-auth-drawer-toggle" onclick="toggleAuthDrawer()" style="background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-sm);color:var(--text-secondary);font-size:11px;font-family:var(--font-mono);padding:6px 10px;cursor:pointer;">🔐 Auth &amp; Headers ▾</button>
+                        <button onclick="triggerQuickAudit()" style="background:linear-gradient(135deg,#0284c7,#38bdf8);border:none;border-radius:var(--radius-sm);color:#080a0f;font-weight:700;font-size:12px;padding:6px 16px;cursor:pointer;white-space:nowrap;box-shadow:0 0 12px rgba(56,189,248,0.25);">⚡ Reverse-Engineer</button>
+                    </div>
                 </div>
                 <div id="quick-audit-auth-drawer" style="display:none;padding:12px 18px;background:#05070f;border-top:1px dashed var(--border-default);">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;">
+                    <div class="auth-drawer-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;">
                         <div>
                             <label style="display:block;font-size:10.5px;color:var(--text-secondary);font-family:var(--font-mono);margin-bottom:3px;">Authorization / Bearer Token:</label>
                             <input type="text" id="quick-auth-token" placeholder="Bearer eyJhbGci..." style="width:100%;background:#0a0e18;border:1px solid var(--border-default);border-radius:var(--radius-sm);color:#fff;font-family:var(--font-mono);font-size:11px;padding:5px 8px;outline:none;">
@@ -1994,6 +2131,7 @@
 
         <!-- RIGHT: SYSTEM STATE -->
         <aside class="system-rail" id="console-system-rail">
+            <span class="sheet-pull-handle" aria-hidden="true"></span>
             <div class="rail-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border-default);">
                 <div>
                     <div class="rail-title">Cluster Telemetry</div>
@@ -2167,7 +2305,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px;">
+            <div class="playground-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr));gap:20px;">
                 <!-- Card 1 -->
                 <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;display:flex;flex-direction:column;justify-content:space-between;">
                     <div>
@@ -2230,7 +2368,7 @@
             <div class="panel-header-title">Sovereign GPU Compute Mesh Dashboard</div>
             <div class="panel-header-desc">Decentralized cluster topology. Run inference workloads on free Google Colab T4 or RunPod A100 instances with zero cloud API token burn.</div>
             
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px;margin-bottom:32px;">
+            <div class="mesh-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr));gap:20px;margin-bottom:32px;">
                 <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:24px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                         <span style="font-family:var(--font-mono);font-size:11px;color:var(--green);font-weight:700;">● CLUSTER EDGE (ONLINE)</span>
@@ -2279,7 +2417,7 @@
             <div class="panel-header-title">Technical Documentation &amp; Architecture</div>
             <div class="panel-header-desc">SarembokVE is an enterprise-grade autonomous reverse-engineering platform and sovereign compute mesh. Review architecture details, API specs, and integration patterns below.</div>
             
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+            <div class="docs-subview-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
                 <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:28px;">
                     <h3 style="font-size:16px;color:#fff;margin-bottom:12px;">Headless Specification REST API</h3>
                     <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">The headless REST API allows automated audit scripts, CLI tools, and CI runners to extract OpenAPI 3.1 definitions and TypeScript interfaces with zero browser overhead.</p>
@@ -2411,7 +2549,6 @@
             { title: "🌐 Sovereign Compute Mesh", desc: "Decentralized GPU cluster topology & Colab node", action: () => switchView('mesh') },
             { title: "🚀 Live Target Playground", desc: "Test live specification extraction in sandbox", action: () => switchView('projects') },
             { title: "📖 Technical Documentation", desc: "REST API, CLI, and integration guides", action: () => switchView('docs') },
-            { title: "👤 Holographic MetaHuman HUD", desc: "3D ARKit face topology & blendshape telemetry", action: () => switchView('avatar') },
             { title: "🔐 Configure Auth & Intranet Headers", desc: "Enter Bearer Token & Cookies for intranet crawl", action: () => toggleAuthDrawer() },
             { title: "💾 Store Semantic Fact", desc: "Inject permanent knowledge into SQLite-WAL", action: () => injectPrompt("remember that ") },
             { title: "🧹 Purge Memory Cache", desc: "Clear active session history and working context", action: () => { injectPrompt("/clear"); sendMessage(); } },
@@ -2539,6 +2676,8 @@
                 if (layout) layout.style.gridTemplateColumns = 'minmax(0, 1fr)';
                 if (peekLeft) peekLeft.style.display = 'none';
                 if (peekRight) peekRight.style.display = 'none';
+                if (toggleLeftBtn) toggleLeftBtn.classList.toggle('active', Boolean(memRail && memRail.classList.contains('mobile-open')));
+                if (toggleRightBtn) toggleRightBtn.classList.toggle('active', Boolean(sysRail && sysRail.classList.contains('mobile-open')));
                 return;
             }
 
@@ -2573,30 +2712,66 @@
             ['console-memory-rail', 'console-system-rail'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.classList.remove('mobile-open');
             });
-            const b = document.getElementById('mobile-menu-btn'); if (b) b.setAttribute('aria-expanded', 'false');
+            const b = document.getElementById('mobile-menu-btn');
+            if (b) {
+                b.setAttribute('aria-expanded', 'false');
+                b.textContent = '☰';
+            }
+            const toggleLeftBtn = document.getElementById('rail-toggle-left');
+            const toggleRightBtn = document.getElementById('rail-toggle-right');
+            if (toggleLeftBtn && isMobileViewport()) toggleLeftBtn.classList.remove('active');
+            if (toggleRightBtn && isMobileViewport()) toggleRightBtn.classList.remove('active');
         }
         function toggleMobileMenu() {
             const open = !document.body.classList.contains('nav-open');
             closeMobileOverlays();
             if (open) {
                 document.body.classList.add('nav-open');
-                const b = document.getElementById('mobile-menu-btn'); if (b) b.setAttribute('aria-expanded', 'true');
+                const b = document.getElementById('mobile-menu-btn');
+                if (b) {
+                    b.setAttribute('aria-expanded', 'true');
+                    b.textContent = '✕';
+                }
             }
         }
         function toggleMobileSheet(id) {
             const el = document.getElementById(id);
             const wasOpen = el && el.classList.contains('mobile-open');
             closeMobileOverlays();
-            if (el && !wasOpen) { el.classList.add('mobile-open'); document.body.classList.add('sheet-open'); }
+            if (el && !wasOpen) {
+                el.classList.add('mobile-open');
+                document.body.classList.add('sheet-open');
+            }
+            const memRail = document.getElementById('console-memory-rail');
+            const sysRail = document.getElementById('console-system-rail');
+            const toggleLeftBtn = document.getElementById('rail-toggle-left');
+            const toggleRightBtn = document.getElementById('rail-toggle-right');
+            if (toggleLeftBtn) toggleLeftBtn.classList.toggle('active', Boolean(memRail && memRail.classList.contains('mobile-open')));
+            if (toggleRightBtn) toggleRightBtn.classList.toggle('active', Boolean(sysRail && sysRail.classList.contains('mobile-open')));
         }
-        document.addEventListener('click', (e) => {
-            if (!isMobileViewport()) return;
-            if (e.target.closest('.view-nav-tabs .view-tab')) closeMobileOverlays();
-        });
         window.addEventListener('resize', () => { if (!isMobileViewport()) closeMobileOverlays(); });
 
+        // Resolve static vs server routes if running in local dev server or file:
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '80' && window.location.port !== '443')) {
+                document.querySelectorAll('.view-nav-tabs a.view-tab').forEach(a => {
+                    const href = a.getAttribute('href');
+                    if (href && !href.endsWith('.html') && !href.startsWith('http') && !href.startsWith('#')) {
+                        a.setAttribute('href', href + '.html');
+                    }
+                });
+            }
+        });
+
         function toggleLeftRail(forceState) {
-            if (isMobileViewport()) { toggleMobileSheet('console-memory-rail'); return; }
+            if (isMobileViewport()) {
+                if (forceState === false) {
+                    closeMobileOverlays();
+                } else {
+                    toggleMobileSheet('console-memory-rail');
+                }
+                return;
+            }
             if (forceState !== undefined) {
                 window.railsState.left = Boolean(forceState);
             } else {
@@ -2606,7 +2781,14 @@
         }
 
         function toggleRightRail(forceState) {
-            if (isMobileViewport()) { toggleMobileSheet('console-system-rail'); return; }
+            if (isMobileViewport()) {
+                if (forceState === false) {
+                    closeMobileOverlays();
+                } else {
+                    toggleMobileSheet('console-system-rail');
+                }
+                return;
+            }
             if (forceState !== undefined) {
                 window.railsState.right = Boolean(forceState);
             } else {
@@ -2633,6 +2815,7 @@
 
         function switchView(viewName) {
             currentView = viewName;
+            closeMobileOverlays();
             document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
             const activeTab = document.getElementById('tab-' + viewName);
             if (activeTab) activeTab.classList.add('active');
@@ -2645,6 +2828,7 @@
             const projectsPanel = document.getElementById('view-projects-panel');
             const docsPanel = document.getElementById('view-docs-panel');
             const avatarPanel = document.getElementById('view-avatar-panel');
+            const railToggleGroup = document.querySelector('.rail-toggle-group');
 
             // Hide all sub-views
             if (consolePanel) consolePanel.style.display = 'none';
@@ -2654,6 +2838,11 @@
             if (projectsPanel) projectsPanel.style.display = 'none';
             if (docsPanel) docsPanel.style.display = 'none';
             if (avatarPanel) avatarPanel.style.display = 'none';
+
+            // Show panel toggles only in console/workspace
+            if (railToggleGroup) {
+                railToggleGroup.style.display = (viewName === 'console') ? 'flex' : 'none';
+            }
 
             if (viewName === 'console') {
                 if (memRail) memRail.style.display = 'flex';
@@ -2676,6 +2865,7 @@
         }
 
         function openPolicyModal(type) {
+            closeMobileOverlays();
             const modal = document.getElementById('policy-modal-overlay');
             const title = document.getElementById('policy-modal-title');
             const body = document.getElementById('policy-modal-body');

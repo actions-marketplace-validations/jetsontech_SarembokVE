@@ -336,16 +336,64 @@
         .badge-live { background: var(--green-dim); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
         .badge-mesh { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(56,189,248,0.2); }
 
+        .mobile-docs-nav { display: none; }
+
         @media (max-width: 1024px) {
             .docs-container { grid-template-columns: 220px 1fr; }
             .toc { display: none; }
         }
 
         @media (max-width: 768px) {
-            .docs-container { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
-            .content { padding: 24px 20px; }
-            .feature-grid { grid-template-columns: 1fr; }
+            .header {
+                height: auto;
+                padding: 10px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .header-nav {
+                width: 100%;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                gap: 12px;
+                padding-bottom: 2px;
+                scrollbar-width: none;
+            }
+            .header-nav::-webkit-scrollbar { display: none; }
+            .nav-link { white-space: nowrap; font-size: 13px; }
+            .btn-console { white-space: nowrap; font-size: 12px; padding: 5px 12px; }
+            html, body { overflow-x: hidden; }
+            .docs-container { grid-template-columns: minmax(0, 1fr) !important; min-width: 0 !important; width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; }
+            .sidebar { display: none !important; }
+            .content { padding: 20px 16px 60px !important; min-width: 0 !important; max-width: 100% !important; overflow-x: hidden !important; width: 100% !important; }
+            .feature-grid { grid-template-columns: 1fr !important; }
+            pre { min-width: 0 !important; max-width: 100% !important; overflow-x: auto !important; font-size: 11px !important; }
+            pre code { display: block; overflow-x: auto; max-width: 100%; }
+
+            .mobile-docs-nav {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 20px;
+                padding: 10px 14px;
+                background: var(--bg-surface);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                font-size: 13px;
+                color: var(--text-secondary);
+                width: 100%;
+            }
+            .mobile-docs-nav select {
+                flex: 1;
+                background: var(--bg-elevated);
+                border: 1px solid var(--border-default);
+                color: var(--text-primary);
+                font-family: var(--font-sans);
+                font-size: 13px;
+                padding: 6px 10px;
+                border-radius: var(--radius-sm);
+                outline: none;
+            }
         }
     </style>
 </head>
@@ -359,6 +407,9 @@
             <a href="/" class="nav-link">Console</a>
             <a href="/projects" class="nav-link">Projects &amp; Walkthroughs</a>
             <a href="/docs" class="nav-link active">Documentation</a>
+            <a href="/status" class="nav-link">Status</a>
+            <a href="/changelog" class="nav-link">Changelog</a>
+            <a href="/security" class="nav-link">Security</a>
             <a href="/privacy" class="nav-link">Privacy</a>
             <a href="/terms" class="nav-link">Terms</a>
             <a href="https://github.com/jetsontech/SarembokVE" target="_blank" rel="noopener" class="nav-link">GitHub ↗</a>
@@ -397,6 +448,23 @@
 
         <!-- Main Content Area -->
         <main class="content">
+            <div class="mobile-docs-nav">
+                <span>Navigate:</span>
+                <select onchange="if(this.value) location.hash = this.value;">
+                    <option value="">Jump to topic...</option>
+                    <option value="#overview">Platform Overview</option>
+                    <option value="#architecture">System Architecture</option>
+                    <option value="#spec-engine">Headless Schema Synthesis</option>
+                    <option value="#openapi-export">OpenAPI 3.1 &amp; TypeScript</option>
+                    <option value="#cicd-integration">CI/CD Pipeline Integration</option>
+                    <option value="#sovereign-workers">1-Click GPU Mesh Worker</option>
+                    <option value="#muse-glimmer">Muse-Glimmer-30B Runtime</option>
+                    <option value="#hardware-attestation">Hardware Attestation</option>
+                    <option value="#rest-api">Headless REST API</option>
+                    <option value="#rpc-protocol">JSON-RPC 2.0 Interface</option>
+                    <option value="#voice-engine">Kokoro Neural Voice</option>
+                </select>
+            </div>
             <h1 id="overview">SarembokVE Documentation</h1>
             <p class="lead">SarembokVE is an enterprise-grade autonomous systems verification engine, reverse-engineering platform, and sovereign AI compute mesh designed for mission-critical engineering teams.</p>
 

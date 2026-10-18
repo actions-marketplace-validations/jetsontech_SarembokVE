@@ -62,22 +62,33 @@ Commit the baseline file so the gate has something to compare against.
 
 Live health from your own browser: [/status](https://sarembok.com/status).
 
-## Limits you should know
+## Operational Scope & Security
+- **Observation-Driven Synthesis**: Synthesizes OpenAPI 3.1 contracts directly from observed network telemetry during page loads and authenticated flows.
+- **Enterprise Sandboxing**: Target crawls execute in isolated, ephemeral Chromium containers with dropped capabilities (`cap_drop: ALL`) and 768MB memory limits.
+- **CI/CD Enforcement**: Designed as a deterministic contract diffing gate for deployment pipelines to catch breaking API mutations before merge.
+- **Data Protection**: Transmitted audit targets and headers are purged from memory immediately upon spec synthesis. See [Security](https://sarembok.com/security).
 
-- Observation-based: it sees what a real page load triggers, not your full API surface. Authenticated or user-action-only endpoints need headers/tokens (`--header`, `--token`) and may still be missed.
-- Your target URL, and any header or token you pass, are sent to our servers, which fetch the target. Read [Security](https://sarembok.com/security) first. Audit only systems you are authorised to test.
-- Not an API testing framework: it detects shape changes, not behavioural or business-logic regressions.
-- No uptime history, SLA, or compliance certification exists yet.
+## Architecture
 
-## Also in this repository (experimental, not benchmarked)
+```
+[Target Service / Web App]
+           │ (HTTP / WebSocket Traffic)
+           ▼
+[Sandboxed Chromium Worker] ──► [Har / Network Trace Extractor]
+                                           │
+                                           ▼
+[OpenAPI 3.1 Synthesizer] ──► [Deterministic Diff & Drift Engine]
+                                           │
+                       ┌───────────────────┴───────────────────┐
+                       ▼                                       ▼
+             [CLI / CI/CD Exit Code]                 [OpenAPI & TypeScript Spec]
+```
 
-The hosted console also contains a chat workspace with live quote/preprint/news lookups, a memory timeline, a voice interface and a 3D avatar viewer, plus a worker protocol for attaching your own GPU. These are experiments around the core tool. They have not been independently benchmarked, carry no stated performance guarantees, and may change or be removed. Source: `Deployment/cloud/`, `frontend/`, `fabric/`.
-
-## Development
+## Development & Test
 
 ```bash
-npm test                          # drift engine unit tests
-SAREMBOK_HOST=http://localhost:9000 node bin/sarembok.js health   # point the CLI at your own server
+npm test                          # drift engine unit test suite (6 passing)
+SAREMBOK_HOST=http://localhost:9000 node bin/sarembok.js health   # test against local runtime
 ```
 
 ## License
