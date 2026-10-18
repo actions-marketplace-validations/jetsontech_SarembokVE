@@ -1796,6 +1796,57 @@
             font-size: 11px;
             color: var(--accent);
         }
+        /* ====== MOBILE NAVIGATION (<=768px) ====== */
+        .mobile-menu-btn { display: none; }
+        .mobile-scrim { display: none; }
+        @media (max-width: 768px) {
+            .logo-tag, .console-main-site, .rail-toggle-btn kbd, .connection-indicator #connection-text { display: none !important; }
+            .top-bar { gap: 6px; padding: 0 8px; overflow: visible; }
+            .top-bar-left { overflow: visible; flex: 1 1 auto; gap: 8px; }
+            .top-bar-right { gap: 4px; flex: 0 0 auto; }
+            .mobile-menu-btn {
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 40px; height: 40px; flex: 0 0 40px;
+                background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 10px; color: var(--text-primary); font-size: 18px; cursor: pointer;
+            }
+            .rail-toggle-group { gap: 4px; }
+            .rail-toggle-btn { min-width: 40px; height: 40px; padding: 0 10px; }
+            .rail-toggle-btn span:nth-of-type(2) { display: none; }
+            .view-nav-tabs {
+                display: none !important;
+                position: fixed; top: 48px; left: 0; right: 0; z-index: 90;
+                flex-direction: column; gap: 2px; padding: 8px;
+                background: rgba(6,10,18,0.98); backdrop-filter: blur(24px);
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                box-shadow: 0 24px 48px rgba(0,0,0,0.6);
+            }
+            body.nav-open .view-nav-tabs { display: flex !important; }
+            .view-nav-tabs .view-tab {
+                width: 100%; min-height: 48px; justify-content: flex-start;
+                font-size: 15px; padding: 0 16px; border-radius: 10px; text-align: left;
+            }
+            .floating-edge-tab { display: none !important; }
+            .mobile-scrim {
+                position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,0.55);
+                opacity: 0; pointer-events: none; transition: opacity .2s;
+            }
+            body.nav-open .mobile-scrim, body.sheet-open .mobile-scrim { display: block; opacity: 1; pointer-events: auto; }
+            .memory-rail, .system-rail {
+                display: flex !important; position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+                width: 100% !important; max-height: 78dvh; z-index: 80;
+                border: 0; border-top: 1px solid rgba(255,255,255,0.14);
+                border-radius: 18px 18px 0 0; overflow-y: auto;
+                opacity: 1 !important; pointer-events: auto !important;
+                transform: translateY(105%) !important; transition: transform .28s cubic-bezier(.16,1,.3,1);
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+            }
+            .memory-rail.mobile-open, .system-rail.mobile-open { transform: translateY(0) !important; }
+            .chat-input { font-size: 16px; } /* prevents iOS zoom on focus */
+            .conversation-scroll { overflow-x: hidden; }
+            .conversation-scroll * { max-width: 100%; }
+            .stock-ticker-card, .research-deck-card, .spec-audit-dashboard { max-width: 100%; overflow-x: auto; }
+        }
     </style>
 </head>
 <body>
@@ -1803,6 +1854,7 @@
         <!-- TOP BAR -->
         <header class="top-bar">
             <div class="top-bar-left">
+                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu" aria-expanded="false" onclick="toggleMobileMenu()">☰</button>
                 <span class="logo-mark" style="letter-spacing:1px;font-size:12px;">SAREMBOK VE</span>
                 <span class="logo-tag">Autonomous Agent Platform</span>
                 <nav class="view-nav-tabs">
@@ -1838,6 +1890,7 @@
             </div>
         </header>
 
+        <div class="mobile-scrim" onclick="closeMobileOverlays()" aria-hidden="true"></div>
         <!-- FLOATING EDGE PEEK TABS WHEN PANELS COLLAPSED -->
         <button id="peek-tab-left" class="floating-edge-tab left" onclick="toggleLeftRail(true)" title="Expand Memory Panel (Ctrl+[)">
             <span>◧ MEMORY</span>
@@ -2505,7 +2558,36 @@
             } catch(e) {}
         }
 
+        function isMobileViewport() { return window.innerWidth <= 768; }
+        function closeMobileOverlays() {
+            document.body.classList.remove('nav-open', 'sheet-open');
+            ['console-memory-rail', 'console-system-rail'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.classList.remove('mobile-open');
+            });
+            const b = document.getElementById('mobile-menu-btn'); if (b) b.setAttribute('aria-expanded', 'false');
+        }
+        function toggleMobileMenu() {
+            const open = !document.body.classList.contains('nav-open');
+            closeMobileOverlays();
+            if (open) {
+                document.body.classList.add('nav-open');
+                const b = document.getElementById('mobile-menu-btn'); if (b) b.setAttribute('aria-expanded', 'true');
+            }
+        }
+        function toggleMobileSheet(id) {
+            const el = document.getElementById(id);
+            const wasOpen = el && el.classList.contains('mobile-open');
+            closeMobileOverlays();
+            if (el && !wasOpen) { el.classList.add('mobile-open'); document.body.classList.add('sheet-open'); }
+        }
+        document.addEventListener('click', (e) => {
+            if (!isMobileViewport()) return;
+            if (e.target.closest('.view-nav-tabs .view-tab')) closeMobileOverlays();
+        });
+        window.addEventListener('resize', () => { if (!isMobileViewport()) closeMobileOverlays(); });
+
         function toggleLeftRail(forceState) {
+            if (isMobileViewport()) { toggleMobileSheet('console-memory-rail'); return; }
             if (forceState !== undefined) {
                 window.railsState.left = Boolean(forceState);
             } else {
@@ -2515,6 +2597,7 @@
         }
 
         function toggleRightRail(forceState) {
+            if (isMobileViewport()) { toggleMobileSheet('console-system-rail'); return; }
             if (forceState !== undefined) {
                 window.railsState.right = Boolean(forceState);
             } else {
