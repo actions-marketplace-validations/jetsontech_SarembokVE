@@ -58,8 +58,8 @@ def get_colab_gpu() -> dict[str, Any]:
                 "cudaVersion": cuda_ver,
                 "availableMemoryMb": int(vram * 0.9),
                 "supportedModels": [
-                    "muse-glimmer-30b",
                     "qwen-2.5-coder-32b",
+                    "qwen-2.5-coder-7b",
                     "meta-human-v1",
                     "sarembok-reasoner-7b",
                     "whisper-large-v3",
@@ -89,8 +89,8 @@ def get_colab_gpu() -> dict[str, Any]:
                     "cudaVersion": "N/A",
                     "availableMemoryMb": int(vram * 0.9),
                     "supportedModels": [
-                        "muse-glimmer-30b",
                         "qwen-2.5-coder-32b",
+                        "qwen-2.5-coder-7b",
                         "meta-human-v1",
                         "sarembok-reasoner-7b",
                         "whisper-large-v3",
@@ -115,7 +115,7 @@ class WorkerTaskExecutor:
     def capabilities(self) -> list[str]:
         caps = ["compute", "inference", "spec_audit"]
         if self.gpu.get("gpuVendor") == "NVIDIA" and self.gpu.get("vramMb", 0) > 4000:
-            caps.extend(["gpu_acceleration", "muse_glimmer", "high_entropy_reasoning"])
+            caps.extend(["gpu_acceleration", "qwen_coder", "high_entropy_reasoning"])
         return caps
 
     def execute(self, task_type: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -140,11 +140,13 @@ class WorkerTaskExecutor:
             except Exception as exc:
                 return {"status": "FAILED", "error": str(exc), "retryable": True}
 
-        # 2. Inference / Reasoning (Muse-Glimmer-30B, Qwen-2.5-Coder-32B)
+        # 2. Inference / Reasoning (Qwen-2.5-Coder-32B, Qwen-2.5-Coder-7B)
         prompt = payload.get("prompt") or payload.get("query") or ""
-        model = payload.get("model") or "muse-glimmer-30b"
+        model = payload.get("model") or "qwen-2.5-coder-7b"
 
-        local_endpoint = os.getenv("WORKER_LLM_URL", "http://127.0.0.1:8000/v1/chat/completions")
+        local_endpoint = os.getenv("WORKER_LLM_URL", "")
+        if not local_endpoint:
+            local_endpoint = "http://127.0.0.1:11434/v1/chat/completions"
         try:
             req_data = json.dumps({
                 "model": model,

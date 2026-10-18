@@ -108,13 +108,17 @@ class TestSpecificationEngine(unittest.TestCase):
         self.assertIn("ok?: boolean;", contracts)
         self.assertIn("workers?: number;", contracts)
 
-    def test_muse_glimmer_model_alias_resolution(self):
+    def test_qwen_coder_model_alias_resolution(self):
         router = ProviderRouter()
-        self.assertEqual(router.resolve_model_id("muse"), "muse-glimmer-30b")
-        self.assertEqual(router.resolve_model_id("muse-glimmer"), "muse-glimmer-30b")
-        self.assertEqual(router.resolve_model_id("muse-glimmer-30b"), "muse-glimmer-30b")
-        self.assertEqual(router.resolve_model_id("glimmer"), "muse-glimmer-30b")
+        self.assertEqual(router.resolve_model_id("qwen-7b"), "qwen/qwen-2.5-coder-7b-instruct")
+        self.assertEqual(router.resolve_model_id("qwen-2.5-coder-7b"), "qwen/qwen-2.5-coder-7b-instruct")
         self.assertEqual(router.resolve_model_id("qwen-32b"), "qwen/qwen-2.5-coder-32b-instruct")
+        self.assertEqual(router.resolve_model_id("qwen-2.5-coder-32b"), "qwen/qwen-2.5-coder-32b-instruct")
+        # Legacy aliases resolve to verified 32B weights
+        self.assertEqual(router.resolve_model_id("muse"), "qwen/qwen-2.5-coder-32b-instruct")
+        self.assertEqual(router.resolve_model_id("muse-glimmer"), "qwen/qwen-2.5-coder-32b-instruct")
+        self.assertEqual(router.resolve_model_id("muse-glimmer-30b"), "qwen/qwen-2.5-coder-32b-instruct")
+        self.assertEqual(router.resolve_model_id("glimmer"), "qwen/qwen-2.5-coder-32b-instruct")
 
     def test_capability_registry_includes_specification(self):
         snapshot = CapabilityRegistry().snapshot({"onlineWorkers": 0, "registeredWorkers": 0, "llmConfigured": False})

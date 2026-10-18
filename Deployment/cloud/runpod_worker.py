@@ -35,7 +35,7 @@ class RunPodWorkerDaemon:
         self.worker_id = worker_id or f"runpod-{socket.gethostname()[:8]}-{os.urandom(3).hex()}"
         self.token = token or os.getenv("SAREMBOK_WORKER_TOKEN", "runpod-mesh-node")
         self.gpu_info = get_colab_gpu()
-        self.models = models or ["muse-glimmer-30b", "qwen-2.5-coder-32b"]
+        self.models = models or ["qwen-2.5-coder-32b", "qwen-2.5-coder-7b"]
         self.executor = WorkerTaskExecutor(worker_id=self.worker_id, gpu_info=self.gpu_info)
         self.is_running = True
 
@@ -119,7 +119,7 @@ def main() -> None:
     parser.add_argument("--server", default=os.getenv("SAREMBOK_SERVER", "wss://sarembok.com/worker/ws"), help="Central cluster worker WebSocket URL")
     parser.add_argument("--worker-id", default=None, help="Custom Worker ID")
     parser.add_argument("--token", default=os.getenv("SAREMBOK_WORKER_TOKEN", "runpod-token"), help="Worker enrollment token")
-    parser.add_argument("--models", default="muse-glimmer-30b,qwen-2.5-coder-32b", help="Comma-separated model names")
+    parser.add_argument("--models", default="qwen-2.5-coder-32b,qwen-2.5-coder-7b", help="Comma-separated model names")
     args = parser.parse_args()
 
     daemon = RunPodWorkerDaemon(

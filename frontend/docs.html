@@ -435,7 +435,7 @@
             <div class="sidebar-group">
                 <div class="sidebar-title">Sovereign Mesh</div>
                 <a href="#sovereign-workers" class="sidebar-link">1-Click GPU Mesh Worker</a>
-                <a href="#muse-glimmer" class="sidebar-link">Muse-Glimmer-30B Runtime</a>
+                <a href="#sovereign-workers" class="sidebar-link">Qwen-2.5-Coder Runtime</a>
                 <a href="#hardware-attestation" class="sidebar-link">Hardware Attestation</a>
             </div>
             <div class="sidebar-group">
@@ -458,7 +458,7 @@
                     <option value="#openapi-export">OpenAPI 3.1 &amp; TypeScript</option>
                     <option value="#cicd-integration">CI/CD Pipeline Integration</option>
                     <option value="#sovereign-workers">1-Click GPU Mesh Worker</option>
-                    <option value="#muse-glimmer">Muse-Glimmer-30B Runtime</option>
+                    <option value="#sovereign-workers">Qwen-2.5-Coder Runtime</option>
                     <option value="#hardware-attestation">Hardware Attestation</option>
                     <option value="#rest-api">Headless REST API</option>
                     <option value="#rpc-protocol">JSON-RPC 2.0 Interface</option>
@@ -477,7 +477,7 @@
                 <div class="feature-card">
                     <span class="card-icon">🌐</span>
                     <div class="card-title">Sovereign GPU Compute Mesh</div>
-                    <p class="card-desc">1-click external GPU worker bridge (Google Colab, RunPod, Kaggle) hosting Muse-Glimmer-30B with zero reliance on costly proprietary APIs.</p>
+                    <p class="card-desc">1-click external GPU worker bridge (Google Colab, RunPod, Kaggle) hosting verified Qwen-2.5-Coder weights with zero reliance on costly proprietary APIs.</p>
                 </div>
                 <div class="feature-card">
                     <span class="card-icon">🛡️</span>
@@ -560,7 +560,7 @@ jobs:
             <h3>Launching a Colab Worker</h3>
             <pre><code># Inside a Google Colab notebook (GPU Runtime):
 !curl -sSL https://sarembok.com/Deployment/cloud/colab_worker.py -o colab_worker.py
-!python colab_worker.py --server wss://sarembok.com/worker/ws --models muse-glimmer-30b,qwen-2.5-coder-32b</code><button class="copy-btn" onclick="copySnippet(this)">Copy</button></pre>
+!python colab_worker.py --server wss://sarembok.com/worker/ws --models qwen-2.5-coder-32b,qwen-2.5-coder-7b</code><button class="copy-btn" onclick="copySnippet(this)">Copy</button></pre>
             <p>Once registered, the central SarembokVE runtime automatically routes inference tasks to your connected sovereign worker over encrypted WebSockets, prioritizing zero-cost local compute.</p>
 
             <h2 id="rest-api">Headless REST API Reference</h2>

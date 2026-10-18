@@ -281,12 +281,19 @@ class ProviderRouter:
         'gemma2:2b': 'gemma2:2b',
         'qwen2.5:3b': 'qwen2.5:3b',
         'qwen-2.5-3b': 'qwen2.5:3b',
-        'muse': 'muse-glimmer-30b',
-        'muse-glimmer': 'muse-glimmer-30b',
-        'muse-glimmer-30b': 'muse-glimmer-30b',
-        'glimmer': 'muse-glimmer-30b',
+        'qwen-7b': 'qwen/qwen-2.5-coder-7b-instruct',
+        'qwen-2.5-7b': 'qwen/qwen-2.5-coder-7b-instruct',
+        'qwen-coder-7b': 'qwen/qwen-2.5-coder-7b-instruct',
+        'qwen-2.5-coder-7b': 'qwen/qwen-2.5-coder-7b-instruct',
         'qwen-32b': 'qwen/qwen-2.5-coder-32b-instruct',
+        'qwen-2.5-32b': 'qwen/qwen-2.5-coder-32b-instruct',
         'qwen-coder-32b': 'qwen/qwen-2.5-coder-32b-instruct',
+        'qwen-2.5-coder-32b': 'qwen/qwen-2.5-coder-32b-instruct',
+        # Legacy aliases resolved to verified Qwen-2.5-Coder-32B weights
+        'muse': 'qwen/qwen-2.5-coder-32b-instruct',
+        'muse-glimmer': 'qwen/qwen-2.5-coder-32b-instruct',
+        'muse-glimmer-30b': 'qwen/qwen-2.5-coder-32b-instruct',
+        'glimmer': 'qwen/qwen-2.5-coder-32b-instruct',
     }
 
     def _configured_local_model(self, candidate: str | None = None) -> str:
