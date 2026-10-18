@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SarembokVE · Autonomous Agent Platform</title>
-    <meta name="description" content="SarembokVE — a sovereign, persistent AI agent runtime with transparent memory, verified tool execution, and multi-provider routing.">
+<title>SarembokVE &middot; Detect breaking API contract changes</title>
+<meta name="description" content="Extract OpenAPI 3.1 and TypeScript contracts from a live site with headless Chromium, and fail CI when a response field or endpoint changes against a committed baseline.">
+<link rel="canonical" href="https://sarembok.com/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="SarembokVE - Detect breaking API contract changes">
+<meta property="og:description" content="Live-site OpenAPI/TypeScript extraction and a CI drift gate. Open source, Apache-2.0.">
+<meta property="og:url" content="https://sarembok.com/">
+<meta name="twitter:card" content="summary">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1856,15 +1862,18 @@
             <div class="top-bar-left">
                 <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu" aria-expanded="false" onclick="toggleMobileMenu()">☰</button>
                 <span class="logo-mark" style="letter-spacing:1px;font-size:12px;">SAREMBOK VE</span>
-                <span class="logo-tag">Autonomous Agent Platform</span>
+                <span class="logo-tag">API contract drift detection</span>
                 <nav class="view-nav-tabs">
                     <button class="view-tab active" id="tab-console" onclick="switchView('console')">⚡ Workspace</button>
                     <button class="view-tab" id="tab-mesh" onclick="switchView('mesh')">🌐 Mesh</button>
                     <button class="view-tab" id="tab-projects" onclick="switchView('projects')">🚀 Playground</button>
                     <button class="view-tab" id="tab-docs" onclick="switchView('docs')">📖 Docs</button>
-                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')">👤 HUD</button>
+                    <button class="view-tab" id="tab-avatar" onclick="switchView('avatar')" title="Experimental">👤 HUD (experimental)</button>
                     <button class="view-tab" onclick="openPolicyModal('privacy')">🔒 Privacy</button>
                     <button class="view-tab" onclick="openPolicyModal('terms')">⚖ Terms</button>
+                    <a class="view-tab" href="/status" style="text-decoration:none">Status</a>
+                    <a class="view-tab" href="/changelog" style="text-decoration:none">Changelog</a>
+                    <a class="view-tab" href="/security" style="text-decoration:none">Security</a>
                 </nav>
             </div>
             <div class="top-bar-right">
@@ -1949,7 +1958,7 @@
                         <span class="msg-model-tag">system</span>
                     </div>
                     <div class="msg-body">
-                        Sovereign Autonomous Systems Verification Engine ready. Audit and extract OpenAPI schemas &amp; TypeScript contracts with <code>/spec &lt;url&gt;</code>, or converse with sovereign edge workers.
+                        Paste a URL to extract its OpenAPI 3.1 contract and TypeScript types: <code>/spec &lt;url&gt;</code>. For CI drift gating, see the <a href="/docs">docs</a>. The assistant can also look up live quotes and arXiv preprints; those features are experimental.
                     </div>
                 </div>
             </div>
