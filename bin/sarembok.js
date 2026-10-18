@@ -15,6 +15,7 @@ const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { fingerprint, diff } = require('./contract-diff');
 
 const SAREMBOK_HOST = process.env.SAREMBOK_HOST || 'https://sarembok.com';
 
@@ -128,7 +129,7 @@ async function handleSpec(args) {
 
         console.log(`\x1b[32m✔ Verification Complete in ${duration}ms (Cluster Latency: ${result.latencyMs || 'N/A'}ms)\x1b[0m`);
         console.log(`\x1b[36m  Automation Engine:\x1b[0m ${result.engine || 'Chromium'} (${result.automation || 'Playwright'})`);
-        console.log(`\x1b[36m  Truth Verification:\x1b[0m ${result.verified ? 'PASSED (100% Deterministic)' : 'UNVERIFIED'}`);
+        console.log(`\x1b[36m  Extraction:\x1b[0m ${result.verified ? 'OK' : 'FAILED'}${result.cached ? ' (served from cache; use `audit` for a fresh run)' : ''}`);
 
         if (outFile) {
             const exportUrl = `${SAREMBOK_HOST}/api/spec/export?target=${encodeURIComponent(target)}&format=${format}`;
@@ -152,6 +153,9 @@ async function handleAudit(args) {
     }
 
     let headers = {};
+    let baselinePath = path.join('.sarembok', 'baseline.json');
+    let updateBaseline = false;
+    let failOnDrift = true;
     for (let i = 1; i < args.length; i++) {
         if (args[i] === '--header' || args[i] === '-H') {
             const h = args[++i] || '';
@@ -162,12 +166,19 @@ async function handleAudit(args) {
         } else if (args[i] === '--token' || args[i] === '--auth') {
             const tok = args[++i] || '';
             headers['Authorization'] = tok.startsWith('Bearer ') ? tok : `Bearer ${tok}`;
+        } else if (args[i] === '--baseline') {
+            baselinePath = args[++i];
+        } else if (args[i] === '--update-baseline') {
+            updateBaseline = true;
+        } else if (args[i] === '--no-fail') {
+            failOnDrift = false;
         }
     }
 
-    console.log(`\x1b[33m🛡️ [CI/CD GATE] Auditing target contract: ${target}...\x1b[0m`);
+    console.log(`\x1b[33m[AUDIT] Extracting live contract (fresh, uncached): ${target}\x1b[0m`);
     try {
-        let endpoint = `${SAREMBOK_HOST}/api/spec?target=${encodeURIComponent(target)}`;
+        // fresh=1 bypasses the server's 30-minute spec cache: a drift gate must never read stale data.
+        let endpoint = `${SAREMBOK_HOST}/api/spec?target=${encodeURIComponent(target)}&fresh=1`;
         if (headers['Authorization']) {
             endpoint += `&token=${encodeURIComponent(headers['Authorization'])}`;
         }
@@ -179,14 +190,39 @@ async function handleAudit(args) {
         const result = await fetchJson(endpoint);
 
         if (!result.verified) {
-            console.error(`\x1b[31m✖ GATE BLOCKED: Specification verification failed for ${target}!\x1b[0m`);
+            console.error(`\x1b[31m✖ EXTRACTION FAILED for ${target}. Nothing to compare.\x1b[0m`);
+            process.exit(1);
+        }
+        if (result.cached) {
+            console.error('\x1b[31m✖ Server returned a cached result for a fresh request (server too old). Refusing to gate on stale data.\x1b[0m');
             process.exit(1);
         }
 
-        console.log(`\x1b[32m✔ GATE PASSED: Target API verified in ${result.latencyMs || 0}ms. Zero contract regressions.\x1b[0m`);
+        const current = fingerprint(result.openApiSpec);
+        const opCount = Object.keys(current).length;
+
+        if (updateBaseline || !fs.existsSync(baselinePath)) {
+            fs.mkdirSync(path.dirname(baselinePath), { recursive: true });
+            fs.writeFileSync(baselinePath, JSON.stringify({ target, createdAt: new Date().toISOString(), contract: current }, null, 2));
+            console.log(`\x1b[32m✔ Baseline ${updateBaseline ? 'updated' : 'created'} at ${baselinePath} (${opCount} operations).\x1b[0m`);
+            console.log('  Commit this file. Future runs fail on breaking changes against it.');
+            process.exit(0);
+        }
+
+        const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+        const { breaking, additive } = diff(baseline.contract, current);
+
+        additive.forEach(a => console.log(`\x1b[36m  + ${a}\x1b[0m`));
+        breaking.forEach(b => console.log(`\x1b[31m  - ${b}\x1b[0m`));
+
+        if (breaking.length) {
+            console.error(`\x1b[31m✖ ${breaking.length} breaking change(s) vs baseline (${opCount} operations now).\x1b[0m`);
+            process.exit(failOnDrift ? 1 : 0);
+        }
+        console.log(`\x1b[32m✔ No breaking changes vs baseline (${opCount} operations, ${additive.length} additive).\x1b[0m`);
         process.exit(0);
     } catch (err) {
-        console.error(`\x1b[31m✖ GATE ERROR: ${err.message}\x1b[0m`);
+        console.error(`\x1b[31m✖ AUDIT ERROR: ${err.message}\x1b[0m`);
         process.exit(1);
     }
 }
@@ -195,7 +231,6 @@ async function handleHealth() {
     try {
         const data = await fetchJson(`${SAREMBOK_HOST}/session`);
         console.log(`\x1b[32m✔ Sarembok Cluster Online: ${SAREMBOK_HOST}\x1b[0m`);
-        console.log(`\x1b[36m  Active Session Token:\x1b[0m ${(data.sessionToken || '').slice(0, 12)}...`);
         console.log(`\x1b[36m  Available Scopes:\x1b[0m ${(data.scope || []).length} methods enabled`);
     } catch (err) {
         console.error(`\x1b[31m✖ Cluster unreachable: ${err.message}\x1b[0m`);
@@ -232,7 +267,9 @@ async function main() {
         default:
             console.log(`Commands:
   sarembok spec <url> [--out <path>] [--format openapi|typescript]
-  sarembok audit <url>       (Fails CI build with exit code 1 if broken)
+  sarembok audit <url> [--baseline <file>] [--update-baseline] [--no-fail]
+                             (Diffs the live contract against a committed baseline;
+                              exit 1 on breaking changes. First run creates the baseline.)
   sarembok health            (Checks cluster latency & session broker)
   sarembok worker            (Prints sovereign GPU worker launcher)
             `);

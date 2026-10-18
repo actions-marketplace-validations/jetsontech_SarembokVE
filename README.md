@@ -1,171 +1,85 @@
 # SarembokVE
 
+[![CI](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml/badge.svg)](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Platform: Live](https://img.shields.io/badge/Production-sarembok.com-emerald.svg)](https://sarembok.com)
-[![Engine: Playwright Chromium](https://img.shields.io/badge/Engine-Playwright%20Chromium-38bdf8.svg)](https://sarembok.com/projects)
-[![CLI: npx sarembok](https://img.shields.io/badge/CLI-npx%20sarembok-f59e0b.svg)](https://sarembok.com/docs#cli)
-[![Compute: Sovereign Mesh](https://img.shields.io/badge/Mesh-Muse--Glimmer--30B-a855f7.svg)](https://github.com/jetsontech/SarembokVE/blob/main/Deployment/cloud/sarembok_gpu_worker.ipynb)
 
-**Autonomous Systems Verification Engine & Sovereign Compute Mesh**  
-Reverse-engineer web apps to OpenAPI 3.1 & TypeScript contracts with Playwright Chromium, run zero-cost GPU inference, and gate CI/CD pipelines.
+**Detect breaking API contract changes before they ship.**
+SarembokVE loads a live site in headless Chromium, records the network calls it makes, produces an OpenAPI 3.1 document and TypeScript types, and (via `audit`) fails your CI when a response field or endpoint disappears or changes type compared with a committed baseline.
 
-👉 **[Try the Live Console →](https://sarembok.com)** · **[Live Playground →](https://sarembok.com/projects)** · **[Documentation & CLI →](https://sarembok.com/docs)** · **[About →](ABOUT.md)**
+[Console](https://sarembok.com) · [Docs](https://sarembok.com/docs) · [Status](https://sarembok.com/status) · [Changelog](https://sarembok.com/changelog) · [Security](https://sarembok.com/security)
 
 ---
 
-## What It Does Today
+## Quick start
 
-SarembokVE is an enterprise-grade platform combining four breakthrough capabilities into a unified operational environment:
-
-1. **Autonomous Web Reverse-Engineering & Specification Induction:** Give SarembokVE any public URL. An ephemeral headless Playwright Chromium container navigates the site, captures live HTTP traffic and DOM mutations, and automatically synthesizes authoritative **OpenAPI 3.1.0** specifications and **TypeScript** (`.d.ts`) contract interfaces in sub-3-second verification passes.
-2. **Sub-Second Multi-Source Real-Time Intelligence Engine:** Ask about breaking developments, live market quotes (`/stock <ticker>`), or scientific preprints (`/research <topic>`). SarembokVE concurrently queries Yahoo Finance, ArXiv, Google News, and live web indices via a 4-worker parallel thread pool in sub-600ms, strictly grounding responses with verified real-time data and zero model disclaimers.
-3. **Sovereign GPU Compute Mesh:** Run decentralized inference workloads on free Google Colab (T4) or RunPod (A100) GPU nodes serving `muse-glimmer-30b` and `qwen-2.5-coder-32b` over encrypted reverse WebSocket tunnels, eliminating recurring cloud API token costs.
-4. **Persistent SQLite-WAL Memory & Recall Verification:** Unlike stateless chatbots, SarembokVE stores facts in a tiered SQLite-WAL persistence layer (`SEMANTIC`, `WORKING`, `SPATIAL`, `CORE`). When the agent answers, it displays exact cryptographic recall tags proving which stored memories informed its response.
-
----
-
-## Quick Start (Zero Install)
-
-### 1-Command Developer CLI
-
-You can run SarembokVE directly from your terminal using `npx`:
+Requires Node 18+. Run from a clone of this repo (the package is **not yet published to npm**):
 
 ```bash
-# Check cluster connectivity and active scopes
-npx sarembok health
+git clone https://github.com/jetsontech/SarembokVE && cd SarembokVE
 
-# Reverse-engineer any endpoint to OpenAPI 3.1 & TypeScript
-npx sarembok spec https://httpbin.org
+# Extract a contract (prints TypeScript, or write a file)
+node bin/sarembok.js spec https://httpbin.org
+node bin/sarembok.js spec https://httpbin.org --out api.openapi.json --format openapi
 
-# Run as a CI/CD build gate (fails build on contract regressions)
-npx sarembok audit https://httpbin.org
-
-# Connect your local machine/GPU to the sovereign compute mesh
-npx sarembok worker
+# Drift gate: first run records .sarembok/baseline.json, later runs diff against it
+node bin/sarembok.js audit https://httpbin.org
+node bin/sarembok.js audit https://httpbin.org --update-baseline   # accept current state
 ```
 
-### GitHub Actions CI/CD Gate
+`audit` exit codes: `0` no breaking change (or baseline just created), `1` breaking change or extraction failure. Use `--no-fail` to report without failing.
 
-Add automated contract regression auditing to your repository's CI/CD pipeline using the official action:
+### What counts as drift
+
+| Change | Result |
+|---|---|
+| Endpoint removed | **breaking** |
+| Response field removed or its type changed | **breaking** |
+| New endpoint or new response field | additive (reported, never fails) |
+
+Only response shapes the browser actually observed are compared. Endpoints the page never calls are invisible to the tool.
+
+### GitHub Actions
 
 ```yaml
-name: API Contract Drift Audit
-on: [push, pull_request]
-
-jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run Sarembok Autonomous API Gate
-        uses: jetsontech/SarembokVE@main
-        with:
-          target-url: 'https://staging.api.example.com'
+- uses: actions/checkout@v4
+- uses: jetsontech/SarembokVE@main
+  with:
+    target: https://staging.example.com
+    # baseline: .sarembok/baseline.json
+    # fail_on_drift: 'true'
 ```
+Commit the baseline file so the gate has something to compare against.
 
 ---
 
-## Interactive Multi-View Console
+## Measured behaviour
 
-![SarembokVE Mission Control Console](Docs/console.png)
+| Claim | Evidence |
+|---|---|
+| Spec extraction for `https://httpbin.org` | about 2.8 s end to end from the CLI (measured 2026-10-17, single run) |
+| `audit` bypasses cache | uses `?fresh=1`; refuses to gate if the server answers from cache |
+| Drift engine | 6 unit tests, run in CI (`npm test`) |
 
-Open **[sarembok.com](https://sarembok.com)** to access the unified mission control interface:
+Live health from your own browser: [/status](https://sarembok.com/status).
 
-* **⚡ Engine Workspace:** Live terminal supporting `/spec <url>`, memory inspection, and real-time streaming.
-* **🌐 Compute Mesh Dashboard:** Real-time decentralized GPU cluster topology, active WebSocket worker pools, and 1-click Colab node launcher.
-* **🚀 Live Playground:** Interactive Playwright Chromium sandbox where visitors can input any target URL and immediately download OpenAPI JSON and TypeScript contracts.
-* **📖 Docs & CLI:** cURL code generators, JSON-RPC schemas, and CI/CD integration recipes.
-* **👤 Hologram HUD:** WebGL 3D MetaHuman ARKit face topology visualizer tracking 52 blendshapes (`jawOpen`, `mouthSmile`, `eyeBlink`, `browInnerUp`) in real time.
-* **🔒 Privacy & ⚖ Terms:** Institutional privacy guarantees and zero training data retention policies.
+## Limits you should know
 
----
+- Observation-based: it sees what a real page load triggers, not your full API surface. Authenticated or user-action-only endpoints need headers/tokens (`--header`, `--token`) and may still be missed.
+- Your target URL, and any header or token you pass, are sent to our servers, which fetch the target. Read [Security](https://sarembok.com/security) first. Audit only systems you are authorised to test.
+- Not an API testing framework: it detects shape changes, not behavioural or business-logic regressions.
+- No uptime history, SLA, or compliance certification exists yet.
 
-## Architecture
+## Also in this repository (experimental, not benchmarked)
 
-```text
-Browser / Developer CLI / CI Runner
-       │
-       ▼ (TLS 1.3 / WebSocket / REST)
- ┌─────────────────────────────────────────────────────────┐
- │               Caddy 2 Edge Reverse Proxy                │
- │         (Rate Limiting, HSTS, Strict Origin Auth)       │
- └────────────────────────────┬────────────────────────────┘
-                              │
-               ┌──────────────┴──────────────┐
-               ▼                             ▼
- ┌───────────────────────────┐ ┌───────────────────────────┐
- │  Sarembok Runtime Core    │ │ Ephemeral Browser Pod     │
- │  (Python 3.12 / asyncio)  │ │ (Playwright Chromium)     │
- │  • 80+ JSON-RPC Methods   │ │ • Live Network Sniffing   │
- │  • SQLite-WAL Persistence │ │ • Schema Induction Engine │
- │  • Provider Routing       │ │ • OpenAPI 3.1 Synthesis   │
- └─────────────┬─────────────┘ └───────────────────────────┘
-               │
-               ▼ (WSS Encrypted Reverse Tunnel)
- ┌─────────────────────────────────────────────────────────┐
- │               Sovereign GPU Compute Mesh                │
- │   • Google Colab (Tesla T4) / RunPod (NVIDIA A100)      │
- │   • Models: Muse-Glimmer-30B, Qwen-2.5-Coder-32B        │
- │   • Concrete WorkerTaskExecutor with vLLM / PyTorch     │
- └─────────────────────────────────────────────────────────┘
-```
+The hosted console also contains a chat workspace with live quote/preprint/news lookups, a memory timeline, a voice interface and a 3D avatar viewer, plus a worker protocol for attaching your own GPU. These are experiments around the core tool. They have not been independently benchmarked, carry no stated performance guarantees, and may change or be removed. Source: `Deployment/cloud/`, `frontend/`, `fabric/`.
 
----
-
-## Real Capabilities vs. Truth Boundaries
-
-We hold ourselves to a strict standard of truth in engineering:
-
-| Component | Status | Implementation Evidence |
-|-----------|--------|-------------------------|
-| **Headless Spec Synthesis** | ✅ Verified Production | Playwright Chromium crawling, JSON Schema 2020-12 induction, sub-3s latency. |
-| **Real-Time Market & Research Feeds** | ✅ Verified Production | Sub-second concurrent Yahoo Finance chart quotes, ArXiv preprints, Google News, and live web grounding. |
-| **Retractable Console Rails** | ✅ Verified Production | Zero-overflow on-screen viewport (1536x730+) with collapsible docked telemetry and sovereign memory rails. |
-| **Developer CLI (`npx sarembok`)** | ✅ Verified Production | Standalone zero-dependency executable (`bin/sarembok.js`). |
-| **CI/CD GitHub Action** | ✅ Verified Production | Native composite action (`action.yml`). |
-| **Sovereign GPU Mesh** | ✅ Verified Production | `colab_worker.py` with concrete `WorkerTaskExecutor` + official Colab Notebook. |
-| **Sovereign Models** | ✅ Verified Production | Direct execution routing for `muse-glimmer-30b` and `qwen-2.5-coder-32b`. |
-| **SQLite-WAL Memory** | ✅ Verified Production | Event-sourced SQLite tables with cryptographic recall annotations. |
-| **ARKit 3D Hologram** | ✅ Verified Production | 52-blendshape WebGL canvas built into the console. |
-| **Edge Security** | ✅ Verified Production | Caddy 2 reverse proxy, TLS 1.3, internal container isolation on port 9000. |
-
----
-
-## Local Development & Self-Hosting
-
-### With Docker Compose
+## Development
 
 ```bash
-git clone https://github.com/jetsontech/SarembokVE.git
-cd SarembokVE
-
-# Configure environment keys (optional, fallback to local/openrouter)
-export GEMINI_API_KEY="your-key"
-
-# Deploy cluster
-cd Deployment/cloud
-docker compose -f compose.production.yaml up -d --build
+npm test                          # drift engine unit tests
+SAREMBOK_HOST=http://localhost:9000 node bin/sarembok.js health   # point the CLI at your own server
 ```
-
-### Run Tests & Security Gates
-
-```bash
-# Run pytest verification suite (25/25 tests)
-python -m pytest Deployment/cloud/test_frontend_rendering.py \
-                 Deployment/cloud/test_specification_engine.py \
-                 Deployment/cloud/test_truth_boundaries.py \
-                 Deployment/cloud/test_frontier_controls.py -v
-
-# Run static release gate
-python Deployment/cloud/frontier_release_gate.py
-```
-
----
 
 ## License
 
-Distributed under the Apache 2.0 License. See `LICENSE` for more information.
-
----
-
-**SarembokVE** · [sarembok.com](https://sarembok.com) · [Jetson Technologies](https://github.com/jetsontech)
+Apache-2.0. See [LICENSE](LICENSE).

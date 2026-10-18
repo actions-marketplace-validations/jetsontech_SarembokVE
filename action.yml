@@ -1,18 +1,40 @@
 name: 'SarembokVE API Contract Gate'
-description: 'Autonomous reverse-engineering and contract drift detection gate powered by SarembokVE Playwright engine.'
+description: 'Diff a live API/site contract against a committed baseline and fail the build on breaking changes.'
 author: 'Jetson Technologies'
+branding:
+  icon: 'shield'
+  color: 'blue'
 inputs:
   target:
-    description: 'Fully qualified URL of the API or web service to audit (e.g. https://api.staging.internal)'
+    description: 'Fully qualified URL to audit (e.g. https://staging.example.com)'
     required: true
+  baseline:
+    description: 'Path to the committed baseline file'
+    required: false
+    default: '.sarembok/baseline.json'
   fail_on_drift:
-    description: 'Fail the build if verification fails or schema diverges'
+    description: 'Fail the build on breaking changes ("true" or "false")'
     required: false
     default: 'true'
+  update_baseline:
+    description: 'Overwrite the baseline with the current contract ("true" or "false")'
+    required: false
+    default: 'false'
 runs:
   using: 'composite'
   steps:
-    - name: Run Sarembok Autonomous Audit
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Run contract audit
       shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        BASELINE: ${{ inputs.baseline }}
+        FAIL_ON_DRIFT: ${{ inputs.fail_on_drift }}
+        UPDATE_BASELINE: ${{ inputs.update_baseline }}
       run: |
-        node ${{ github.action_path }}/bin/sarembok.js audit "${{ inputs.target }}"
+        args=(audit "$TARGET" --baseline "$BASELINE")
+        if [ "$FAIL_ON_DRIFT" = "false" ]; then args+=(--no-fail); fi
+        if [ "$UPDATE_BASELINE" = "true" ]; then args+=(--update-baseline); fi
+        node "${{ github.action_path }}/bin/sarembok.js" "${args[@]}"

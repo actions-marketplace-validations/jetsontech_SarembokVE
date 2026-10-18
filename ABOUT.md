@@ -1,94 +1,20 @@
 # About SarembokVE
 
-### Autonomous Systems Verification Engine & Sovereign Compute Mesh
-**Jetson Technologies · Enterprise AI Infrastructure**
+SarembokVE is a tool for catching breaking API contract changes. It loads a live site in headless Chromium, records the requests the page makes, and generates an OpenAPI 3.1 description and TypeScript types. Its `audit` command compares the current contract with a baseline you commit and fails CI on breaking differences.
 
-**Live Platform:** [https://sarembok.com](https://sarembok.com)  
-**Interactive Console:** [https://sarembok.com/console](https://sarembok.com/console)  
-**Projects & Walkthroughs:** [https://sarembok.com/projects](https://sarembok.com/projects)  
-**Technical Documentation:** [https://sarembok.com/docs](https://sarembok.com/docs)  
+**Maintainer:** Jetson Technologies
+**Source:** https://github.com/jetsontech/SarembokVE · **License:** Apache-2.0
 
----
+## Status
 
-## 1. Mission & Philosophy
+Early-stage, single-maintainer software. It runs in production at https://sarembok.com; live checks are on the [status page](https://sarembok.com/status). The command-line package is not yet published to npm. Releases are listed in the [changelog](https://sarembok.com/changelog), including corrections to earlier claims.
 
-Modern software engineering suffers from an acute documentation and verification deficit. APIs drift, undocumented internal portals change without warning, and engineering teams waste countless hours manually reverse-engineering network requests and writing brittle interface contracts. At the same time, proprietary cloud LLM APIs charge steep token tolls for basic reasoning workflows.
+## What it is not
 
-**SarembokVE** is built on a single, uncompromising principle:  
-> **Build the thing, prove it with code and live telemetry, then describe it.**
+- Not a certified or audited security product.
+- Not a replacement for contract tests written against your own API.
+- Not an autonomous agent platform. The hosted console contains experimental assistant, voice and avatar features; they are side projects around the core tool and carry no guarantees.
 
-We reject mockups, synthetic marketing hype, and unverified benchmarks. Every feature in SarembokVE is operational, tested against real targets, and verifiable live in production.
+## Contact
 
----
-
-## 2. Core Pillars of the Platform
-
-### I. Autonomous Web Reverse-Engineering & Specification Induction
-Given any public web application, undocumented API, or enterprise portal, SarembokVE spawns an ephemeral headless Playwright Chromium instance inside an isolated container (`cap_drop: ALL`, 768MB RAM ceiling). It intercepts raw HTTP network traffic, analyzes DOM mutations, detects data structures, and automatically generates:
-* **Authoritative OpenAPI 3.1.0 specifications** compliant with JSON Schema Draft 2020-12.
-* **Strict TypeScript interface definitions** (`.d.ts`) ready for enterprise codebases.
-* **Instant downloads and live cURL integrations** with sub-3-second verification latency.
-
-### II. Sub-Second Multi-Source Real-Time Intelligence Engine
-Real-time information across financial markets, scientific literature, breaking news, and current events is grounded natively into SarembokVE without adding latency:
-* **Live Market & Crypto Feeds:** Real-time exchange quotes, net changes, day ranges, and volume via sub-300ms Yahoo Finance chart APIs (e.g., `/stock TSLA`, `/stock BTC-USD`).
-* **Live ArXiv Preprint Research:** Direct queries against the ArXiv API returning current scientific preprints with publication dates, author lists, and abstract summaries (e.g., `/research quantum computing`, `/arxiv <topic>`).
-* **Breaking News & Live Web Grounding:** Multi-threaded Google News RSS and live web parsers feeding concurrent context.
-* **Strict Grounding Directive:** Contextually injected real-time telemetry enforces zero-refusal policies, preventing generic model disclaimers.
-* **Parallel Execution:** A 4-worker thread pool executes all live retrieval tasks in parallel, delivering grounded answers in ~600ms total.
-
-### III. Sovereign GPU Compute Mesh
-Why pay proprietary cloud token APIs when commodity and distributed GPUs can serve reasoning models at zero marginal cost?
-* **Decentralized Compute Worker Protocol:** Workers connect to the central cluster edge (`wss://sarembok.com/worker/ws`) using secure cryptographic enrollment tokens.
-* **Supported Sovereign Models:** `muse-glimmer-30b` and `qwen-2.5-coder-32b`.
-* **1-Click Google Colab & RunPod Nodes:** Launch free T4/A100 GPU compute nodes with zero local installation using our official [Colab Notebook](https://github.com/jetsontech/SarembokVE/blob/main/Deployment/cloud/sarembok_gpu_worker.ipynb).
-
-### IV. 1-Command Zero-Install Developer CLI & CI/CD Gates
-* **Developer CLI (`npx sarembok`):** Run audits, extract specifications, and verify cluster health directly from any developer terminal:
-  ```bash
-  # Check cluster connectivity
-  npx sarembok health
-
-  # Reverse-engineer any endpoint to OpenAPI 3.1 & TypeScript
-  npx sarembok spec https://httpbin.org
-
-  # Run as a CI/CD build gate (fails build if contract regressions occur)
-  npx sarembok audit https://httpbin.org
-
-  # Join machine to the sovereign GPU compute mesh
-  npx sarembok worker
-  ```
-* **Official GitHub Action (`action.yml`):** Gate merge requests on contract drift with a single workflow step.
-
-### V. Persistent SQLite-WAL Memory Architecture
-Unlike stateless chatbots that lose context upon browser refresh, SarembokVE maintains an event-sourced SQLite-WAL persistence layer across 4 distinct memory tiers:
-* `SEMANTIC`: Domain knowledge and persistent facts.
-* `WORKING`: Active session context and multi-turn goals.
-* `SPATIAL`: System environment and network topologies.
-* `CORE`: Immutable user directives and security policies.
-
-Every recall is annotated in the response with exact timestamps and keys, showing the user precisely which memory events informed the agent's reasoning.
-
-### VI. ARKit 52-Blendshape MetaHuman Holographic HUD
-An interactive WebGL 3D face topology rendering pipeline running directly in the browser console. Tracks 52 ARKit blendshapes (`jawOpen`, `mouthSmile`, `eyeBlink`, `browInnerUp`) in real time, reacting to cursor movement and live audio streaming.
-
-### VII. Dynamic Retractable Mission Control Console
-A modern, zero-overflow interface supporting viewports from 1536x730 up to ultrawide displays. Features docked, retractable side-rails for Cluster Telemetry and Sovereign Memory, interactive quick-action composer pills (`/stock TSLA`, `/research quantum computing`, `Elon Musk's flying car`), and single-keystroke panel toggles (`Ctrl+[` / `Ctrl+]`).
-
----
-
-## 3. Production Infrastructure & Security Boundaries
-
-* **Edge Gateway:** Caddy 2 reverse proxy with automatic Let's Encrypt TLS 1.3, strict origin verification, and HSTS.
-* **Container Isolation:** Internal runtime port 9000 is isolated from public host interfaces.
-* **Zero Data Retention for Training:** SarembokVE does not sell user queries or crawled schemas, and never trains public AI models on customer conversations.
-* **Instant Data Purge:** Users can purge all session records and memory graphs at any moment via `/clear`.
-
----
-
-## 4. Contact & Links
-
-* **Company:** Jetson Technologies
-* **Repository:** [https://github.com/jetsontech/SarembokVE](https://github.com/jetsontech/SarembokVE)
-* **Production Gateway:** [https://sarembok.com](https://sarembok.com)
-* **License:** Apache-2.0
+Open an issue on GitHub. For vulnerabilities, use a private [security advisory](https://github.com/jetsontech/SarembokVE/security/advisories/new).

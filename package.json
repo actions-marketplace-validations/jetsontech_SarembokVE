@@ -1,30 +1,41 @@
 {
   "name": "sarembok",
-  "version": "1.0.0",
-  "description": "SarembokVE - Autonomous Systems Verification Engine & Sovereign Compute Mesh CLI",
+  "version": "0.2.0",
+  "description": "CLI for SarembokVE: extract OpenAPI 3.1 / TypeScript contracts from a live site and gate CI on breaking drift.",
   "main": "bin/sarembok.js",
   "bin": {
     "sarembok": "./bin/sarembok.js"
   },
+  "files": [
+    "bin/",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node bin/sarembok.js",
-    "test": "node bin/sarembok.js health"
+    "test": "node --test test/contract-diff.test.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jetsontech/SarembokVE.git"
+    "url": "git+https://github.com/jetsontech/SarembokVE.git"
+  },
+  "homepage": "https://sarembok.com",
+  "bugs": {
+    "url": "https://github.com/jetsontech/SarembokVE/issues"
   },
   "keywords": [
-    "autonomous-agent",
-    "reverse-engineering",
     "openapi",
-    "typescript-contracts",
-    "ci-cd-gate",
-    "sovereign-mesh"
+    "typescript",
+    "api-contract",
+    "contract-testing",
+    "ci-cd",
+    "playwright",
+    "reverse-engineering"
   ],
   "author": "Jetson Technologies",
   "license": "Apache-2.0",
-  "dependencies": {
-    "react": "^19.2.8"
-  }
+  "dependencies": {}
 }

@@ -61,3 +61,12 @@ frontend/.audio_cache/
 node_modules/
 .sarembok-fix-backups/
 sarembok-*.png
+
+# Untracked build/dev artifacts
+cloudflared.exe
+ProjectTree.txt
+project-tree.txt
+Builder-v2.2-STABLE.txt
+production-index.html
+frontend/index.html.*
+.sarembok/

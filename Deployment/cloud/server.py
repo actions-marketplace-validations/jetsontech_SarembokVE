@@ -7339,12 +7339,14 @@ async def process_http_request(connection: Any, request: Any) -> Any:
                 hk, hv = hp.split(":", 1)
                 custom_headers[hk.strip()] = hv.strip()
 
+        fresh_flag = str(q.get("fresh", [""])[0]).strip().lower() in ("1", "true", "yes")
         try:
             spec_res = await asyncio.to_thread(dispatch, "ExtractSystemSpecification", {
                 "url": target,
                 "waitSeconds": 2.0,
                 "headers": custom_headers,
                 "cookies": custom_cookies,
+                "forceRefresh": fresh_flag,
             })
             return make_api_response(200 if spec_res.get("ok") else 502, spec_res)
         except Exception as exc:
