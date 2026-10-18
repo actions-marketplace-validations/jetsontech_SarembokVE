@@ -385,53 +385,6 @@
             line-height: 1.6;
         }
 
-        /* Avatar Holographic HUD */
-        .metahuman-stage {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 20px;
-            flex: 1;
-            min-height: 480px;
-        }
-
-        .metahuman-canvas-wrap {
-            background: #05070d;
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #metahuman-canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        .metahuman-hud-telemetry {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .morph-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--border-default);
-        }
-
-        .morph-label { color: var(--text-secondary); font-family: var(--font-mono); }
-        .morph-val { color: var(--accent); font-family: var(--font-mono); font-weight: 600; }
 
         /* Modal Overlay */
         .policy-modal-overlay {
@@ -1945,15 +1898,6 @@
                 max-width: 100% !important;
             }
 
-            /* Holographic Digital Human HUD responsive */
-            .metahuman-stage {
-                grid-template-columns: 1fr !important;
-                min-height: auto !important;
-                gap: 16px !important;
-            }
-            .metahuman-canvas-wrap {
-                height: 280px !important;
-            }
 
             /* Card grids responsive */
             .playground-cards-grid, .mesh-cards-grid {
@@ -2095,33 +2039,33 @@
                         <span class="msg-model-tag">system</span>
                     </div>
                     <div class="msg-body">
-                        Paste a URL to extract its OpenAPI 3.1 contract and TypeScript types: <code>/spec &lt;url&gt;</code>. For CI drift gating, see the <a href="/docs">docs</a>. The assistant can also look up live quotes and arXiv preprints; those features are experimental.
+                        Autonomous API contract synthesis and continuous breaking drift detection. Extract OpenAPI 3.1 &amp; TypeScript contracts via <code>/spec &lt;target-url&gt;</code>, or execute deterministic drift gating via <code>/audit &lt;target-url&gt;</code>. Refer to <a href="/docs" class="msg-link">technical documentation</a> for CI/CD integration.
                     </div>
                 </div>
             </div>
             <div class="input-area">
                 <div class="floating-composer-card">
                     <div class="composer-pills-bar">
-                        <button class="action-pill cyan" onclick="injectPrompt('/stock TSLA')" title="Live real-time market stock quote">
-                            <span>📈</span> /stock TSLA
+                        <button class="action-pill cyan" onclick="injectPrompt('/spec https://httpbin.org')" title="Extract OpenAPI 3.1 &amp; TypeScript contract">
+                            <span>⚡</span> /spec httpbin
                         </button>
-                        <button class="action-pill purple" onclick="injectPrompt('/research quantum computing')" title="Live ArXiv peer-reviewed preprints">
-                            <span>🔬</span> /research quantum computing
+                        <button class="action-pill purple" onclick="injectPrompt('/audit https://httpbin.org --no-fail')" title="Run deterministic contract drift audit">
+                            <span>🛡️</span> /audit httpbin
                         </button>
-                        <button class="action-pill green" onclick="injectPrompt('Tell me about Elon Musk\'s flying car')" title="Real-time web &amp; news intelligence">
-                            <span>🚀</span> Elon Musk's flying car
-                        </button>
-                        <button class="action-pill" onclick="injectPrompt('/spec https://news.ycombinator.com')" title="Extract OpenAPI &amp; TypeScript specs from target">
-                            <span>⚡</span> /spec HN
+                        <button class="action-pill green" onclick="toggleAuthDrawer()" title="Configure intranet session cookies &amp; Bearer tokens">
+                            <span>🔐</span> Auth &amp; Headers
                         </button>
                         <button class="action-pill" onclick="switchView('mesh')" title="Inspect compute nodes">
                             <span>🌐</span> Compute Mesh
+                        </button>
+                        <button class="action-pill" onclick="switchView('docs')" title="Technical Documentation &amp; CLI Reference">
+                            <span>📖</span> API Docs
                         </button>
                     </div>
                     <div class="input-row">
                         <button class="voice-btn" id="dialogue-mic-btn" type="button" onclick="toggleLiveConversation()" title="Start two-way live voice">🎙 2-WAY</button>
                         <div class="voice-btn live-voice-status" id="hud-live-2way-btn" role="status" aria-live="polite" title="Gemini Live is the console voice authority">LIVE VOICE · GEMINI LIVE</div>
-                        <input type="text" class="chat-input" id="chat-input" placeholder="Message Sarembok or type /spec &lt;target-url&gt;…" autocomplete="off" spellcheck="true">
+                        <input type="text" class="chat-input" id="chat-input" placeholder="Enter API target URL or command (e.g. /spec https://httpbin.org, /audit)..." autocomplete="off" spellcheck="true">
                         <button class="send-btn" id="send-btn" onclick="sendMessage()">Send ✦</button>
                         <div class="voice-status" id="console-voice-status"><span class="voice-status-dot" id="console-voice-dot"></span><span id="console-voice-state">VOICE READY</span><span id="console-voice-hint"></span></div>
                     </div>
@@ -2446,45 +2390,6 @@
             </div>
         </section>
 
-        <!-- SUB-VIEW: HOLOGRAM AVATAR HUD -->
-        <section class="view-panel" id="view-avatar-panel" style="display:none;">
-            <div class="panel-header-title">Holographic Digital Human &amp; Telemetry HUD</div>
-            <div class="panel-header-desc">Real-time ARKit 52-blendshape facial topology visualization and audio synthesis tracking. Move your cursor to adjust avatar gaze direction.</div>
-            
-            <div class="metahuman-stage">
-                <div class="metahuman-canvas-wrap">
-                    <canvas id="metahuman-canvas"></canvas>
-                    <div id="mh-coords-overlay" style="position:absolute;bottom:14px;left:16px;font-family:var(--font-mono);font-size:11px;color:rgba(56,189,248,0.85);background:rgba(0,0,0,0.5);padding:3px 8px;border-radius:4px;">X: 0.00 Y: 0.00</div>
-                </div>
-
-                <div class="metahuman-hud-telemetry">
-                    <div style="font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;text-transform:uppercase;">ARKit Morph Telemetry</div>
-                    
-                    <div class="morph-row">
-                        <span class="morph-label">Jaw Open</span>
-                        <span class="morph-val" id="val-jaw-open">0.00</span>
-                    </div>
-                    <div class="morph-row">
-                        <span class="morph-label">Mouth Smile</span>
-                        <span class="morph-val" id="val-mouth-smile">0.00</span>
-                    </div>
-                    <div class="morph-row">
-                        <span class="morph-label">Eye Blink</span>
-                        <span class="morph-val" id="val-eye-blink">0.00</span>
-                    </div>
-                    <div class="morph-row">
-                        <span class="morph-label">Brow Up</span>
-                        <span class="morph-val" id="val-brow-up">0.00</span>
-                    </div>
-
-                    <div style="margin-top:10px;">
-                        <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:6px;">SESSION STATUS</div>
-                        <div id="mh-session-status" style="font-family:var(--font-mono);font-size:12px;color:var(--green);margin-bottom:14px;">STANDBY · dhs-ada1</div>
-                        <button class="send-btn" style="width:100%;" onclick="createLiveDigitalHumanSession()">Reconnect Live Link</button>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- POLICY MODAL OVERLAY -->
         <div class="policy-modal-overlay" id="policy-modal-overlay" onclick="if(event.target===this)closePolicyModal();">
@@ -2827,7 +2732,6 @@
             const meshPanel = document.getElementById('view-mesh-panel');
             const projectsPanel = document.getElementById('view-projects-panel');
             const docsPanel = document.getElementById('view-docs-panel');
-            const avatarPanel = document.getElementById('view-avatar-panel');
             const railToggleGroup = document.querySelector('.rail-toggle-group');
 
             // Hide all sub-views
@@ -2837,7 +2741,6 @@
             if (sysRail) sysRail.style.display = 'none';
             if (projectsPanel) projectsPanel.style.display = 'none';
             if (docsPanel) docsPanel.style.display = 'none';
-            if (avatarPanel) avatarPanel.style.display = 'none';
 
             // Show panel toggles only in console/workspace
             if (railToggleGroup) {
@@ -2854,13 +2757,6 @@
                 if (viewName === 'mesh' && meshPanel) meshPanel.style.display = 'block';
                 if (viewName === 'projects' && projectsPanel) projectsPanel.style.display = 'flex';
                 if (viewName === 'docs' && docsPanel) docsPanel.style.display = 'flex';
-                if (viewName === 'avatar' && avatarPanel) {
-                    avatarPanel.style.display = 'flex';
-                    if (!window.__mhInitialized) {
-                        setTimeout(initMetaHumanHologram, 50);
-                        window.__mhInitialized = true;
-                    }
-                }
             }
         }
 
@@ -2980,177 +2876,6 @@
             }
         }
 
-        // ====== METAHUMAN ARKIT HOLOGRAPHIC ENGINE ======
-        const morphTargets = {
-            jawOpen: 0.0,
-            mouthSmile: 0.0,
-            eyeBlink: 0.0,
-            browInnerUp: 0.0
-        };
-
-        const FACE_TOPOLOGY = {
-            jaw: [
-                [-1.2, 0.4, 0], [-1.0, 0.9, 0.3], [-0.7, 1.4, 0.6], [-0.35, 1.7, 0.8],
-                [0, 1.8, 0.9],
-                [0.35, 1.7, 0.8], [0.7, 1.4, 0.6], [1.0, 0.9, 0.3], [1.2, 0.4, 0]
-            ],
-            eyebrowLeft: [[-0.8, -0.6, 0.6], [-0.5, -0.8, 0.8], [-0.2, -0.7, 0.9]],
-            eyebrowRight: [[0.2, -0.7, 0.9], [0.5, -0.8, 0.8], [0.8, -0.6, 0.6]],
-            nose: [[0, -0.6, 1.0], [0, -0.1, 1.25], [0, 0.3, 1.4], [-0.25, 0.45, 1.1], [0.25, 0.45, 1.1]],
-            eyeLeft: [[-0.7, -0.3, 0.7], [-0.5, -0.45, 0.8], [-0.3, -0.3, 0.75], [-0.5, -0.2, 0.75]],
-            eyeRight: [[0.3, -0.3, 0.75], [0.5, -0.45, 0.8], [0.7, -0.3, 0.7], [0.5, -0.2, 0.75]],
-            lipsOuter: [
-                [-0.45, 0.9, 1.0], [-0.2, 0.8, 1.15], [0, 0.82, 1.2], [0.2, 0.8, 1.15], [0.45, 0.9, 1.0],
-                [0.25, 1.15, 1.1], [0, 1.2, 1.15], [-0.25, 1.15, 1.1]
-            ],
-            cranium: [
-                [-1.1, -0.2, 0], [-1.0, -0.9, 0.3], [-0.6, -1.5, 0.6], [0, -1.7, 0.8],
-                [0.6, -1.5, 0.6], [1.0, -0.9, 0.3], [1.1, -0.2, 0]
-            ]
-        };
-
-        let mhCanvas = null;
-        let mhCtx = null;
-        let mhTargetYaw = 0;
-        let mhTargetPitch = 0;
-        let mhCurrentYaw = 0;
-        let mhCurrentPitch = 0;
-
-        function updateMorphMeters() {
-            const jawEl = document.getElementById("val-jaw-open");
-            if (jawEl) jawEl.textContent = morphTargets.jawOpen.toFixed(2);
-            const smileEl = document.getElementById("val-mouth-smile");
-            if (smileEl) smileEl.textContent = morphTargets.mouthSmile.toFixed(2);
-            const blinkEl = document.getElementById("val-eye-blink");
-            if (blinkEl) blinkEl.textContent = morphTargets.eyeBlink.toFixed(2);
-            const browEl = document.getElementById("val-brow-up");
-            if (browEl) browEl.textContent = morphTargets.browInnerUp.toFixed(2);
-        }
-
-        function project3D(x, y, z, cx, cy, scale, yaw, pitch) {
-            const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-            const x1 = x * cosY + z * sinY;
-            const z1 = -x * sinY + z * cosY;
-            const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-            const y2 = y * cosP - z1 * sinP;
-            const z2 = y * sinP + z1 * cosP;
-            const fov = 3.8;
-            const pScale = scale * (fov / (fov + z2));
-            return { x: cx + x1 * pScale, y: cy + y2 * pScale, scale: pScale };
-        }
-
-        function drawPolyline(pts) {
-            if (!pts.length || !mhCtx) return;
-            mhCtx.beginPath();
-            mhCtx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) mhCtx.lineTo(pts[i].x, pts[i].y);
-            mhCtx.stroke();
-        }
-
-        function animateMetaHuman() {
-            if (!mhCtx || !mhCanvas) return;
-            mhCtx.clearRect(0, 0, mhCanvas.width, mhCanvas.height);
-            const cx = mhCanvas.width / 2;
-            const cy = mhCanvas.height / 2;
-            const baseScale = Math.min(cx, cy) * 0.52;
-
-            mhCurrentYaw += (mhTargetYaw - mhCurrentYaw) * 0.08;
-            mhCurrentPitch += (mhTargetPitch - mhCurrentPitch) * 0.08;
-
-            mhCtx.save();
-            mhCtx.strokeStyle = "rgba(56, 189, 248, 0.85)";
-            mhCtx.lineWidth = 1.3;
-            mhCtx.shadowBlur = 8;
-            mhCtx.shadowColor = "#38bdf8";
-
-            // 1. Cranium
-            const cranium2D = FACE_TOPOLOGY.cranium.map(p => project3D(p[0], p[1], p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
-            drawPolyline(cranium2D);
-
-            // 2. Jaw
-            const jaw2D = FACE_TOPOLOGY.jaw.map(p => {
-                const dy = p[1] > 0.8 ? p[1] + morphTargets.jawOpen * 0.45 : p[1];
-                return project3D(p[0], dy, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch);
-            });
-            drawPolyline(jaw2D);
-
-            // 3. Eyebrows
-            const browL = FACE_TOPOLOGY.eyebrowLeft.map(p => project3D(p[0], p[1] - morphTargets.browInnerUp * 0.2, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
-            const browR = FACE_TOPOLOGY.eyebrowRight.map(p => project3D(p[0], p[1] - morphTargets.browInnerUp * 0.2, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
-            drawPolyline(browL); drawPolyline(browR);
-
-            // 4. Nose
-            const nose2D = FACE_TOPOLOGY.nose.map(p => project3D(p[0], p[1], p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
-            drawPolyline(nose2D.slice(0, 3)); drawPolyline(nose2D.slice(3, 5));
-
-            // 5. Eyes
-            const blinkScaleY = 1.0 - morphTargets.eyeBlink * 0.85;
-            const eyeL = FACE_TOPOLOGY.eyeLeft.map(p => project3D(p[0], -0.3 + (p[1] + 0.3) * blinkScaleY, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
-            const eyeR = FACE_TOPOLOGY.eyeRight.map(p => project3D(p[0], -0.3 + (p[1] + 0.3) * blinkScaleY, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch));
-            drawPolyline([...eyeL, eyeL[0]]); drawPolyline([...eyeR, eyeR[0]]);
-
-            // 6. Lips
-            const lips2D = FACE_TOPOLOGY.lipsOuter.map(p => {
-                let dy = p[1];
-                if (dy > 1.0) dy += morphTargets.jawOpen * 0.55;
-                return project3D(p[0], dy, p[2], cx, cy, baseScale, mhCurrentYaw, mhCurrentPitch);
-            });
-            drawPolyline([...lips2D, lips2D[0]]);
-            mhCtx.restore();
-
-            requestAnimationFrame(animateMetaHuman);
-        }
-
-        function initMetaHumanHologram() {
-            mhCanvas = document.getElementById("metahuman-canvas");
-            if (!mhCanvas) return;
-            mhCtx = mhCanvas.getContext("2d");
-
-            function resizeMH() {
-                if (!mhCanvas || !mhCanvas.parentElement) return;
-                const rect = mhCanvas.parentElement.getBoundingClientRect();
-                mhCanvas.width = rect.width || 600;
-                mhCanvas.height = Math.max(380, rect.height || 400);
-            }
-            window.addEventListener("resize", resizeMH);
-            resizeMH();
-
-            mhCanvas.parentElement.addEventListener("mousemove", e => {
-                const rect = mhCanvas.parentElement.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-                const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-                mhTargetYaw = x * 0.45;
-                mhTargetPitch = -y * 0.35;
-                const coordsEl = document.getElementById("mh-coords-overlay");
-                if (coordsEl) coordsEl.textContent = `X: ${x.toFixed(2)} Y: ${y.toFixed(2)}`;
-            });
-
-            setInterval(() => {
-                morphTargets.eyeBlink = 1.0;
-                updateMorphMeters();
-                setTimeout(() => {
-                    morphTargets.eyeBlink = 0.0;
-                    updateMorphMeters();
-                }, 160);
-            }, 3600);
-
-            animateMetaHuman();
-        }
-
-        async function createLiveDigitalHumanSession() {
-            const statusEl = document.getElementById("mh-session-status");
-            if (statusEl) statusEl.textContent = "INITIALIZING LIVE LINK...";
-            try {
-                if (typeof sendRPC === 'function') {
-                    const res = await sendRPC("CreateDigitalHumanSession", { agentId: "sarembok-prime", metahumanId: "ada_v1" });
-                    if (res?.sessionId && statusEl) {
-                        statusEl.textContent = `ACTIVE · ${res.sessionId}`;
-                        return;
-                    }
-                }
-            } catch(e) {}
-            if (statusEl) statusEl.textContent = "CONNECTED · dhs-ada1";
-        }
 
         // ====== STATE ======
         let ws = null;
