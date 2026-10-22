@@ -1,13 +1,19 @@
 {
-"platform":"Sarembok VE",
-"version":"0.1",
-"modules":[
-"Runtime",
-"Bridge",
-"MetaHuman",
-"Agents",
-"Memory",
-"Voice",
-"Vision"
-]
+  "platform": "Sarembok VE",
+  "version": "0.3.0",
+  "description": "AI-native computing environment, autonomous multi-sector intelligence, and distributed frontier systems engine",
+  "modules": [
+    "Runtime",
+    "MultiSectorIntelligence",
+    "ArgonTelemetry",
+    "FrontierVisualSynthesis",
+    "AutonomousBrowser",
+    "CognitiveGovernor",
+    "Bridge",
+    "MetaHuman",
+    "Agents",
+    "PersistentMemory",
+    "Voice",
+    "Vision"
+  ]
 }

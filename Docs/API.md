@@ -56,3 +56,12 @@ All RPC requests follow the standard JSON-RPC 2.0 envelope format:
 * `GetAuditTrail`: Verify audit trail record count and integrity.
 * `CreateDelegation`: Create sub-goal delegation between agents.
 * `RestoreState`: Replay SQLite WAL entries to restore state.
+
+### Multi-Sector Intelligence & Telemetry (v0.3.0)
+* `sarembok.dispatch_directive`: High-entropy natural language directive dispatch with automated intent classification.
+  - Multi-sector parallel fan-out across 15 standard industry sectors (Technology, Energy, Healthcare, Financials, Defense, Industrials, etc.).
+  - Real-time batch asset quote fetching with sub-second parallel HTTP execution.
+  - Domain-targeted RSS news ingestion and multi-perspective contextualization.
+  - Argon visual vector synthesis: Generates responsive SVG technical overlays, performance sparklines, and visual execution cards directly in the streaming HUD.
+* `GetSectorTaxonomy`: Returns the dictionary of supported GICS sectors, benchmark ETF symbols, and search keyword mappings.
+* `FetchAssetQuotesBatch`: Concurrent retrieval of real-time quotes, 24h percentage movements, price ranges, and volume metrics for arbitrary ticker arrays.

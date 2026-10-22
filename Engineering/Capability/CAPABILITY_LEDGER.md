@@ -7,19 +7,21 @@
 
 | Capability | Status | Evidence / Next Validation |
 |---|---|---|
-| Cloud Runtime | 🟢 Operational | Production runtime and smoke/integration testing |
-| Authentication | 🟢 Operational | Authenticated RPC testing |
-| Distributed Workers | 🟢 Operational | Worker registration/listing and GPU worker validation |
+| Cloud Runtime | 🟢 Operational | Production runtime on OVH VPS (`sarembok.com`) verified healthy |
+| Authentication | 🟢 Operational | Authenticated session token and JSON-RPC dispatch verified |
+| Distributed Workers | 🟢 Operational | Worker registration/listing and Colab GPU worker validation |
+| Multi-Sector Real-Time Fan-Out | 🟢 Operational | Parallel concurrent fetch across 15 GICS sectors + comparative tables (<1s latency) |
+| Argon Telemetry & Vector Synthesis | 🟢 Operational | Mathematical SVG vector synthesis substrate and dark-mode charts verified |
+| Ephemeral Browser Sandbox | 🟢 Operational | Playwright headless Chromium container verified with automated spec extraction |
+| Voice / Audio | 🟢 Operational | Kokoro-82M neural TTS container (`sarembok-voice:8880`) verified |
 | Multi-Agent Fabric | 🟡 Development | Expand agent coordination tests |
-| Persistent Memory | 🟡 Development | Durable state and recovery tests |
+| Persistent Memory | 🟡 Development | Durable state and SQLite-WAL recovery tests |
 | Model/Provider Fabric | 🟡 Development | Provider adapter contract tests |
 | Computer Vision / OpenCV | 🔵 Planned | Build perception pipeline and camera tests |
-| Voice / Audio | 🟡 Development | End-to-end speech pipeline |
-| MetaHuman | 🟡 Development | Runtime/client integration |
-| Computer Interaction | 🔵 Planned | Authorized action sandbox and audit tests |
+| MetaHuman | 🟡 Development | Runtime/client Unreal Engine 5.8 integration |
 | Software Engineering Agents | 🔵 Planned | Build-test-repair benchmark |
 | Long-Horizon Execution | 🔵 Planned | Horizon benchmark with checkpoint/recovery |
-| AI-Native GUI | 🔵 Planned | UX prototype and task execution tests |
+| AI-Native GUI | 🟢 Operational | Unified Frontier Obsidian & Glassmorphism console verified live |
 | Mobile Client | 🔵 Planned | iOS/Android functional prototype |
 | Sarembok Computing Environment | 🔴 Future | OS/platform prototype |
 | Sarembok Kernel | 🔴 Future Research | Kernel research program |

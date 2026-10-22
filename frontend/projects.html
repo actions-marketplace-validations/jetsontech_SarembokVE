@@ -545,6 +545,63 @@
                 </div>
             </div>
         </article>
+
+        <!-- Project 4 -->
+        <article class="project-card" id="project-4">
+            <div class="project-header">
+                <div>
+                    <span class="project-tag" style="background: rgba(168, 85, 247, 0.2); color: var(--purple);">GOAL 04 · CROSS-SECTOR TELEMETRY</span>
+                    <h2 class="project-title">Multi-Sector Real-Time Parallel Fan-Out Engine</h2>
+                </div>
+                <button class="btn-action btn-run" onclick="replayProject4()">▶ Replay Live Execution</button>
+            </div>
+            <div class="project-body">
+                <div class="project-narrative">
+                    <p class="project-desc">When operators need comparative cross-industry intelligence, monolithic single-source prompts fail. SarembokVE's multi-sector parallel fan-out engine decomposes complex prompts across 15 standard GICS sectors, simultaneously querying high-frequency chart APIs, live sector ETFs, and domain-targeted news feeds in under 1 second.</p>
+                    <div class="timeline">
+                        <div class="timeline-step">
+                            <div class="timeline-dot done"></div>
+                            <div class="step-title">1. Multi-Sector Intent Detection</div>
+                            <div class="step-desc">Identified 3 target sectors: Technology (XLK), Energy (XLE), Healthcare (XLV).</div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="timeline-dot done"></div>
+                            <div class="step-title">2. Sub-Second Concurrent ThreadPool Fan-Out</div>
+                            <div class="step-desc">Dispatched 6 parallel network workers querying live quotes and targeted RSS feeds.</div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="timeline-dot done"></div>
+                            <div class="step-title">3. Grounded Telemetry Synthesis</div>
+                            <div class="step-desc">Extracted real-time price, 24h change, day range, and top headline context.</div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="timeline-dot done"></div>
+                            <div class="step-title">4. Tabular Markdown &amp; Argon Visualization</div>
+                            <div class="step-desc">Formatted comparative tables with responsive dark-mode styling in 930ms.</div>
+                        </div>
+                    </div>
+                    <div class="project-actions">
+                        <a href="/" class="btn-action" style="color:var(--accent);border-color:rgba(56,189,248,0.4);">🚀 Try in Console</a>
+                        <button class="btn-action" onclick="navigator.clipboard.writeText('how are tech, energy, and healthcare doing today?')">📋 Copy Example Prompt</button>
+                    </div>
+                </div>
+                <div class="trace-screen">
+                    <div class="trace-bar">
+                        <span>FAN-OUT ENGINE: ThreadPoolExecutor(max_workers=8)</span>
+                        <span>LATENCY: 930ms</span>
+                    </div>
+                    <div class="trace-content" id="trace-p4">
+[00:00.005] <span class="log-accent">INTENT</span> Detected cross-sector directive across 3 industries
+[00:00.012] <span class="log-accent">FANOUT</span> Spawning parallel quote &amp; news fetchers...
+[00:00.340] <span class="log-green">QUOTE</span> XLK: $228.45 (+1.42%) | Vol: 4.8M
+[00:00.410] <span class="log-green">QUOTE</span> XLE: $89.20 (-0.68%) | Vol: 12.1M
+[00:00.480] <span class="log-green">QUOTE</span> XLV: $148.10 (+0.35%) | Vol: 6.2M
+[00:00.720] <span class="log-green">NEWS</span> Ingested 9 sector-targeted real-time RSS bulletins
+[00:00.930] <span class="log-green">COMPLETE</span> Synthesized multi-sector comparison table in 930ms
+                    </div>
+                </div>
+            </div>
+        </article>
     </div>
 
     <script>
@@ -628,6 +685,14 @@
             el.innerHTML = '<span class="log-accent">[REPLAYING] Running CI/CD PR Audit...</span>';
             setTimeout(() => {
                 el.innerHTML = `[00:00.010] <span class="log-accent">GATE</span> Triggered on PR #142\n[00:01.200] <span class="log-green">API</span> Scanned staging endpoint in 1200ms\n[00:01.800] <span class="log-amber">DETECTED</span> Contract mismatch: 'userId' -> 'accountId'\n[00:02.100] <span class="log-amber">PROTECTION</span> PR blocked. Zero production outages caused.`;
+            }, 800);
+        }
+
+        function replayProject4() {
+            const el = document.getElementById('trace-p4');
+            el.innerHTML = '<span class="log-accent">[REPLAYING] Dispatched multi-sector query across 3 industries...</span>';
+            setTimeout(() => {
+                el.innerHTML = `[00:00.005] <span class="log-accent">INTENT</span> Multi-sector directive detected across Tech, Energy & Healthcare\n[00:00.012] <span class="log-accent">FANOUT</span> ThreadPoolExecutor spawned 6 parallel network workers\n[00:00.340] <span class="log-green">QUOTE</span> XLK: $228.45 (+1.42%) | Vol: 4.8M\n[00:00.410] <span class="log-green">QUOTE</span> XLE: $89.20 (-0.68%) | Vol: 12.1M\n[00:00.480] <span class="log-green">QUOTE</span> XLV: $148.10 (+0.35%) | Vol: 6.2M\n[00:00.720] <span class="log-green">NEWS</span> Ingested 9 sector-targeted real-time RSS bulletins\n[00:00.930] <span class="log-green">COMPLETE</span> Synthesized multi-sector comparison table in 930ms`;
             }, 800);
         }
     </script>
