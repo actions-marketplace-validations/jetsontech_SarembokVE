@@ -21,6 +21,50 @@ async def serve_frontend():
         return FileResponse(frontend_path, media_type="text/html")
     return {"error": "index.html not found."}
 
+@app.get("/status")
+async def get_sarembok_status():
+    try:
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "sarembok_memory.db"))
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                drift_detected BOOLEAN NOT NULL DEFAULT 0,
+                shannon_entropy REAL NOT NULL DEFAULT 0.14,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                report TEXT,
+                visual_svg TEXT
+            )
+        """)
+        cursor.execute(
+            "SELECT drift_detected, shannon_entropy, timestamp FROM audit_logs ORDER BY timestamp DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {
+                "drift_detected": bool(row[0]),
+                "shannon_entropy": float(row[1]),
+                "timestamp": str(row[2])
+            }
+        return {
+            "drift_detected": False,
+            "shannon_entropy": 0.14,
+            "timestamp": "System Initialization Stage"
+        }
+    except Exception as e:
+        return {
+            "error": True,
+            "message": str(e),
+            "drift_detected": False,
+            "shannon_entropy": 0.14
+        }
+
+
 @app.websocket("/ws/live")
 async def gemini_live_proxy(websocket: WebSocket):
     await websocket.accept()

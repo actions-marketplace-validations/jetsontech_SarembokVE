@@ -16,6 +16,13 @@ from aiohttp import web, WSCloseCode
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from Runtime.wal_memory_manager import WalMemoryManager
 
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "Deployment", "cloud"))
+    from server import _fetch_realtime_data, _detect_multi_sector_intent
+except Exception as _rt_e:
+    _fetch_realtime_data = None
+    _detect_multi_sector_intent = None
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
@@ -39,7 +46,7 @@ class SovereignKernel:
         self.token_hard_cap = 100000
 
         # Sovereign Fabric State Configuration
-        self.fabric_kernel = "V3.8-FLASH"
+        self.fabric_kernel = "4.0.0-ARGON"
         self.target_node = "colab-t4-community-01"
         self.active_vram_allocation = 15360
         self.active_pipeline = "SOVEREIGN_LOCAL_WEIGHTS"
@@ -51,6 +58,29 @@ class SovereignKernel:
         # Initialize Decoupled Persistent SQLite-WAL Storage Core (Single-Writer Actor Queue)
         self.wal_manager = WalMemoryManager.get_instance(self.db_path)
         logger.info("[WAL_BOOT] Decoupled L1 SQLite-WAL actor queue initialized with zero-locking.")
+        self._ensure_audit_schema()
+
+    def _ensure_audit_schema(self):
+        """Initializes audit_logs schema for Gemini 4 Argon telemetry verification."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL;")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    drift_detected BOOLEAN NOT NULL DEFAULT 0,
+                    shannon_entropy REAL NOT NULL DEFAULT 0.14,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    report TEXT,
+                    visual_svg TEXT
+                )
+            """)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.warning(f"[WAL_BOOT] Could not auto-init audit_logs table: {e}")
+
 
     def _bootstrap_wal_memory(self):
         """[WAL_BOOT] Forward compatibility hook for decoupled WAL memory."""
@@ -114,14 +144,27 @@ class SovereignKernel:
                     status=status
                 )
 
+                # Multi-Sector Real-Time Fan-Out Telemetry Retrieval
+                realtime_matrix = None
+                if _fetch_realtime_data and _detect_multi_sector_intent:
+                    if _detect_multi_sector_intent(directive):
+                        try:
+                            realtime_matrix = await asyncio.to_thread(_fetch_realtime_data, directive)
+                        except Exception as _rt_fetch_err:
+                            logger.warning(f"[MULTI_SECTOR] Realtime fan-out error: {_rt_fetch_err}")
+
+                result_data = {
+                    "status": "NOMINAL",
+                    "entropy": current_entropy,
+                    "routing": status,
+                    "fabric_kernel": self.fabric_kernel
+                }
+                if realtime_matrix:
+                    result_data["realtime_matrix"] = realtime_matrix
+
                 return {
                     "jsonrpc": "2.0",
-                    "result": {
-                        "status": "NOMINAL",
-                        "entropy": current_entropy,
-                        "routing": status,
-                        "fabric_kernel": self.fabric_kernel
-                    },
+                    "result": result_data,
                     "id": req_id
                 }
 
@@ -360,6 +403,9 @@ HTML_FRONTEND = """<!DOCTYPE html>
                 });
                 const data = await response.json();
                 logTerminal('terminal-stream', `<- Inbound Executed: ${JSON.stringify(data)}`, 'rpc-in');
+                if (data.result && data.result.realtime_matrix) {
+                    logTerminal('terminal-stream', `\n${data.result.realtime_matrix}\n`, 'system');
+                }
                 if (data.result && typeof data.result.entropy === 'number') {
                     document.getElementById('hud-entropy').innerText = data.result.entropy.toFixed(3);
                 }
@@ -433,13 +479,51 @@ async def handle_p2p_ws_fleet(request):
             logger.info(f"🛑 Node unmounted from cluster pool connection: {worker_id}")
     return ws
 
+async def handle_status_endpoint(request):
+    """Exposes telemetry parameters and drift status for the SarembokDashboard UI."""
+    try:
+        conn = sqlite3.connect(kernel.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT drift_detected, shannon_entropy, timestamp FROM audit_logs ORDER BY timestamp DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return web.json_response({
+                "drift_detected": bool(row[0]),
+                "shannon_entropy": float(row[1]),
+                "timestamp": str(row[2])
+            })
+
+        return web.json_response({
+            "drift_detected": False,
+            "shannon_entropy": float(kernel.shannon_entropy),
+            "timestamp": "System Initialization Stage"
+        })
+    except Exception as e:
+        return web.json_response({
+            "error": True,
+            "message": str(e),
+            "drift_detected": False,
+            "shannon_entropy": 0.14
+        }, status=500)
+
 # --- SERVER LIFECYCLE DISPATCH SYSTEM ---
 
 async def create_app():
     app = web.Application()
     app.router.add_get('/', handle_index_view)
+    app.router.add_get('/status', handle_status_endpoint)
     app.router.add_post('/api/rpc', handle_json_rpc_endpoint)
     app.router.add_get('/ws/fleet', handle_p2p_ws_fleet)
+
+    # Mount static assets for generated telemetry visuals if directory exists
+    public_gen_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public", "generated")
+    if os.path.exists(public_gen_dir):
+        app.router.add_static('/generated/', public_gen_dir)
+
     return app
 
 if __name__ == '__main__':

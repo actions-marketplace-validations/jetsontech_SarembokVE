@@ -912,6 +912,42 @@
             color: #f1f5f9;
         }
 
+        /* ====== REAL-TIME MULTI-SECTOR MATRIX TABLE ====== */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 14px 0;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            background: rgba(8, 14, 26, 0.85);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        }
+        .msg-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            text-align: left;
+        }
+        .msg-table th {
+            background: rgba(0, 240, 255, 0.08);
+            color: var(--neon-cyan);
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+        .msg-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+            white-space: nowrap;
+        }
+        .msg-table tr:hover {
+            background: rgba(0, 240, 255, 0.04);
+        }
+
         /* ====== ARXIV RESEARCH LITERATURE DECK ====== */
         .research-deck-card {
             background: linear-gradient(180deg, rgba(14, 18, 34, 0.95) 0%, rgba(9, 13, 24, 0.9) 100%);
@@ -3348,6 +3384,34 @@
                     if (inList) { out.push(`</${listType}>`); inList = false; }
                     out.push('<hr class="msg-hr">');
                     continue;
+                }
+
+                // Markdown Table Parsing
+                if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+                    if (inList) { out.push(`</${listType}>`); inList = false; }
+                    const tableLines = [];
+                    while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+                        tableLines.push(lines[i].trim());
+                        i++;
+                    }
+                    i--;
+                    if (tableLines.length >= 2) {
+                        const headers = tableLines[0].split('|').slice(1, -1).map(h => h.trim());
+                        const hasSep = /^[\s|:-]+$/.test(tableLines[1]);
+                        const rowStart = hasSep ? 2 : 1;
+                        let tHtml = '<div class="table-wrap"><table class="msg-table"><thead><tr>';
+                        headers.forEach(h => { tHtml += `<th>${inlineFormat(h)}</th>`; });
+                        tHtml += '</tr></thead><tbody>';
+                        for (let r = rowStart; r < tableLines.length; r++) {
+                            const cells = tableLines[r].split('|').slice(1, -1).map(c => c.trim());
+                            tHtml += '<tr>';
+                            cells.forEach(c => { tHtml += `<td>${inlineFormat(c)}</td>`; });
+                            tHtml += '</tr>';
+                        }
+                        tHtml += '</tbody></table></div>';
+                        out.push(tHtml);
+                        continue;
+                    }
                 }
 
                 const hMatch = line.match(/^(#{1,6})\s+(.+)$/);

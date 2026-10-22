@@ -1,1 +1,21 @@
-{}
+sarembok_ve:
+  version: "4.0.0-argon"
+  engine:
+    active_gatekeeper: "gemini-4-argon"
+    fallback_routing: "gemini-1.5-pro"
+    execution_mode: "long-horizon-agentic"
+  
+  telemetry_gating:
+    sandbox:
+      engine: "Headless Chromium"
+      memory_limit: "768MB"
+      cap_drop: ["ALL"]
+    drift_analysis:
+      metrics_tracking: "Shannon Entropy"
+      strict_json_mode: true
+      fail_on_drift: true
+      
+  visualization_matrix:
+    output_engine: "Native Vector Synthesis (SVG)"
+    output_target: "./public/generated/visuals/"
+    interactive_canvas: true

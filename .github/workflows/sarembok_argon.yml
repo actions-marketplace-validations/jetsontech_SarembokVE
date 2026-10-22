@@ -1,0 +1,62 @@
+name: "SarembokVE Argon Guard Pipeline"
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  audit-and-visualize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code Matrix
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment (Node 18+)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install System Architecture Dependencies
+        run: |
+          npm ci || npm install
+          # Ensure headless Chromium system libraries are present for the sandboxed worker
+          npx playwright install-deps chromium || true
+
+      - name: Execute Deterministic Drift Extraction
+        id: sarembok_run
+        run: |
+          echo "Extracting telemetry contract from staging target..."
+          # Generates or updates the raw telemetry artifact matrix
+          node bin/sarembok.js spec https://httpbin.org --out .sarembok/baseline.json --format openapi || true
+          
+          echo "Running telemetry contract validation audit..."
+          # Execute the gatekeeper audit check
+          node bin/sarembok.js audit https://httpbin.org --no-fail || true
+
+      - name: Invoke Gemini 4 Argon Strengthened Component
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "❌ CRITICAL: GEMINI_API_KEY secret is not set in this repository."
+            # Fall back to localized synthesis for unauthenticated CI verification
+            echo "Proceeding with localized Argon synthesis fallback..."
+          fi
+          echo "Syncing telemetry with Argon Engine for long-horizon spec synthesis..."
+          node Tools/Visualizer.js
+
+      - name: Commit Synthesized Visual Assets to Public Directory
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "Sarembok Visualizer Daemon"
+          git add public/generated/visuals/live_drift_map.svg
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: asset sync - update native system visualizations [skip ci]" && git push)

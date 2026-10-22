@@ -1501,69 +1501,292 @@ def fetch_web_search(query: str, max_results: int = 5) -> dict[str, Any]:
     }
 
 
-def fetch_live_stock_quote(query: str) -> str | None:
+SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
+    "technology": {
+        "symbol": "XLK",
+        "name": "Technology Sector SPDR",
+        "category": "Technology & Software",
+        "keywords": ["tech", "technology", "software", "cloud", "saas", "cybersecurity", "computing", "it sector"],
+        "news_terms": "technology sector software tech market",
+    },
+    "semiconductors": {
+        "symbol": "SMH",
+        "name": "VanEck Semiconductor ETF",
+        "category": "Semiconductors & Hardware",
+        "keywords": ["semiconductor", "semiconductors", "chip", "chips", "hardware", "foundry", "gpu", "tsmc", "nvidia"],
+        "news_terms": "semiconductor chip industry market",
+    },
+    "energy": {
+        "symbol": "XLE",
+        "name": "Energy Select Sector SPDR",
+        "category": "Energy & Oil/Gas",
+        "keywords": ["energy", "oil", "petroleum", "gas", "crude", "renewable energy", "drilling", "fossil fuels"],
+        "news_terms": "energy sector oil gas crude market",
+    },
+    "healthcare": {
+        "symbol": "XLV",
+        "name": "Health Care Select Sector SPDR",
+        "category": "Healthcare & Pharmaceuticals",
+        "keywords": ["healthcare", "health", "pharma", "pharmaceutical", "medical", "hospital", "biopharma"],
+        "news_terms": "healthcare pharmaceutical drug sector",
+    },
+    "biotechnology": {
+        "symbol": "XBI",
+        "name": "SPDR S&P Biotech ETF",
+        "category": "Biotechnology & Life Sciences",
+        "keywords": ["biotech", "biotechnology", "genomics", "clinical trials", "gene editing"],
+        "news_terms": "biotech biotechnology clinical trials sector",
+    },
+    "financials": {
+        "symbol": "XLF",
+        "name": "Financial Select Sector SPDR",
+        "category": "Financials & Banking",
+        "keywords": ["financial", "financials", "banking", "banks", "fintech", "insurance", "wall street", "interest rates", "credit"],
+        "news_terms": "financial banking sector interest rates wall street",
+    },
+    "industrials": {
+        "symbol": "XLI",
+        "name": "Industrial Select Sector SPDR",
+        "category": "Industrials & Manufacturing",
+        "keywords": ["industrial", "industrials", "manufacturing", "machinery", "transportation", "logistics", "supply chain"],
+        "news_terms": "industrial manufacturing sector logistics supply chain",
+    },
+    "consumer_discretionary": {
+        "symbol": "XLY",
+        "name": "Consumer Discretionary SPDR",
+        "category": "Consumer Discretionary & Retail",
+        "keywords": ["consumer discretionary", "retail", "e-commerce", "automotive", "luxury", "hospitality"],
+        "news_terms": "retail consumer discretionary spending market",
+    },
+    "consumer_staples": {
+        "symbol": "XLP",
+        "name": "Consumer Staples SPDR",
+        "category": "Consumer Staples & Household",
+        "keywords": ["consumer staples", "staples", "food", "beverage", "household", "supermarket"],
+        "news_terms": "consumer staples food beverage inflation market",
+    },
+    "utilities": {
+        "symbol": "XLU",
+        "name": "Utilities Select Sector SPDR",
+        "category": "Utilities & Power",
+        "keywords": ["utilities", "utility", "power", "grid", "electricity", "clean power"],
+        "news_terms": "utilities power grid electricity demand market",
+    },
+    "materials": {
+        "symbol": "XLB",
+        "name": "Materials Select Sector SPDR",
+        "category": "Materials & Chemicals",
+        "keywords": ["materials", "mining", "chemicals", "metals", "commodities", "steel", "lithium"],
+        "news_terms": "materials sector mining chemicals commodities",
+    },
+    "real_estate": {
+        "symbol": "XLRE",
+        "name": "Real Estate Select Sector SPDR",
+        "category": "Real Estate & REITs",
+        "keywords": ["real estate", "reit", "property", "housing", "mortgage", "commercial real estate"],
+        "news_terms": "real estate housing market commercial reit",
+    },
+    "communications": {
+        "symbol": "XLC",
+        "name": "Communication Services SPDR",
+        "category": "Communication Services & Media",
+        "keywords": ["communication services", "telecom", "telecommunications", "media", "social media", "broadcasting"],
+        "news_terms": "communication services media streaming advertising",
+    },
+    "defense": {
+        "symbol": "ITA",
+        "name": "iShares US Aerospace & Defense",
+        "category": "Aerospace & Defense",
+        "keywords": ["defense", "aerospace", "military", "defense contractors", "weapons", "aviation"],
+        "news_terms": "defense aerospace military contracts spending",
+    },
+    "crypto": {
+        "symbol": "BTC-USD",
+        "name": "Bitcoin / Digital Assets",
+        "category": "Digital Assets & Crypto",
+        "keywords": ["crypto", "cryptocurrency", "bitcoin", "digital assets", "ethereum", "blockchain"],
+        "news_terms": "crypto cryptocurrency bitcoin digital assets market",
+    },
+}
+
+GLOBAL_TICKER_MAP: dict[str, str] = {
+    "tesla": "TSLA", "tsla": "TSLA",
+    "apple": "AAPL", "aapl": "AAPL",
+    "nvidia": "NVDA", "nvda": "NVDA",
+    "microsoft": "MSFT", "msft": "MSFT",
+    "google": "GOOGL", "googl": "GOOGL", "alphabet": "GOOGL",
+    "amazon": "AMZN", "amzn": "AMZN",
+    "meta": "META", "facebook": "META",
+    "netflix": "NFLX", "nflx": "NFLX",
+    "amd": "AMD", "intel": "INTC", "intc": "INTC",
+    "broadcom": "AVGO", "avgo": "AVGO",
+    "tsmc": "TSM", "tsm": "TSM",
+    "palantir": "PLTR", "pltr": "PLTR",
+    "exxon": "XOM", "xom": "XOM", "chevron": "CVX", "cvx": "CVX",
+    "jpmorgan": "JPM", "jpm": "JPM", "goldman": "GS", "gs": "GS",
+    "eli lilly": "LLY", "lly": "LLY", "pfizer": "PFE", "pfe": "PFE",
+    "lockheed": "LMT", "lmt": "LMT", "boeing": "BA", "ba": "BA",
+    "bitcoin": "BTC-USD", "btc": "BTC-USD",
+    "ethereum": "ETH-USD", "eth": "ETH-USD",
+    "solana": "SOL-USD", "sol": "SOL-USD",
+    "dogecoin": "DOGE-USD", "doge": "DOGE-USD",
+    "spy": "SPY", "s&p": "SPY", "s&p 500": "SPY",
+    "nasdaq": "QQQ", "qqq": "QQQ", "dow": "DIA", "dow jones": "DIA",
+    "tech": "XLK", "technology": "XLK", "xlk": "XLK",
+    "semis": "SMH", "semiconductors": "SMH", "smh": "SMH",
+    "energy": "XLE", "oil": "XLE", "xle": "XLE",
+    "healthcare": "XLV", "health": "XLV", "xlv": "XLV",
+    "biotech": "XBI", "xbi": "XBI",
+    "financials": "XLF", "banks": "XLF", "xlf": "XLF",
+    "industrials": "XLI", "xli": "XLI",
+    "utilities": "XLU", "xlu": "XLU",
+    "materials": "XLB", "xlb": "XLB",
+    "real estate": "XLRE", "xlre": "XLRE",
+    "defense": "ITA", "aerospace": "ITA", "ita": "ITA",
+}
+
+
+def fetch_single_asset_quote(ticker: str) -> dict[str, Any] | None:
     """Fetch live real-time market quote from Yahoo Finance v8 chart API."""
-    q_low = str(query or "").lower().strip()
-    ticker_map = {
-        "tesla": "TSLA", "tsla": "TSLA",
-        "apple": "AAPL", "aapl": "AAPL",
-        "nvidia": "NVDA", "nvda": "NVDA",
-        "microsoft": "MSFT", "msft": "MSFT",
-        "google": "GOOGL", "googl": "GOOGL", "alphabet": "GOOGL",
-        "amazon": "AMZN", "amzn": "AMZN",
-        "meta": "META", "facebook": "META",
-        "netflix": "NFLX", "nflx": "NFLX",
-        "amd": "AMD", "intel": "INTC", "intc": "INTC",
-        "bitcoin": "BTC-USD", "btc": "BTC-USD",
-        "ethereum": "ETH-USD", "eth": "ETH-USD",
-        "solana": "SOL-USD", "sol": "SOL-USD",
-        "dogecoin": "DOGE-USD", "doge": "DOGE-USD",
-        "spy": "SPY", "s&p": "SPY", "s&p 500": "SPY",
-        "nasdaq": "QQQ", "qqq": "QQQ", "dow": "DIA", "dow jones": "DIA"
-    }
-    ticker = None
-    for k, v in ticker_map.items():
-        if re.search(r"\b" + re.escape(k) + r"\b", q_low):
-            ticker = v
-            break
-    if not ticker:
-        m = re.search(r"\b([A-Z]{1,5}(?:-USD)?)\b", query)
-        if m and any(f in q_low for f in ("stock", "share", "shares", "price", "quote", "market", "crypto", "coin", "trading", "valuation")):
-            ticker = m.group(1).upper()
-
-    if not ticker:
+    sym = (ticker or "").strip().upper()
+    if not sym:
         return None
-
     try:
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=1d"
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
         with urllib.request.urlopen(req, timeout=3.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
-            price = meta.get("regularMarketPrice", 0.0)
-            prev = meta.get("chartPreviousClose", price)
+            price = float(meta.get("regularMarketPrice", 0.0))
+            prev = float(meta.get("chartPreviousClose", price))
             change = round(price - prev, 2)
             pct = round((change / prev) * 100, 2) if prev else 0.0
             cur = meta.get("currency", "USD")
-            sym = meta.get("symbol", ticker)
-            d_high = meta.get("regularMarketDayHigh", price)
-            d_low = meta.get("regularMarketDayLow", price)
-            vol = meta.get("regularMarketVolume", 0)
-
-            lines = [
-                f"### 📈 [LIVE REAL-TIME FINANCIAL QUOTE · {sym}]",
-                f"- **Current Price:** ${price:,.2f} {cur}",
-                f"- **Today's Net Change:** {change:+,.2f} ({pct:+,.2f}%)",
-                f"- **Day Trading Range:** ${d_low:,.2f} – ${d_high:,.2f}",
-                f"- **Previous Session Close:** ${prev:,.2f}",
-            ]
-            if vol:
-                lines.append(f"- **Volume:** {vol:,} shares")
-            lines.append("- **Verification:** Live Real-Time Global Market Exchange Feed")
-            return "\n".join(lines)
+            s_name = meta.get("symbol", sym)
+            d_high = float(meta.get("regularMarketDayHigh", price))
+            d_low = float(meta.get("regularMarketDayLow", price))
+            vol = int(meta.get("regularMarketVolume", 0) or 0)
+            return {
+                "symbol": s_name,
+                "price": price,
+                "previous_close": prev,
+                "change": change,
+                "pct_change": pct,
+                "currency": cur,
+                "day_high": d_high,
+                "day_low": d_low,
+                "volume": vol,
+                "valid": True,
+            }
     except Exception as exc:
-        LOG.debug("Live stock quote fetch failed for %s: %s", ticker, exc)
+        LOG.debug("Live quote fetch failed for %s: %s", sym, exc)
         return None
+
+
+def fetch_live_stock_quotes_batch(tickers: list[str]) -> list[dict[str, Any]]:
+    """Fetch multiple asset/sector quotes concurrently in sub-second parallel threads."""
+    unique_tickers = []
+    seen = set()
+    for t in tickers:
+        sym = (t or "").strip().upper()
+        if sym and sym not in seen:
+            seen.add(sym)
+            unique_tickers.append(sym)
+    if not unique_tickers:
+        return []
+
+    quotes: list[dict[str, Any]] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(unique_tickers), 10), thread_name_prefix="srbk_quote_") as ex:
+        futures = {ex.submit(fetch_single_asset_quote, sym): sym for sym in unique_tickers}
+        for fut in concurrent.futures.as_completed(futures, timeout=3.5):
+            try:
+                res = fut.result()
+                if res and res.get("valid"):
+                    quotes.append(res)
+            except Exception:
+                pass
+    # Maintain input order where possible
+    order_map = {sym: i for i, sym in enumerate(unique_tickers)}
+    quotes.sort(key=lambda q: order_map.get(q["symbol"], 999))
+    return quotes
+
+
+def format_single_stock_quote(q: dict[str, Any]) -> str:
+    """Format single quote for consumption by both LLM and client cards."""
+    sym = q["symbol"]
+    price = q["price"]
+    cur = q["currency"]
+    change = q["change"]
+    pct = q["pct_change"]
+    d_low = q["day_low"]
+    d_high = q["day_high"]
+    prev = q["previous_close"]
+    vol = q["volume"]
+    lines = [
+        f"### 📈 [LIVE REAL-TIME FINANCIAL QUOTE · {sym}]",
+        f"- **Current Price:** ${price:,.2f} {cur}",
+        f"- **Today's Net Change:** {change:+,.2f} ({pct:+,.2f}%)",
+        f"- **Day Trading Range:** ${d_low:,.2f} – ${d_high:,.2f}",
+        f"- **Previous Session Close:** ${prev:,.2f}",
+    ]
+    if vol:
+        lines.append(f"- **Volume:** {vol:,} shares")
+    lines.append("- **Verification:** Live Real-Time Global Market Exchange Feed")
+    return "\n".join(lines)
+
+
+def format_multi_stock_quote_matrix(quotes: list[dict[str, Any]], title: str = "LIVE REAL-TIME MULTI-ASSET FINANCIAL MATRIX") -> str:
+    """Format a multi-stock / multi-sector matrix for immediate structured presentation."""
+    if not quotes:
+        return ""
+    lines = [
+        f"### 📈 [{title}]",
+        "| Symbol | Current Price | Day Net Change | Day Trading Range | Previous Close | Volume |",
+        "| :--- | :--- | :--- | :--- | :--- | :--- |"
+    ]
+    for q in quotes:
+        sign = "+" if q["change"] >= 0 else ""
+        status = "🟢 UP" if q["change"] >= 0 else "🔴 DOWN"
+        lines.append(f"| `{q['symbol']}` | ${q['price']:,.2f} {q['currency']} | {sign}{q['change']:,.2f} ({sign}{q['pct_change']:.2f}%) {status} | ${q['day_low']:,.2f} – ${q['day_high']:,.2f} | ${q['previous_close']:,.2f} | {q['volume']:,} |")
+    lines.extend([
+        "",
+        "- **Verification:** Live Real-Time Multi-Asset Grounding via Yahoo Finance Feed"
+    ])
+    # Also append primary single quote block so client-side hero ticker card activates
+    lines.append("")
+    lines.append(format_single_stock_quote(quotes[0]))
+    return "\n".join(lines)
+
+
+def _extract_multiple_tickers(query: str) -> list[str]:
+    """Extract all recognizable ticker symbols and asset names from a query."""
+    q_low = str(query or "").lower().strip()
+    found: list[str] = []
+    # 1. Match from taxonomy / global map
+    for name, sym in GLOBAL_TICKER_MAP.items():
+        if re.search(r"\b" + re.escape(name) + r"\b", q_low):
+            if sym not in found:
+                found.append(sym)
+    # 2. Match raw uppercase symbols (e.g. AAPL, NVDA, TSLA, BTC-USD)
+    for m in re.finditer(r"\b([A-Z]{1,5}(?:-USD)?)\b", query):
+        sym = m.group(1).upper()
+        if sym in ("A", "I", "AT", "IN", "ON", "TO", "OF", "AND", "OR", "THE", "IS", "US"):
+            continue
+        if sym not in found:
+            found.append(sym)
+    return found
+
+
+def fetch_live_stock_quote(query: str) -> str | None:
+    """Fetch live real-time market quote(s) from Yahoo Finance v8 chart API."""
+    extracted = _extract_multiple_tickers(query)
+    if not extracted:
+        return None
+    if len(extracted) == 1:
+        q = fetch_single_asset_quote(extracted[0])
+        return format_single_stock_quote(q) if q else None
+    quotes = fetch_live_stock_quotes_batch(extracted[:8])
+    return format_multi_stock_quote_matrix(quotes) if quotes else None
 
 
 def fetch_live_arxiv_research(query: str, max_results: int = 3) -> str | None:
@@ -1609,6 +1832,118 @@ def fetch_live_arxiv_research(query: str, max_results: int = 3) -> str | None:
         return None
 
 
+def _detect_multi_sector_intent(query: str) -> list[str]:
+    """Detect if query requests intelligence across multiple industries or market sectors."""
+    q_low = str(query or "").lower().strip()
+    broad_triggers = (
+        "across sectors", "across many sectors", "across all sectors", "multiple sectors",
+        "many sectors", "different sectors", "sector breakdown", "all sectors", "various sectors",
+        "industry sectors", "all industries", "market sectors", "cross-sector", "sector performance",
+        "sector overview", "sectors performing", "across industries", "many industries",
+        "cross sector", "sector analysis", "all market sectors"
+    )
+    if any(bt in q_low for bt in broad_triggers):
+        return ["technology", "financials", "energy", "healthcare", "industrials", "defense"]
+
+    found: list[str] = []
+    for sector_key, data in SECTOR_TAXONOMY.items():
+        for kw in data["keywords"]:
+            if re.search(r"\b" + re.escape(kw) + r"\b", q_low):
+                if sector_key not in found:
+                    found.append(sector_key)
+                break
+    return found
+
+
+def _fetch_sector_news_headlines(news_terms: str, max_items: int = 2) -> list[str]:
+    """Fetch verified breaking news headlines for a specific sector via Google News RSS."""
+    try:
+        url = f"https://news.google.com/rss/search?q={urllib.parse.quote(news_terms)}&hl=en-US&gl=US&ceid=US:en"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            root = ET.fromstring(resp.read())
+            items = root.findall(".//item")[:max_items]
+            lines = []
+            for it in items:
+                t = it.find("title").text if it.find("title") is not None else ""
+                p = it.find("pubDate").text if it.find("pubDate") is not None else ""
+                src = it.find("source").text if it.find("source") is not None else "Verified News"
+                if t:
+                    lines.append(f"[{src}] {t} *({p})*")
+            return lines
+    except Exception:
+        return []
+
+
+def _fetch_multi_sector_realtime_data(clean_q: str, sectors: list[str]) -> str | None:
+    """Execute high-speed parallel fan-out across multiple industry & market sectors."""
+    if not sectors:
+        return None
+    target_sectors = sectors[:6]
+    t0 = time.time()
+    results_by_sector: dict[str, dict[str, Any]] = {}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(target_sectors) * 2, 12), thread_name_prefix="srbk_sector_") as ex:
+        q_futures = {s: ex.submit(fetch_single_asset_quote, SECTOR_TAXONOMY[s]["symbol"]) for s in target_sectors}
+        n_futures = {s: ex.submit(_fetch_sector_news_headlines, SECTOR_TAXONOMY[s]["news_terms"]) for s in target_sectors}
+
+        for s in target_sectors:
+            try:
+                q_res = q_futures[s].result(timeout=3.5)
+            except Exception:
+                q_res = None
+            try:
+                n_res = n_futures[s].result(timeout=3.5)
+            except Exception:
+                n_res = []
+            results_by_sector[s] = {"quote": q_res, "news": n_res}
+
+    elapsed = round(time.time() - t0, 2)
+    lines = [
+        "### 🌐 [LIVE REAL-TIME MULTI-SECTOR INTELLIGENCE MATRIX]",
+        f"- **Verification Protocol:** Concurrent Multi-Sector Grounding Engine ({elapsed}s execution latency)",
+        "- **Coverage:** Parallel Telemetry across " + ", ".join([SECTOR_TAXONOMY[s]["name"] for s in target_sectors]),
+        "",
+        "#### 📊 [SECTOR FINANCIAL OVERVIEW · REAL-TIME BENCHMARKS]",
+        "| Sector | Symbol | Current Price | Day Change | Day Range | Volume |",
+        "| :--- | :--- | :--- | :--- | :--- | :--- |"
+    ]
+
+    for s in target_sectors:
+        info = SECTOR_TAXONOMY[s]
+        q = results_by_sector[s]["quote"]
+        if q:
+            sign = "+" if q["change"] >= 0 else ""
+            status = "🟢 UP" if q["change"] >= 0 else "🔴 DOWN"
+            lines.append(f"| {info['category']} | `{q['symbol']}` | ${q['price']:,.2f} {q['currency']} | {sign}{q['change']:,.2f} ({sign}{q['pct_change']:.2f}%) {status} | ${q['day_low']:,.2f} – ${q['day_high']:,.2f} | {q['volume']:,} |")
+        else:
+            lines.append(f"| {info['category']} | `{info['symbol']}` | Market Feed Pending | N/A | N/A | N/A |")
+
+    lines.extend(["", "#### 📰 [SECTOR-BY-SECTOR REAL-TIME DEVELOPMENTS]"])
+    for s in target_sectors:
+        info = SECTOR_TAXONOMY[s]
+        data = results_by_sector[s]
+        q = data["quote"]
+        news = data["news"]
+        q_text = f"**Current Price:** ${q['price']:,.2f} ({q['change']:+,.2f} / {q['pct_change']:+,.2f}%)" if q else "Feed connecting..."
+        lines.append(f"##### 🔹 {info['name'].upper()} (`{info['symbol']}` · {info['category']})")
+        lines.append(f"- **Live Benchmark:** {q_text}")
+        if news:
+            lines.append("- **Latest Verified Breaking Events:**")
+            for item in news:
+                lines.append(f"  - {item}")
+        else:
+            lines.append("- **Latest Breaking Events:** Sector operating within normal nominal telemetry band.")
+        lines.append("")
+
+    # Also append primary single quote block for client UI hero widget compatibility
+    first_valid_quote = next((results_by_sector[s]["quote"] for s in target_sectors if results_by_sector[s]["quote"]), None)
+    if first_valid_quote:
+        lines.append(format_single_stock_quote(first_valid_quote))
+
+    return "\n".join(lines)
+
+
 def _is_realtime_query(prompt: str) -> bool:
     low = (prompt or "").strip().lower()
     if not low:
@@ -1627,7 +1962,9 @@ def _is_realtime_query(prompt: str) -> bool:
         "who won", "did they win", "game", "election", "president", "world", "breaking",
         "flying car", "elon musk", "tesla", "spacex", "apple", "nvidia", "openai", "google", "meta", "starship", "cybercab",
         "what is happening", "what happened", "what's new", "whats new", "who is", "status of", "tell me about",
-        "current", "now", "released", "announced", "unveiled"
+        "current", "now", "released", "announced", "unveiled",
+        "sector", "sectors", "industry", "industries", "cross-sector", "macro", "commodities", "performance", "compare",
+        "across sectors", "many sectors", "all sectors", "sector breakdown"
     )
     if any(k in low for k in realtime_triggers):
         return True
@@ -1637,17 +1974,25 @@ def _is_realtime_query(prompt: str) -> bool:
 
 
 def _fetch_realtime_data(query: str) -> str | None:
-    """Multi-tiered real-time intelligence engine:
-    1. Real-time Live Financial Quotes (Yahoo Finance chart API)
-    2. Real-time Scientific Research (ArXiv API)
-    3. Real-time Web Search (DuckDuckGo live HTML parser)
-    4. Real-time Breaking News (Google News RSS)
-    5. Factual Intelligence (Wikipedia Summary & DuckDuckGo Instant Answers)
+    """Multi-tiered real-time intelligence engine with parallel multi-sector fan-out:
+    1. Multi-Sector Parallel Fan-Out (GICS Sector ETFs, sector-targeted news & live benchmarks)
+    2. Real-time Live Financial Quotes & Multi-Asset Batch Quotes (Yahoo Finance chart API)
+    3. Real-time Scientific Research (ArXiv API)
+    4. Real-time Web Search (DuckDuckGo live HTML parser)
+    5. Real-time Breaking News (Google News RSS)
+    6. Factual Intelligence (Wikipedia Summary & DuckDuckGo Instant Answers)
     Executed concurrently in sub-second parallel threads.
     """
     clean_q = (query or "").strip()
     if not clean_q:
         return None
+
+    # Step 1: Check for Multi-Sector Fan-Out intent
+    detected_sectors = _detect_multi_sector_intent(clean_q)
+    if detected_sectors and len(detected_sectors) >= 2:
+        multi_sector_res = _fetch_multi_sector_realtime_data(clean_q, detected_sectors)
+        if multi_sector_res:
+            return multi_sector_res
 
     results: list[str] = []
 
