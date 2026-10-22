@@ -64,7 +64,11 @@ Live health from your own browser: [/status](https://sarembok.com/status).
 
 ## Operational Scope & Security
 - **Observation-Driven Synthesis**: Synthesizes OpenAPI 3.1 contracts directly from observed network telemetry during page loads and authenticated flows.
+- **Multi-Sector Real-Time Fan-Out**: Decomposes cross-domain and multi-sector queries into parallel concurrent tasks across 15+ industry sectors and GICS benchmarks (`XLK`, `XLE`, `XLV`, `XLF`, `XLI`, `ITA`, `SMH`, `BTC-USD`) with sub-second retrieval latency.
+- **Multi-Asset Financial Telemetry**: Fetches real-time Yahoo Finance chart data, comparative matrix tables, day ranges, and volume across multiple equities and sector ETFs simultaneously.
 - **Enterprise Sandboxing**: Target crawls execute in isolated, ephemeral Chromium containers with dropped capabilities (`cap_drop: ALL`) and 768MB memory limits.
+- **Argon Multi-Agent Substrate**: Autonomous self-healing infrastructure layer with extended decode window and native dark-mode SVG vector visual synthesis (`Tools/Visualizer.js`).
+- **Shannon Entropy Loop Defense**: Mathematical sliding-window evaluator halting recursive task degradation ($H(X) \ge 0.88$) backed by zero-locking SQLite-WAL persistence.
 - **CI/CD Enforcement**: Designed as a deterministic contract diffing gate for deployment pipelines to catch breaking API mutations before merge.
 - **Data Protection**: Transmitted audit targets and headers are purged from memory immediately upon spec synthesis. See [Security](https://sarembok.com/security).
 

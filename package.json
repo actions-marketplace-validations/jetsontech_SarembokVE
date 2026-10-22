@@ -1,7 +1,7 @@
 {
   "name": "sarembok",
-  "version": "0.2.0",
-  "description": "CLI for SarembokVE: extract OpenAPI 3.1 / TypeScript contracts from a live site and gate CI on breaking drift.",
+  "version": "0.3.0",
+  "description": "CLI for SarembokVE: autonomous OpenAPI 3.1 / TypeScript synthesis, multi-sector real-time grounding, and CI/CD drift gating.",
   "main": "bin/sarembok.js",
   "bin": {
     "sarembok": "./bin/sarembok.js"
