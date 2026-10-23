@@ -6,7 +6,7 @@
 **Detect breaking API contract changes before they ship.**
 SarembokVE loads a live site in headless Chromium, records the network calls it makes, produces an OpenAPI 3.1 document and TypeScript types, and (via `audit`) fails your CI when a response field or endpoint disappears or changes type compared with a committed baseline.
 
-[Console](https://sarembok.com) · [Docs](https://sarembok.com/docs) · [Status](https://sarembok.com/status) · [Changelog](https://sarembok.com/changelog) · [Security](https://sarembok.com/security)
+[Console](https://sarembok.com) · [Solutions & 12 Use Cases](Docs/SOLUTIONS_AND_USE_CASES.md) · [Docs](https://sarembok.com/docs) · [Status](https://sarembok.com/status) · [Changelog](https://sarembok.com/changelog) · [Security](https://sarembok.com/security)
 
 ---
 

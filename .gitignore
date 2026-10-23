@@ -70,3 +70,6 @@ Builder-v2.2-STABLE.txt
 production-index.html
 frontend/index.html.*
 .sarembok/
+
+*.db-shm
+*.db-wal

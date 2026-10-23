@@ -6297,7 +6297,7 @@
             </span>
             <div class="srbk-pip-controls">
                 <button class="srbk-pip-btn" onclick="toggleMinimizePip()" title="Minimize / Expand">_</button>
-                <button class="srbk-pip-btn" onclick="openDetachedPipWindow()" title="Pop Out into Detached Window">↗</button>
+                <button class="srbk-pip-btn" onclick="openDetachedPipWindow()" style="color:#00f0ff; border-color:rgba(0,240,255,0.4);" title="Float above all desktop windows (Always-On-Top OS Window)">⧉ ALWAYS ON TOP</button>
                 <button class="srbk-pip-btn" onclick="closeFloatingPip()" style="color:#ef4444;" title="Close Video">✕</button>
             </div>
         </div>
@@ -6523,7 +6523,158 @@
             return match ? match[1] : (/^[a-zA-Z0-9_-]{11}$/.test(url.trim()) ? url.trim() : null);
         }
 
-        async function popOutFloatingVideo(urlOrQuery, title = "") {
+        let activeDocPipWindow = null;
+
+        async function openDocPipWindow(media) {
+            if (!media) media = currentPipMedia;
+            if (!media) return false;
+
+            if (!('documentPictureInPicture' in window) || typeof window.documentPictureInPicture.requestWindow !== 'function') {
+                return false;
+            }
+            if (activeDocPipWindow) {
+                try { activeDocPipWindow.close(); } catch (_) {}
+                activeDocPipWindow = null;
+            }
+            try {
+                const pipWindow = await window.documentPictureInPicture.requestWindow({
+                    width: 580,
+                    height: 360,
+                });
+                activeDocPipWindow = pipWindow;
+                currentPipMedia = media;
+
+                pipWindow.document.title = (media.displayTitle || "Sarembok Media") + " · Always-On-Top";
+
+                const style = pipWindow.document.createElement("style");
+                style.textContent = `
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: #000000;
+                        overflow: hidden;
+                        display: flex;
+                        flex-direction: column;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+                    }
+                    .pip-bar {
+                        height: 32px;
+                        background: #040916;
+                        border-bottom: 1px solid rgba(0, 240, 255, 0.35);
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 0 10px;
+                        color: #00f0ff;
+                        font-size: 11px;
+                        font-weight: 600;
+                        letter-spacing: 0.05em;
+                        user-select: none;
+                        flex-shrink: 0;
+                        box-sizing: border-box;
+                    }
+                    .pip-title {
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        max-width: 420px;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                    }
+                    .pip-badge {
+                        display: inline-block;
+                        width: 7px;
+                        height: 7px;
+                        background: #00ff88;
+                        border-radius: 50%;
+                        box-shadow: 0 0 8px #00ff88;
+                    }
+                    .pip-btn {
+                        background: rgba(239, 68, 68, 0.15);
+                        border: 1px solid rgba(239, 68, 68, 0.4);
+                        color: #ef4444;
+                        font-size: 10px;
+                        padding: 2px 7px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-weight: bold;
+                    }
+                    .pip-btn:hover {
+                        background: #ef4444;
+                        color: #ffffff;
+                    }
+                    .pip-container {
+                        flex: 1;
+                        width: 100%;
+                        height: calc(100% - 32px);
+                        background: #000;
+                        position: relative;
+                    }
+                    iframe, video {
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                        display: block;
+                    }
+                `;
+                pipWindow.document.head.appendChild(style);
+
+                const bar = pipWindow.document.createElement("div");
+                bar.className = "pip-bar";
+                bar.innerHTML = `
+                    <span class="pip-title"><span class="pip-badge"></span> 🎬 ${escapeHtml(media.displayTitle || "Video")} · ALWAYS-ON-TOP</span>
+                    <button class="pip-btn" id="pip-close-btn" title="Close PiP">✕ Close</button>
+                `;
+                pipWindow.document.body.appendChild(bar);
+
+                const container = pipWindow.document.createElement("div");
+                container.className = "pip-container";
+
+                let playerSrc = "";
+                if (media.ytId) {
+                    playerSrc = `/pip_player.html?v=${encodeURIComponent(media.ytId)}&title=${encodeURIComponent(media.displayTitle || '')}`;
+                } else if (media.embedUrl) {
+                    const ytm = String(media.embedUrl).match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]{11})/);
+                    playerSrc = ytm ? `/pip_player.html?v=${ytm[1]}&title=${encodeURIComponent(media.displayTitle || '')}` : `/pip_player.html?url=${encodeURIComponent(media.embedUrl)}&title=${encodeURIComponent(media.displayTitle || '')}`;
+                } else if (media.raw && (/\.(mp4|webm|ogg|m4v)(\?|$)/i.test(media.raw))) {
+                    const v = pipWindow.document.createElement("video");
+                    v.src = media.raw;
+                    v.controls = true;
+                    v.autoplay = true;
+                    v.style.cssText = "width:100%; height:100%; object-fit:contain;";
+                    container.appendChild(v);
+                } else {
+                    playerSrc = `/pip_player.html?url=${encodeURIComponent(media.raw || media.embedUrl || '')}&title=${encodeURIComponent(media.displayTitle || '')}`;
+                }
+
+                if (playerSrc) {
+                    container.innerHTML = `<iframe src="${playerSrc}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>`;
+                }
+                pipWindow.document.body.appendChild(container);
+
+                pipWindow.document.getElementById("pip-close-btn").addEventListener("click", () => {
+                    pipWindow.close();
+                });
+
+                pipWindow.addEventListener("pagehide", () => {
+                    activeDocPipWindow = null;
+                    if (typeof showToast === 'function') showToast("ALWAYS-ON-TOP WINDOW CLOSED");
+                });
+
+                closeFloatingPip();
+                if (typeof showToast === 'function') showToast(`ALWAYS-ON-TOP POP-OUT: ${(media.displayTitle || 'VIDEO').toUpperCase()}`);
+                return true;
+            } catch (err) {
+                console.warn("[Sarembok] openDocPipWindow failed, using in-page player:", err);
+                return false;
+            }
+        }
+        window.openDocPipWindow = openDocPipWindow;
+
+        async function popOutFloatingVideo(urlOrQuery, title = "", preferOsPip = true) {
             let media = resolvePlayableMedia(urlOrQuery, title);
 
             // If unresolved, try backend RPC first
@@ -6538,6 +6689,16 @@
             }
 
             currentPipMedia = media;
+
+            // 1. Try OS-level Always-On-Top Document Picture-in-Picture window FIRST!
+            if (preferOsPip && ('documentPictureInPicture' in window) && typeof window.documentPictureInPicture.requestWindow === 'function') {
+                try {
+                    const opened = await openDocPipWindow(media);
+                    if (opened) return;
+                } catch (e) {
+                    console.warn("[Sarembok] OS PiP failed, falling back to in-page player:", e);
+                }
+            }
 
             const pipEl = document.getElementById("srbk-floating-pip-player");
             const titleEl = document.getElementById("srbk-pip-title-text");
@@ -6573,12 +6734,28 @@
             showToast("POP-OUT VIDEO CLOSED");
         }
 
-        function openDetachedPipWindow() {
-            if (currentPipMedia) {
-                const url = currentPipMedia.embedUrl;
-                window.open(url, "SarembokMediaPopout", "width=640,height=380,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
-                closeFloatingPip();
+        async function openDetachedPipWindow() {
+            if (!currentPipMedia) return;
+            // 1. Try Document Picture-in-Picture first (stays on top of ALL OS windows)
+            if (('documentPictureInPicture' in window) && typeof window.documentPictureInPicture.requestWindow === 'function') {
+                try {
+                    const opened = await openDocPipWindow(currentPipMedia);
+                    if (opened) return;
+                } catch (e) {
+                    console.warn('[Sarembok] openDocPipWindow failed:', e);
+                }
             }
+            // 2. Fallback to standalone popup window
+            let playerUrl = `/pip_player.html?title=${encodeURIComponent(currentPipMedia.displayTitle || '')}`;
+            if (currentPipMedia.ytId) {
+                playerUrl += `&v=${encodeURIComponent(currentPipMedia.ytId)}`;
+            } else if (currentPipMedia.embedUrl) {
+                playerUrl += `&url=${encodeURIComponent(currentPipMedia.embedUrl)}`;
+            } else {
+                playerUrl += `&url=${encodeURIComponent(currentPipMedia.raw || '')}`;
+            }
+            window.open(playerUrl, "SarembokMediaPopout", "width=640,height=380,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
+            closeFloatingPip();
         }
 
         async function openDetachedPipWindowFromUrl(urlOrQuery) {
@@ -6592,7 +6769,24 @@
                     }
                 } catch (e) { console.warn('[Sarembok] Window resolve failed:', e); }
             }
-            window.open(media.embedUrl, "SarembokMediaPopout", "width=640,height=380,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
+            currentPipMedia = media;
+            if (('documentPictureInPicture' in window) && typeof window.documentPictureInPicture.requestWindow === 'function') {
+                try {
+                    const opened = await openDocPipWindow(media);
+                    if (opened) return;
+                } catch (e) {
+                    console.warn('[Sarembok] openDocPipWindow failed:', e);
+                }
+            }
+            let playerUrl = `/pip_player.html?title=${encodeURIComponent(media.displayTitle || '')}`;
+            if (media.ytId) {
+                playerUrl += `&v=${encodeURIComponent(media.ytId)}`;
+            } else if (media.embedUrl) {
+                playerUrl += `&url=${encodeURIComponent(media.embedUrl)}`;
+            } else {
+                playerUrl += `&url=${encodeURIComponent(media.raw || '')}`;
+            }
+            window.open(playerUrl, "SarembokMediaPopout", "width=640,height=380,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
         }
 
         function setAudioDucking() {} /* no-op, music deck removed */

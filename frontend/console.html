@@ -1202,6 +1202,212 @@
               const directMedia = /^https?:\/\/.+\.(?:mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(url);
               return youtubeVideo || directMedia ? url : "";
           }
+          let activeDocPipWindow = null;
+
+          function escapeHtmlLocal(str) {
+              return String(str || "").replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+          }
+
+          async function openDocPipWindow(media) {
+              if (!media) return false;
+              const title = media.displayTitle || media.title || 'Sarembok Media';
+              const ytId = media.ytId || (media.raw ? (media.raw.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i) || [])[1] : null);
+              const raw = media.raw || media.embedUrl || media.url || '';
+
+              if (!('documentPictureInPicture' in window) || typeof window.documentPictureInPicture.requestWindow !== 'function') {
+                  return false;
+              }
+              if (activeDocPipWindow) {
+                  try { activeDocPipWindow.close(); } catch (_) {}
+                  activeDocPipWindow = null;
+              }
+              try {
+                  const pipWindow = await window.documentPictureInPicture.requestWindow({
+                      width: 580,
+                      height: 360,
+                  });
+                  activeDocPipWindow = pipWindow;
+
+                  pipWindow.document.title = title + " · Always-On-Top";
+
+                  const style = pipWindow.document.createElement("style");
+                  style.textContent = `
+                      html, body {
+                          margin: 0;
+                          padding: 0;
+                          width: 100%;
+                          height: 100%;
+                          background: #000000;
+                          overflow: hidden;
+                          display: flex;
+                          flex-direction: column;
+                          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+                      }
+                      .pip-bar {
+                          height: 32px;
+                          background: #040916;
+                          border-bottom: 1px solid rgba(0, 240, 255, 0.35);
+                          display: flex;
+                          align-items: center;
+                          justify-content: space-between;
+                          padding: 0 10px;
+                          color: #00f0ff;
+                          font-size: 11px;
+                          font-weight: 600;
+                          letter-spacing: 0.05em;
+                          user-select: none;
+                          flex-shrink: 0;
+                          box-sizing: border-box;
+                      }
+                      .pip-title {
+                          white-space: nowrap;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                          max-width: 420px;
+                          display: flex;
+                          align-items: center;
+                          gap: 6px;
+                      }
+                      .pip-badge {
+                          display: inline-block;
+                          width: 7px;
+                          height: 7px;
+                          background: #00ff88;
+                          border-radius: 50%;
+                          box-shadow: 0 0 8px #00ff88;
+                      }
+                      .pip-btn {
+                          background: rgba(239, 68, 68, 0.15);
+                          border: 1px solid rgba(239, 68, 68, 0.4);
+                          color: #ef4444;
+                          font-size: 10px;
+                          padding: 2px 7px;
+                          border-radius: 4px;
+                          cursor: pointer;
+                          font-weight: bold;
+                      }
+                      .pip-btn:hover {
+                          background: #ef4444;
+                          color: #ffffff;
+                      }
+                      .pip-container {
+                          flex: 1;
+                          width: 100%;
+                          height: calc(100% - 32px);
+                          background: #000;
+                          position: relative;
+                      }
+                      iframe, video {
+                          width: 100%;
+                          height: 100%;
+                          border: none;
+                          display: block;
+                      }
+                  `;
+                  pipWindow.document.head.appendChild(style);
+
+                  const bar = pipWindow.document.createElement("div");
+                  bar.className = "pip-bar";
+                  bar.innerHTML = `
+                      <span class="pip-title"><span class="pip-badge"></span> 🎬 ${escapeHtmlLocal(title)} · ALWAYS-ON-TOP</span>
+                      <button class="pip-btn" id="pip-close-btn" title="Close PiP">✕ Close</button>
+                  `;
+                  pipWindow.document.body.appendChild(bar);
+
+                  const container = pipWindow.document.createElement("div");
+                  container.className = "pip-container";
+
+                  let playerSrc = "";
+                  if (ytId) {
+                      playerSrc = `/pip_player.html?v=${encodeURIComponent(ytId)}&title=${encodeURIComponent(title)}`;
+                  } else if (raw && /\.(mp4|webm|ogg|m4v|mov)(\?|$)/i.test(raw)) {
+                      const v = pipWindow.document.createElement("video");
+                      v.src = raw;
+                      v.controls = true;
+                      v.autoplay = true;
+                      v.style.cssText = "width:100%; height:100%; object-fit:contain;";
+                      container.appendChild(v);
+                  } else if (raw) {
+                      playerSrc = `/pip_player.html?url=${encodeURIComponent(raw)}&title=${encodeURIComponent(title)}`;
+                  }
+
+                  if (playerSrc) {
+                      container.innerHTML = `<iframe src="${playerSrc}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>`;
+                  }
+                  pipWindow.document.body.appendChild(container);
+
+                  pipWindow.document.getElementById("pip-close-btn").addEventListener("click", () => {
+                      pipWindow.close();
+                  });
+
+                  pipWindow.addEventListener("pagehide", () => {
+                      activeDocPipWindow = null;
+                  });
+
+                  return true;
+              } catch (err) {
+                  console.warn("[Sarembok] openDocPipWindow failed:", err);
+                  return false;
+              }
+          }
+
+          async function popOutFloatingVideo(urlOrQuery, title = "", preferOsPip = true) {
+              let raw = String(urlOrQuery || "").trim();
+              if (!raw && window.lastActiveInlineMedia) {
+                  raw = window.lastActiveInlineMedia.raw || window.lastActiveInlineMedia.ytId || "";
+                  title = title || window.lastActiveInlineMedia.displayTitle || "";
+              }
+              if (!raw) return false;
+
+              const ytMatch = raw.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+              const isDirect = /\.(mp4|webm|ogg|mov|m4v)(?:\?|#|$)/i.test(raw);
+              let ytId = ytMatch ? ytMatch[1] : (/^[A-Za-z0-9_-]{11}$/.test(raw) ? raw : null);
+
+              if (!ytId && !isDirect && !/^https?:\/\//i.test(raw)) {
+                  try {
+                      if (typeof sendRPC === 'function') {
+                          const res = await sendRPC("SearchYouTube", { query: raw });
+                          if (res && (res.videoId || res.video_id)) {
+                              ytId = res.videoId || res.video_id;
+                          }
+                      }
+                  } catch (e) {
+                      console.warn("[Sarembok] POP OUT resolve failed:", e);
+                  }
+              }
+
+              const mediaObj = {
+                  ytId: ytId,
+                  raw: ytId ? `https://www.youtube.com/watch?v=${ytId}` : raw,
+                  embedUrl: ytId ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0` : raw,
+                  displayTitle: title || raw
+              };
+
+              window.lastActiveInlineMedia = mediaObj;
+
+              // 1. Try OS-level Always-On-Top Document Picture-in-Picture window FIRST!
+              if (preferOsPip && ('documentPictureInPicture' in window) && typeof window.documentPictureInPicture.requestWindow === 'function') {
+                  try {
+                      const opened = await openDocPipWindow(mediaObj);
+                      if (opened) return true;
+                  } catch (e) {
+                      console.warn("[Sarembok] OS PiP failed, falling back to popup window:", e);
+                  }
+              }
+
+              // 2. Fallback to standalone popup window
+              let playerUrl = `/pip_player.html?title=${encodeURIComponent(mediaObj.displayTitle)}`;
+              if (mediaObj.ytId) {
+                  playerUrl += `&v=${encodeURIComponent(mediaObj.ytId)}`;
+              } else {
+                  playerUrl += `&url=${encodeURIComponent(mediaObj.raw)}`;
+              }
+              const w = window.open(playerUrl, "SarembokMediaPopout", "width=640,height=380,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
+              return !!w;
+          }
+          window.popOutFloatingVideo = popOutFloatingVideo;
+          window.openDocPipWindow = openDocPipWindow;
+
           function appendInlineMedia(group,url,title){
             if(!group||!url)return null;
             const raw=String(url).trim();
@@ -1249,20 +1455,11 @@
             controls.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;';
             const pop=document.createElement('button');
             pop.type='button';
-            pop.textContent='↗ POP OUT VIDEO';
-            pop.style.cssText='cursor:pointer;border:1px solid rgba(0,240,255,.45);background:rgba(0,240,255,.08);color:var(--cyan);border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700;';
+            pop.textContent='⧉ POP OUT (ALWAYS ON TOP)';
+            pop.title='Float video on top of all windows across your desktop';
+            pop.style.cssText='cursor:pointer;border:1px solid rgba(0,240,255,.6);background:rgba(0,240,255,.12);color:var(--cyan);border-radius:6px;padding:5px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:5px;box-shadow:0 0 10px rgba(0,240,255,0.15);';
             pop.onclick=()=>{
-                const target = m
-                    ? 'https://www.youtube.com/embed/'+m[1]+'?rel=0&autoplay=1&playsinline=1'
-                    : raw;
-                const w=window.open('','sarembok-media-popout','width=900,height=600,resizable=yes,scrollbars=no');
-                if(!w){ alert('Allow pop-up windows for sarembok.com to pop out video.'); return; }
-                w.document.open();
-                w.document.write('<!doctype html><html><head><title>Sarembok Video</title><style>html,body{margin:0;height:100%;background:#05080d;overflow:hidden}iframe,video{width:100%;height:100%;border:0;display:block}</style></head><body>'+
-                    (m ? '<iframe src="'+target+'" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>'
-                       : '<video src="'+raw.replace(/"/g,'&quot;')+'" controls autoplay playsinline></video>')+
-                    '</body></html>');
-                w.document.close();
+                popOutFloatingVideo(raw, title);
             };
             controls.appendChild(pop);
             const label=document.createElement('div');

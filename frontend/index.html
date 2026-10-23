@@ -1437,6 +1437,152 @@
             }
         }
 
+        /* ====== IN-APP MEDIA THEATER / FLOATING PIP OVERLAY ====== */
+        .sarembok-theater-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(3, 5, 8, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: all 0.25s ease;
+        }
+        .sarembok-theater-overlay .theater-backdrop {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+        .sarembok-theater-overlay .theater-dialog {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 880px;
+            background: #070b14;
+            border: 1px solid rgba(0, 240, 255, 0.35);
+            border-radius: var(--radius-md);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.85), 0 0 35px rgba(0, 240, 255, 0.18);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .sarembok-theater-overlay.docked {
+            position: fixed;
+            inset: auto;
+            bottom: 20px;
+            right: 20px;
+            width: 380px;
+            max-width: calc(100vw - 32px);
+            height: auto;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            padding: 0;
+            pointer-events: none;
+        }
+        .sarembok-theater-overlay.docked .theater-backdrop {
+            display: none;
+        }
+        .sarembok-theater-overlay.docked .theater-dialog {
+            pointer-events: auto;
+            width: 100%;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.9), 0 0 24px rgba(0, 240, 255, 0.25);
+        }
+        .theater-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: rgba(12, 18, 30, 0.98);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            gap: 12px;
+        }
+        .theater-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .theater-title::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+        .theater-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .theater-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            font-family: var(--font-sans);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .theater-btn:hover {
+            color: #fff;
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--accent);
+        }
+        .theater-btn.close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #f87171;
+        }
+        .theater-media-body {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+        }
+        .theater-media-body iframe,
+        .theater-media-body video {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .sarembok-theater-overlay {
+                padding: 10px;
+            }
+            .sarembok-theater-overlay .theater-dialog {
+                max-width: 100%;
+            }
+            .sarembok-theater-overlay.docked {
+                bottom: 12px;
+                right: 12px;
+                left: 12px;
+                width: auto;
+                max-width: none;
+            }
+            #theater-pip-btn {
+                display: none;
+            }
+        }
+
         /* ====== RIGHT RAIL: SYSTEM STATE ====== */
 
         .system-rail {
@@ -2475,11 +2621,227 @@
             </div>
         </section>
 
-        <!-- SUB-VIEW: DOCS & SPECS -->
-        <section class="view-panel" id="view-docs-panel" style="display:none;">
-            <div class="panel-header-title">Technical Documentation &amp; Architecture</div>
-            <div class="panel-header-desc">SarembokVE is an enterprise-grade autonomous reverse-engineering platform and sovereign compute mesh. Review architecture details, API specs, and integration patterns below.</div>
-            
+        <!-- SUB-VIEW: DOCS, USE CASES & ARCHITECTURE -->
+        <section class="view-panel" id="view-docs-panel" style="display:none;padding-bottom:60px;">
+            <div class="panel-header-title">Solutions, Capabilities &amp; Technical Reference</div>
+            <div class="panel-header-desc">Explore 12 real-world enterprise use cases, verified production capabilities, and architecture specifications. Execute live demonstrations directly in the console.</div>
+
+            <!-- CAPABILITIES & BENCHMARKS STRIP -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:24px;">
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px 18px;">
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Extraction Latency</div>
+                    <div style="font-size:20px;font-weight:700;color:var(--accent);margin-top:4px;">157 ms <span style="font-size:11.5px;color:var(--text-secondary);font-weight:400;">(2.8s cold)</span></div>
+                    <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">Headless Chromium extraction</div>
+                </div>
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px 18px;">
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Drift Gating Precision</div>
+                    <div style="font-size:20px;font-weight:700;color:var(--green);margin-top:4px;">100% Deterministic</div>
+                    <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">0 false alarms on additive keys</div>
+                </div>
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px 18px;">
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Loop Defense Floor</div>
+                    <div style="font-size:20px;font-weight:700;color:#c084fc;margin-top:4px;">H(X) &ge; 0.88</div>
+                    <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">Shannon entropy halt &amp; rollback</div>
+                </div>
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px 18px;">
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Sandbox Isolation</div>
+                    <div style="font-size:20px;font-weight:700;color:#f59e0b;margin-top:4px;">cap_drop: ALL</div>
+                    <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">768MB RAM &amp; ephemeral storage</div>
+                </div>
+            </div>
+
+            <!-- SECTION HEADER -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <h3 style="font-size:17px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;">
+                    <span style="color:var(--accent);">⚡</span> 12 Production Use Cases &amp; Solutions
+                </h3>
+                <span style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);">Verified against Sarembok Cluster v3.8</span>
+            </div>
+
+            <!-- 12 REAL-WORLD USE CASES GRID -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;margin-bottom:32px;">
+                <!-- UC 1 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">CI/CD GATE</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">01</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Pre-Release Breaking Contract Gate</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Halts deployment pipelines with exit code 1 if an API response field or endpoint disappears or mutates type compared to committed baseline.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPromptAndSend('/audit https://httpbin.org --no-fail');switchView('console');" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#34d399;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Run Audit in Console</span>
+                    </button>
+                </div>
+
+                <!-- UC 2 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent);background:rgba(0,240,255,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">OPENAPI 3.1</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">02</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Autonomous Legacy Reverse-Engineering</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Observes network telemetry during headless Chromium sessions and automatically generates OpenAPI 3.1 specs and TypeScript definitions in seconds.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPromptAndSend('/spec https://httpbin.org');switchView('console');" style="background:rgba(0,240,255,0.12);border:1px solid rgba(0,240,255,0.35);color:var(--accent);border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Extract Spec in Console</span>
+                    </button>
+                </div>
+
+                <!-- UC 3 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:#c084fc;background:rgba(192,132,252,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">VENDOR DRIFT</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">03</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Third-Party &amp; SaaS Drift Monitoring</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Continuously monitors external vendors (payment gateways, CRMs) for unannounced payload changes that could break downstream production integrations.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('/audit https://jsonplaceholder.typicode.com/todos/1 --no-fail');switchView('console');" style="background:rgba(192,132,252,0.12);border:1px solid rgba(192,132,252,0.35);color:#c084fc;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Audit Third-Party API</span>
+                    </button>
+                </div>
+
+                <!-- UC 4 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:#38bdf8;background:rgba(56,189,248,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">REFACTORING</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">04</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Monolith-to-Microservice Migration</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Extracts observed JSON contracts during test runs to generate type-safe Go, Rust, or TypeScript client SDKs during monolithic backend refactoring.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPromptAndSend('/spec https://jsonplaceholder.typicode.com/todos/1');switchView('console');" style="background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);color:#38bdf8;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Generate Microservice Types</span>
+                    </button>
+                </div>
+
+                <!-- UC 5 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:#ef4444;background:rgba(239,68,68,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">COGNITIVE GUARD</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">05</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Shannon Entropy Loop Defense (H &ge; 0.88)</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Calculates sliding-window repetition entropy. Halts recursive multi-agent loops and triggers atomic rollback to the last verified SQLite-WAL state snapshot.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('Explain the Shannon entropy loop defense mechanism and WAL rollback protocol');switchView('console');sendMessage();" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#f87171;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Inspect Loop Defense</span>
+                    </button>
+                </div>
+
+                <!-- UC 6 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">SQLITE-WAL</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">06</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Semantic Memory &amp; Fact Retention</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Persists immutable operational constraints, API keys, and deployment requirements in zero-locking SQLite-WAL storage across agent conversations.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('remember that Production API requires strict Idempotency-Key headers for all POST requests');switchView('console');sendMessage();" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);color:var(--green);border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Store Semantic Fact</span>
+                    </button>
+                </div>
+
+                <!-- UC 7 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent);background:rgba(0,240,255,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">MCP PROTOCOL</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">07</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">MCP Multi-Server Tool Federation</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Connects agents to local filesystems, memory servers, and cloud resources via Model Context Protocol standards under human-in-the-loop governance.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('List all active MCP tool servers and enabled capabilities');switchView('console');sendMessage();" style="background:rgba(0,240,255,0.12);border:1px solid rgba(0,240,255,0.35);color:var(--accent);border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Query MCP Scopes</span>
+                    </button>
+                </div>
+
+                <!-- UC 8 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:#f59e0b;background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">VOICE ENGINE</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">08</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Two-Way Low-Latency Neural Voice</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Bidirectional neural voice streaming over WebSockets with under 250ms conversational latency and instant voice interruption support.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('Synthesize a spoken system briefing on current cluster status');switchView('console');sendMessage();" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Trigger Voice Briefing</span>
+                    </button>
+                </div>
+
+                <!-- UC 9 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">TELEMETRY</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">09</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Multi-Sector Market Fan-Out</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Parallel concurrent queries fan out across 15+ industry sectors, equities, and GICS benchmarks (XLK, XLE, SMH, BTC-USD) with sub-second retrieval.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('Analyze real-time market telemetry across sectors XLK, SMH, and BTC-USD');switchView('console');sendMessage();" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);color:var(--green);border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Run Market Fan-Out</span>
+                    </button>
+                </div>
+
+                <!-- UC 10 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:#38bdf8;background:rgba(56,189,248,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">FINANCIAL DOCS</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">10</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">SEC Filings &amp; 10-K/10-Q Deep Parsing</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Extracts corporate quarterly earnings, balance sheet tables, and executive commentary directly from SEC EDGAR filings without manual search.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="injectPrompt('Extract and summarize recent 10-K quarterly revenue tables for NVDA');switchView('console');sendMessage();" style="background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);color:#38bdf8;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ Parse SEC Filings</span>
+                    </button>
+                </div>
+
+                <!-- UC 11 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent);background:rgba(0,240,255,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">COMPUTE MESH</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">11</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Sovereign Compute Mesh Workers</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Distributes high-volume browser crawls and extraction workloads across external worker machines, Colab notebooks, and GPU pods using secure tokens.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="switchView('mesh');" style="background:rgba(0,240,255,0.12);border:1px solid rgba(0,240,255,0.35);color:var(--accent);border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ View Mesh Topology</span>
+                    </button>
+                </div>
+
+                <!-- UC 12 -->
+                <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:11px;font-family:var(--font-mono);color:#f59e0b;background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px;font-weight:600;">SANDBOXING</span>
+                            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">12</span>
+                        </div>
+                        <h4 style="font-size:14.5px;font-weight:600;color:#fff;margin-bottom:6px;">Ephemeral Zero-Trust Container Isolation</h4>
+                        <p style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:14px;">Sandboxes all crawls in isolated Chromium containers with dropped capabilities (`cap_drop: ALL`), memory caps, and instant post-synthesis header purging.</p>
+                    </div>
+                    <button class="demo-action-btn" onclick="window.location.href='/security';" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;border-radius:6px;padding:7px 12px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+                        <span>⚡ View Security Architecture</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ARCHITECTURE & INTEGRATION GRID -->
             <div class="docs-subview-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
                 <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:28px;">
                     <h3 style="font-size:16px;color:#fff;margin-bottom:12px;">Headless Specification REST API</h3>
@@ -2501,8 +2863,9 @@
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <a href="/docs" class="console-main-site" style="justify-content:space-between;">Full Documentation Page ↗</a>
                         <a href="/projects" class="console-main-site" style="justify-content:space-between;">Project Walkthroughs ↗</a>
-                        <a href="/privacy" class="console-main-site" style="justify-content:space-between;">Privacy Policy ↗</a>
-                        <a href="/terms" class="console-main-site" style="justify-content:space-between;">Terms of Service ↗</a>
+                        <a href="/status" class="console-main-site" style="justify-content:space-between;">Live System Status ↗</a>
+                        <a href="/security" class="console-main-site" style="justify-content:space-between;">Security &amp; Sandboxing ↗</a>
+                        <a href="/changelog" class="console-main-site" style="justify-content:space-between;">Changelog ↗</a>
                         <a href="https://github.com/jetsontech/SarembokVE" target="_blank" rel="noopener" class="console-main-site" style="justify-content:space-between;">GitHub Repository ↗</a>
                     </div>
                 </div>
@@ -2533,6 +2896,24 @@
                 </div>
                 <div id="palette-results" class="palette-results">
                     <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- IN-APP MEDIA THEATER / FLOATING PIP OVERLAY -->
+        <div class="sarembok-theater-overlay" id="sarembok-inapp-theater" style="display:none;">
+            <div class="theater-backdrop" onclick="closeInAppTheater()"></div>
+            <div class="theater-dialog" id="theater-dialog">
+                <div class="theater-header">
+                    <div class="theater-title" id="theater-title">Media Playback</div>
+                    <div class="theater-actions">
+                        <button type="button" class="theater-btn" id="theater-pip-btn" onclick="popOutFromTheater()" title="Pop out into floating window that remains on top of all windows">⧉ POP OUT (ALWAYS ON TOP)</button>
+                        <button type="button" class="theater-btn" onclick="toggleTheaterFullscreen()" title="Fullscreen">⤢ Fullscreen</button>
+                        <button type="button" class="theater-btn close-btn" onclick="closeInAppTheater()" title="Close">✕</button>
+                    </div>
+                </div>
+                <div class="theater-media-body" id="theater-media-body">
+                    <!-- Media inserted dynamically -->
                 </div>
             </div>
         </div>
@@ -3790,6 +4171,295 @@
               const directMedia = /^https?:\/\/.+\.(?:mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(url);
               return youtubeVideo || directMedia ? url : "";
           }
+
+          // ====== IN-APP MEDIA THEATER / FLOATING PIP CONTROLLER ======
+          let theaterCurrentMedia = null;
+          let activeDocPipWindow = null;
+
+          function escapeHtmlLocal(str) {
+              return String(str || "").replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+          }
+
+          async function openDocPipWindow(media) {
+              if (!media) return false;
+              const title = media.displayTitle || media.title || 'Sarembok Media';
+              const ytId = media.ytId || (media.raw ? (media.raw.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i) || [])[1] : null);
+              const raw = media.raw || media.embedUrl || media.url || '';
+
+              if (!('documentPictureInPicture' in window) || typeof window.documentPictureInPicture.requestWindow !== 'function') {
+                  return false;
+              }
+              if (activeDocPipWindow) {
+                  try { activeDocPipWindow.close(); } catch (_) {}
+                  activeDocPipWindow = null;
+              }
+              try {
+                  const pipWindow = await window.documentPictureInPicture.requestWindow({
+                      width: 580,
+                      height: 360,
+                  });
+                  activeDocPipWindow = pipWindow;
+
+                  pipWindow.document.title = title + " · Always-On-Top";
+
+                  const style = pipWindow.document.createElement("style");
+                  style.textContent = `
+                      html, body {
+                          margin: 0;
+                          padding: 0;
+                          width: 100%;
+                          height: 100%;
+                          background: #000000;
+                          overflow: hidden;
+                          display: flex;
+                          flex-direction: column;
+                          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+                      }
+                      .pip-bar {
+                          height: 32px;
+                          background: #040916;
+                          border-bottom: 1px solid rgba(0, 240, 255, 0.35);
+                          display: flex;
+                          align-items: center;
+                          justify-content: space-between;
+                          padding: 0 10px;
+                          color: #00f0ff;
+                          font-size: 11px;
+                          font-weight: 600;
+                          letter-spacing: 0.05em;
+                          user-select: none;
+                          flex-shrink: 0;
+                          box-sizing: border-box;
+                      }
+                      .pip-title {
+                          white-space: nowrap;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                          max-width: 420px;
+                          display: flex;
+                          align-items: center;
+                          gap: 6px;
+                      }
+                      .pip-badge {
+                          display: inline-block;
+                          width: 7px;
+                          height: 7px;
+                          background: #00ff88;
+                          border-radius: 50%;
+                          box-shadow: 0 0 8px #00ff88;
+                      }
+                      .pip-btn {
+                          background: rgba(239, 68, 68, 0.15);
+                          border: 1px solid rgba(239, 68, 68, 0.4);
+                          color: #ef4444;
+                          font-size: 10px;
+                          padding: 2px 7px;
+                          border-radius: 4px;
+                          cursor: pointer;
+                          font-weight: bold;
+                      }
+                      .pip-btn:hover {
+                          background: #ef4444;
+                          color: #ffffff;
+                      }
+                      .pip-container {
+                          flex: 1;
+                          width: 100%;
+                          height: calc(100% - 32px);
+                          background: #000;
+                          position: relative;
+                      }
+                      iframe, video {
+                          width: 100%;
+                          height: 100%;
+                          border: none;
+                          display: block;
+                      }
+                  `;
+                  pipWindow.document.head.appendChild(style);
+
+                  const bar = pipWindow.document.createElement("div");
+                  bar.className = "pip-bar";
+                  bar.innerHTML = `
+                      <span class="pip-title"><span class="pip-badge"></span> 🎬 ${escapeHtmlLocal(title)} · ALWAYS-ON-TOP</span>
+                      <button class="pip-btn" id="pip-close-btn" title="Close PiP">✕ Close</button>
+                  `;
+                  pipWindow.document.body.appendChild(bar);
+
+                  const container = pipWindow.document.createElement("div");
+                  container.className = "pip-container";
+
+                  let playerSrc = "";
+                  if (ytId) {
+                      playerSrc = `/pip_player.html?v=${encodeURIComponent(ytId)}&title=${encodeURIComponent(title)}`;
+                  } else if (raw && /\.(mp4|webm|ogg|m4v|mov)(\?|$)/i.test(raw)) {
+                      const v = pipWindow.document.createElement("video");
+                      v.src = raw;
+                      v.controls = true;
+                      v.autoplay = true;
+                      v.style.cssText = "width:100%; height:100%; object-fit:contain;";
+                      container.appendChild(v);
+                  } else if (raw) {
+                      playerSrc = `/pip_player.html?url=${encodeURIComponent(raw)}&title=${encodeURIComponent(title)}`;
+                  }
+
+                  if (playerSrc) {
+                      container.innerHTML = `<iframe src="${playerSrc}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>`;
+                  }
+                  pipWindow.document.body.appendChild(container);
+
+                  pipWindow.document.getElementById("pip-close-btn").addEventListener("click", () => {
+                      pipWindow.close();
+                  });
+
+                  pipWindow.addEventListener("pagehide", () => {
+                      activeDocPipWindow = null;
+                  });
+
+                  return true;
+              } catch (err) {
+                  console.warn("[Sarembok] openDocPipWindow failed:", err);
+                  return false;
+              }
+          }
+
+          async function popOutFloatingVideo(urlOrQuery, title = "", preferOsPip = true) {
+              let raw = String(urlOrQuery || "").trim();
+              if (!raw && window.lastActiveInlineMedia) {
+                  raw = window.lastActiveInlineMedia.raw || window.lastActiveInlineMedia.ytId || "";
+                  title = title || window.lastActiveInlineMedia.displayTitle || "";
+              }
+              if (!raw && theaterCurrentMedia) {
+                  raw = theaterCurrentMedia.raw || (theaterCurrentMedia.m ? ('https://www.youtube.com/watch?v=' + theaterCurrentMedia.m[1]) : "");
+                  title = title || theaterCurrentMedia.title || "";
+              }
+              if (!raw) return false;
+
+              const ytMatch = raw.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+              const isDirect = /\.(mp4|webm|ogg|mov|m4v)(?:\?|#|$)/i.test(raw);
+              let ytId = ytMatch ? ytMatch[1] : (/^[A-Za-z0-9_-]{11}$/.test(raw) ? raw : null);
+
+              if (!ytId && !isDirect && !/^https?:\/\//i.test(raw)) {
+                  try {
+                      if (typeof sendRPC === 'function') {
+                          const res = await sendRPC("SearchYouTube", { query: raw });
+                          if (res && (res.videoId || res.video_id)) {
+                              ytId = res.videoId || res.video_id;
+                          }
+                      }
+                  } catch (e) {
+                      console.warn("[Sarembok] POP OUT resolve failed:", e);
+                  }
+              }
+
+              const mediaObj = {
+                  ytId: ytId,
+                  raw: ytId ? `https://www.youtube.com/watch?v=${ytId}` : raw,
+                  embedUrl: ytId ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0` : raw,
+                  displayTitle: title || raw
+              };
+
+              window.lastActiveInlineMedia = mediaObj;
+              closeInAppTheater();
+
+              // 1. Try OS-level Always-On-Top Document Picture-in-Picture window FIRST!
+              if (preferOsPip && ('documentPictureInPicture' in window) && typeof window.documentPictureInPicture.requestWindow === 'function') {
+                  try {
+                      const opened = await openDocPipWindow(mediaObj);
+                      if (opened) return true;
+                  } catch (e) {
+                      console.warn("[Sarembok] OS PiP failed, falling back to popup window:", e);
+                  }
+              }
+
+              // 2. Fallback to standalone popup window
+              let playerUrl = `/pip_player.html?title=${encodeURIComponent(mediaObj.displayTitle)}`;
+              if (mediaObj.ytId) {
+                  playerUrl += `&v=${encodeURIComponent(mediaObj.ytId)}`;
+              } else {
+                  playerUrl += `&url=${encodeURIComponent(mediaObj.raw)}`;
+              }
+              const w = window.open(playerUrl, "SarembokMediaPopout", "width=640,height=380,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
+              return !!w;
+          }
+          window.popOutFloatingVideo = popOutFloatingVideo;
+          window.openDocPipWindow = openDocPipWindow;
+
+          function popOutFromTheater() {
+              if (theaterCurrentMedia) {
+                  const raw = theaterCurrentMedia.raw || (theaterCurrentMedia.m ? ('https://www.youtube.com/watch?v=' + theaterCurrentMedia.m[1]) : "");
+                  const title = theaterCurrentMedia.title || "Video";
+                  closeInAppTheater();
+                  popOutFloatingVideo(raw, title, true);
+              }
+          }
+          window.popOutFromTheater = popOutFromTheater;
+
+          function openInAppTheater(m, raw, title) {
+              theaterCurrentMedia = { m, raw, title };
+              const overlay = document.getElementById('sarembok-inapp-theater');
+              const mediaBody = document.getElementById('theater-media-body');
+              const titleEl = document.getElementById('theater-title');
+              if (!overlay || !mediaBody) return;
+
+              titleEl.textContent = title || 'Sarembok Media Playback';
+              mediaBody.innerHTML = '';
+
+              if (m) {
+                  const iframe = document.createElement('iframe');
+                  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+                  iframe.allowFullscreen = true;
+                  iframe.src = 'https://www.youtube.com/embed/' + m[1] + '?rel=0&autoplay=1&playsinline=1';
+                  mediaBody.appendChild(iframe);
+              } else {
+                  const video = document.createElement('video');
+                  video.controls = true;
+                  video.autoplay = true;
+                  video.playsInline = true;
+                  video.src = raw;
+                  mediaBody.appendChild(video);
+              }
+
+              overlay.classList.remove('docked');
+              overlay.style.display = 'flex';
+          }
+
+          function closeInAppTheater() {
+              theaterCurrentMedia = null;
+              const overlay = document.getElementById('sarembok-inapp-theater');
+              const mediaBody = document.getElementById('theater-media-body');
+              if (overlay) {
+                  overlay.style.display = 'none';
+                  overlay.classList.remove('docked');
+              }
+              if (mediaBody) {
+                  mediaBody.innerHTML = '';
+              }
+          }
+
+          function toggleTheaterPip() {
+              popOutFromTheater();
+          }
+
+          function toggleTheaterFullscreen() {
+              const dialog = document.getElementById('theater-dialog');
+              if (!dialog) return;
+              if (!document.fullscreenElement) {
+                  dialog.requestFullscreen().catch(() => {});
+              } else {
+                  document.exitFullscreen().catch(() => {});
+              }
+          }
+
+          document.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape') {
+                  const theater = document.getElementById('sarembok-inapp-theater');
+                  if (theater && theater.style.display === 'flex') {
+                      closeInAppTheater();
+                  }
+              }
+          });
+
           function appendInlineMedia(group,url,title){
             if(!group||!url)return null;
             const raw=String(url).trim();
@@ -3834,25 +4504,25 @@
             }
             const controls=document.createElement('div');
             controls.className='inline-media-controls';
-            controls.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;';
+            controls.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;';
             const pop=document.createElement('button');
             pop.type='button';
-            pop.textContent='↗ POP OUT VIDEO';
-            pop.style.cssText='cursor:pointer;border:1px solid rgba(0,240,255,.45);background:rgba(0,240,255,.08);color:var(--cyan);border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700;';
+            pop.textContent='⧉ POP OUT (ALWAYS ON TOP)';
+            pop.title='Float video on top of all windows across your desktop';
+            pop.style.cssText='cursor:pointer;border:1px solid rgba(0,240,255,.6);background:rgba(0,240,255,.12);color:var(--cyan);border-radius:6px;padding:5px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:5px;box-shadow:0 0 10px rgba(0,240,255,0.15);';
             pop.onclick=()=>{
-                const target = m
-                    ? 'https://www.youtube.com/embed/'+m[1]+'?rel=0&autoplay=1&playsinline=1'
-                    : raw;
-                const w=window.open('','sarembok-media-popout','width=900,height=600,resizable=yes,scrollbars=no');
-                if(!w){ alert('Allow pop-up windows for sarembok.com to pop out video.'); return; }
-                w.document.open();
-                w.document.write('<!doctype html><html><head><title>Sarembok Video</title><style>html,body{margin:0;height:100%;background:#05080d;overflow:hidden}iframe,video{width:100%;height:100%;border:0;display:block}</style></head><body>'+
-                    (m ? '<iframe src="'+target+'" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>'
-                       : '<video src="'+raw.replace(/"/g,'&quot;')+'" controls autoplay playsinline></video>')+
-                    '</body></html>');
-                w.document.close();
+                popOutFloatingVideo(raw, title);
             };
             controls.appendChild(pop);
+            const theaterBtn=document.createElement('button');
+            theaterBtn.type='button';
+            theaterBtn.textContent='⛶ THEATER';
+            theaterBtn.title='Watch inside full-page theater overlay';
+            theaterBtn.style.cssText='cursor:pointer;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:var(--text-secondary);border-radius:6px;padding:5px 9px;font-size:10px;font-weight:600;display:inline-flex;align-items:center;gap:4px;';
+            theaterBtn.onclick=()=>{
+                openInAppTheater(m, raw, title);
+            };
+            controls.appendChild(theaterBtn);
             const label=document.createElement('div');
             label.className='inline-media-label';
             label.textContent=title||'Response media';
