@@ -44,6 +44,24 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    function getPythonBackendStatus() {
+        return new Promise((resolve) => {
+            const preq = http.get('http://127.0.0.1:9100/status', { timeout: 800 }, (pres) => {
+                let data = '';
+                pres.on('data', c => data += c);
+                pres.on('end', () => {
+                    try {
+                        resolve({ online: true, port: 9100, ...JSON.parse(data) });
+                    } catch (_) {
+                        resolve({ online: true, port: 9100, raw: data });
+                    }
+                });
+            });
+            preq.on('error', (err) => resolve({ online: false, port: 9100, error: err.message }));
+            preq.on('timeout', () => { preq.destroy(); resolve({ online: false, port: 9100, error: 'TIMEOUT' }); });
+        });
+    }
+
     if (req.url === '/' || req.url === '/index.html') {
         const prodHtmlPath = path.resolve(__dirname, '..', '..', 'frontend', 'index.html');
         const targetHtml = fs.existsSync(prodHtmlPath) ? prodHtmlPath : path.join(__dirname, 'index.html');
@@ -61,6 +79,40 @@ const server = http.createServer((req, res) => {
                 res.end(content);
             }
         });
+    } else if (req.url === '/fabric' || req.url === '/fabric/' || req.url === '/cockpit') {
+        const fabricCockpitPath = path.join(__dirname, 'index.html');
+        fs.readFile(fabricCockpitPath, (err, content) => {
+            if (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Fabric Cockpit Substrate not found.');
+            } else {
+                res.writeHead(200, {
+                    'Content-Type': 'text/html',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                });
+                res.end(content);
+            }
+        });
+    } else if (req.url.startsWith('/backend/')) {
+        const targetPath = req.url.slice('/backend'.length);
+        const proxyReq = http.request({
+            hostname: '127.0.0.1',
+            port: 9100,
+            path: targetPath,
+            method: req.method,
+            headers: { ...req.headers, host: '127.0.0.1:9100' }
+        }, (proxyRes) => {
+            res.writeHead(proxyRes.statusCode, proxyRes.headers);
+            proxyRes.pipe(res);
+        });
+        proxyReq.on('error', (err) => {
+            res.writeHead(502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Python backend proxy error: ' + err.message }));
+        });
+        req.pipe(proxyReq);
+        return;
     } else if (req.url === '/audio_bridge.html' || req.url === '/voice') {
         const audioBridgePath = path.resolve(__dirname, 'audio_bridge.html');
         fs.readFile(audioBridgePath, (err, content) => {
@@ -103,17 +155,33 @@ const server = http.createServer((req, res) => {
             }
             db.close();
 
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                session,
-                agents,
-                logs,
-                entropy: {
-                    current: latestEntropy,
-                    threshold: 0.88,
-                    status: latestEntropy >= 0.88 ? 'ALERT' : 'NOMINAL'
-                }
-            }));
+            getPythonBackendStatus().then((pythonBackend) => {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    session,
+                    agents,
+                    logs,
+                    entropy: {
+                        current: latestEntropy,
+                        threshold: 0.88,
+                        status: latestEntropy >= 0.88 ? 'ALERT' : 'NOMINAL'
+                    },
+                    python_backend: pythonBackend
+                }));
+            }).catch(() => {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    session,
+                    agents,
+                    logs,
+                    entropy: {
+                        current: latestEntropy,
+                        threshold: 0.88,
+                        status: latestEntropy >= 0.88 ? 'ALERT' : 'NOMINAL'
+                    },
+                    python_backend: { online: false, port: 9100 }
+                }));
+            });
         } catch (dbErr) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: "Failed to read database pipeline state matrix: " + dbErr.message }));
