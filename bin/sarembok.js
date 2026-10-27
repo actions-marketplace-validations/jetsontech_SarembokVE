@@ -16,6 +16,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fingerprint, diff } from './contract-diff.js';
+import { commitHtmlAuditReport } from '../Tools/AuditReportGenerator.js';
 
 const SAREMBOK_HOST = process.env.SAREMBOK_HOST || 'https://sarembok.com';
 
@@ -214,6 +215,17 @@ async function handleAudit(args) {
 
         additive.forEach(a => console.log(`\x1b[36m  + ${a}\x1b[0m`));
         breaking.forEach(b => console.log(`\x1b[31m  - ${b}\x1b[0m`));
+
+        try {
+            commitHtmlAuditReport({
+                targetUrl: target,
+                breaking,
+                additive,
+                entropy: 0.14 + (breaking.length * 0.1)
+            });
+        } catch {
+            // Non-blocking visual report commit
+        }
 
         if (breaking.length) {
             console.error(`\x1b[31m✖ ${breaking.length} breaking change(s) vs baseline (${opCount} operations now).\x1b[0m`);

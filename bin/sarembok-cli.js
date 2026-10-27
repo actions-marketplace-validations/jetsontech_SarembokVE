@@ -15,6 +15,10 @@ import { ContainerProvisioner } from '../Tools/Provisioner.js';
 import { VoiceOrchestrationFabric } from '../fabric/voiceOrchestrator.js';
 import { OpenShellSandbox } from '../Runtime/OpenShellSandbox.js';
 import { HITLTrigger } from '../Runtime/HITLTrigger.js';
+import { SemanticCache } from '../Runtime/SemanticCache.js';
+import { AuditExporter } from '../Runtime/AuditExporter.js';
+import { SarembokEval } from '../Runtime/SarembokEval.js';
+import { ModelFallbackRouter } from '../Runtime/ModelFallbackRouter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +45,15 @@ const commands = {
       run: 'Execute a command inside the OpenShell sandbox with Secret Zero credential injection'
     }
   },
+  eval: {
+    desc: 'Run internal Sarembok-Eval automated agentic regression & benchmark suite'
+  },
+  cache: {
+    desc: 'Inspect or flush the Semantic Reasoning Cache layer (Phase 1 token saver)'
+  },
+  router: {
+    desc: 'View active model degradation routes and circuit breaker failover status'
+  },
   pending: {
     desc: 'List pending Human-In-The-Loop (HITL) authorization requests awaiting sign-off'
   },
@@ -54,7 +67,7 @@ const commands = {
     desc: 'Extract OpenAPI 3.1 & TypeScript specifications from a live target web app'
   },
   audit: {
-    desc: 'Run a drift-detection gate against your committed contract baseline'
+    desc: 'Run a drift-detection gate against your committed contract baseline (or export logs)'
   },
   health: {
     desc: 'Query status of local runtime and engine layers'
@@ -80,9 +93,15 @@ function printHelp() {
   console.log(`  \x1b[33mapprove <id>\x1b[0m             ${commands.approve.desc}`);
   console.log(`  \x1b[33mreject <id> [reason]\x1b[0m     ${commands.reject.desc}\n`);
 
+  console.log(`\x1b[1mCognitive Core & Optimization:\x1b[0m`);
+  console.log(`  \x1b[35meval\x1b[0m                     ${commands.eval.desc}`);
+  console.log(`  \x1b[35mcache [stats|clear]\x1b[0m      ${commands.cache.desc}`);
+  console.log(`  \x1b[35mrouter\x1b[0m                   ${commands.router.desc}\n`);
+
   console.log(`\x1b[1mVerification & API Contract Audits:\x1b[0m`);
   console.log(`  \x1b[32mspec <url>\x1b[0m               ${commands.spec.desc}`);
   console.log(`  \x1b[32maudit <url>\x1b[0m              ${commands.audit.desc}`);
+  console.log(`  \x1b[32maudit export [--format]\x1b[0m  Export compliant tamper-proof audit trail (JSON/CSV)`);
   console.log(`  \x1b[32mhealth\x1b[0m                   ${commands.health.desc}\n`);
 }
 
@@ -214,6 +233,51 @@ switch (command) {
     break;
   }
 
+  case 'eval': {
+    const suite = new SarembokEval();
+    suite.runSuite().then(res => {
+      console.log(`\x1b[1mSuite Results: ${res.suite} &middot; Status: \x1b[32m${res.overall_status}\x1b[0m\x1b[0m`);
+      console.log(`Composite Score: \x1b[1m\x1b[36m${res.composite_score}\x1b[0m | Duration: ${res.duration_total_ms}ms\n`);
+      for (const b of res.benchmarks) {
+        const color = b.status === 'PASSED' ? '\x1b[32m✔' : '\x1b[31m✕';
+        console.log(`  ${color} [${b.status}]\x1b[0m \x1b[1m${b.benchmark}\x1b[0m (${b.duration_ms}ms)`);
+        console.log(`     ${b.metric}`);
+      }
+    });
+    break;
+  }
+
+  case 'cache': {
+    const sub = args[1] || 'stats';
+    const cache = new SemanticCache();
+    if (sub === 'clear') {
+      cache.clear();
+      console.log(`\x1b[32m✔ Semantic reasoning cache cleared.\x1b[0m`);
+    } else {
+      const stats = cache.getStats();
+      console.log(`\x1b[1m\x1b[35mSemantic Reasoning Cache Statistics (Phase 1):\x1b[0m`);
+      console.log(`  Cached Reasoning Entries:  ${stats.total_cached_entries}`);
+      console.log(`  Total Cache Hits:          ${stats.total_cache_hits}`);
+      console.log(`  Estimated Tokens Saved:    \x1b[32m${stats.total_tokens_saved.toLocaleString()}\x1b[0m tokens`);
+      console.log(`  Estimated Cost Reduction:  \x1b[36m${stats.estimated_savings_usd}\x1b[0m`);
+    }
+    cache.close();
+    break;
+  }
+
+  case 'router': {
+    const router = new ModelFallbackRouter();
+    const route = router.getActiveRoute();
+    console.log(`\x1b[1m\x1b[34mModel Fallback & Graceful Degradation Router:\x1b[0m`);
+    console.log(`  Active Route:          \x1b[32m${route.active_model}\x1b[0m`);
+    console.log(`  Primary Frontier:      ${route.primary}`);
+    console.log(`  Secondary Fast Tier:   ${route.secondary}`);
+    console.log(`  Local Sovereign Tier:  ${route.local_sovereign}`);
+    console.log(`  Tripped Circuit Count: ${JSON.stringify(route.failure_states)}`);
+    router.close();
+    break;
+  }
+
   case 'pending': {
     const hitl = new HITLTrigger();
     const list = hitl.listPending();
@@ -280,9 +344,20 @@ switch (command) {
   }
 
   case 'audit': {
+    const sub = args[1];
+    if (sub === 'export') {
+      const format = args.includes('--format') ? args[args.indexOf('--format') + 1] : 'json';
+      const out = args.includes('--out') ? args[args.indexOf('--out') + 1] : `./audit_trail_export.${format}`;
+      const exporter = new AuditExporter();
+      const res = exporter.writeToFile(out, format);
+      exporter.close();
+      console.log(`\x1b[32m✔ Audit trail exported successfully:\x1b[0m ${res.path} (${res.records} tamper-proof records)`);
+      break;
+    }
+
     const url = args[1];
     if (!url) {
-      console.error('\x1b[31mError:\x1b[0m Target URL is required for compliance audit.');
+      console.error('\x1b[31mError:\x1b[0m Target URL is required for compliance audit (or use "audit export").');
       process.exit(1);
     }
     const forwardArgs = args.slice(1);
