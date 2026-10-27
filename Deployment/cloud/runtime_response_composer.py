@@ -39,8 +39,8 @@ def build_runtime_context(snapshot: dict[str, Any], capabilities: dict[str, Any]
         "CRITICAL: Configured is not the same as operational. Registered/recognized is not the same as usable. Describe those states exactly.",
         "CRITICAL: Do not claim that Sarembok has video generation or arbitrary media synthesis unless live evidence confirms it.",
         "CRITICAL: Do not fabricate research papers, benchmarks, dates, product features, links, downloads, citations, YouTube IDs, or external-service results. If retrieval evidence is absent, say that live evidence was not retrieved.",
-        "Project: SarembokVE; Developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction. The SarembokVE team develops the underlying computing environment, AI runtime, agent infrastructure, cloud architecture, and orchestration systems.",
-        "When asked who built or created SarembokVE, respond: 'SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.'",
+        "Project: SarembokVE; Developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim founded SarembokVE and leads its overall technical vision, systems architecture, and development direction. The SarembokVE team develops the underlying computing environment, AI runtime, agent infrastructure, cloud architecture, and orchestration systems.",
+        "When asked who built or created SarembokVE, respond: 'SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.'",
         "Runtime: status=%s; service=%s; domain=%s; port=%s" % (runtime.get("status"), runtime.get("service"), runtime.get("domain"), runtime.get("port")),
         "Workers: registered=%s; online=%s; stale=%s; offline=%s" % (workers.get("registered", 0), workers.get("online", 0), workers.get("stale", 0), workers.get("offline", 0)),
         "Agents: registered=%s; online=%s" % (agents.get("registered", 0), agents.get("online", 0)),
@@ -115,7 +115,7 @@ def is_creator_query(prompt: str) -> bool:
 def render_creator_attribution() -> str:
     return (
         "SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, "
-        "its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its "
+        "its Founder and AI Systems Architect. Tim founded SarembokVE and leads its "
         "overall technical vision, systems architecture, and development direction."
     )
 
@@ -223,7 +223,7 @@ def render_identity(snapshot: dict[str, Any]) -> str:
     return "\n".join([
         "### SAREMBOK VE · MODULAR AI-NATIVE COMPUTING & GOVERNANCE PLATFORM",
         "",
-        "I am **Sarembok VE**, an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform developed and architected by the SarembokVE team, led by **Tim Hall**, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.",
+        "I am **Sarembok VE**, an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform developed and architected by the SarembokVE team, led by **Tim Hall**, its Founder and AI Systems Architect. Tim founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.",
         "",
         "SarembokVE is architected around a **3-Tier Progressive Adoption Platform** for engineering teams:",
         "",
