@@ -1,0 +1,11 @@
+# GitHub Linguist language overrides
+# Purge generated HTML/SVG and static UI asset bloat from repository statistics
+
+public/** linguist-generated=true
+generated/** linguist-generated=true
+frontend/** linguist-vendored=true
+fabric/ui/** linguist-vendored=true
+Docs/**/*.html linguist-documentation=true
+docs/**/*.html linguist-documentation=true
+*.html linguist-generated=true
+*.svg linguist-generated=true
