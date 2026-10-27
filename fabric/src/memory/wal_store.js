@@ -179,17 +179,38 @@ export class WalStore {
     taskId = randomUUID(),
     sessionId,
     senderId,
-    payload,
-    tokens = 0,
-    entropy = 0.0,
-    hash = null,
-    recipientId = null,
+    arg4,
+    arg5 = 0,
+    arg6 = 0.0,
+    arg7 = null,
+    arg8 = null,
     committed = true
   ) {
+    let recipientId = null;
+    let payload;
+    let tokens = 0;
+    let entropy = 0.0;
+    let hash = null;
+
+    // Check if 4th argument is recipientId string or payload
+    if (typeof arg4 === 'string' && (typeof arg5 === 'object' || (typeof arg5 === 'string' && arg6 !== undefined))) {
+      recipientId = arg4;
+      payload = arg5;
+      tokens = typeof arg6 === 'number' ? arg6 : 0;
+      entropy = typeof arg7 === 'number' ? arg7 : 0.0;
+      hash = arg8;
+    } else {
+      payload = arg4;
+      tokens = typeof arg5 === 'number' ? arg5 : 0;
+      entropy = typeof arg6 === 'number' ? arg6 : 0.0;
+      hash = arg7;
+      recipientId = arg8;
+    }
+
     const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
     const stmt = this.db.prepare(`
-      INSERT INTO transaction_log (
+      INSERT OR REPLACE INTO transaction_log (
         task_id, session_id, sender_agent_id, recipient_agent_id,
         payload, tokens_consumed, entropy_score, validation_hash, committed
       )
@@ -207,6 +228,12 @@ export class WalStore {
       hash,
       committed ? 1 : 0
     );
+
+    if (tokens > 0) {
+      try {
+        this.burnTokens(sessionId, tokens);
+      } catch {}
+    }
 
     return {
       task_id: taskId,
@@ -314,14 +341,18 @@ export class WalStore {
       };
     });
 
-    return {
+    const totalTokens = committedSteps.reduce((acc, step) => acc + (step.tokens_consumed || 0), 0);
+
+    Object.assign(memoryArray, {
       sessionId: session.session_id,
       globalStatus: session.global_status,
-      tokenBurned: session.token_burned,
+      tokenBurned: session.token_burned || totalTokens,
       hardCap: session.hard_cap,
       stepCount: memoryArray.length,
       memoryArray
-    };
+    });
+
+    return memoryArray;
   }
 
   /**

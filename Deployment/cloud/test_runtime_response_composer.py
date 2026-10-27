@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+cloud_dir = str(Path(__file__).resolve().parent)
+if cloud_dir not in sys.path:
+    sys.path.insert(0, cloud_dir)
+
 from runtime_response_composer import (
     build_runtime_context,
     is_capability_query,

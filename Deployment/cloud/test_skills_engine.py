@@ -1,8 +1,10 @@
-"""Unit tests for Sarembok VE Dynamic Skills Engine and MCP Gateway."""
-from __future__ import annotations
-
+import sys
 import unittest
 from pathlib import Path
+
+cloud_dir = str(Path(__file__).resolve().parent)
+if cloud_dir not in sys.path:
+    sys.path.insert(0, cloud_dir)
 
 from skills_engine import SkillsEngine, get_skills_engine
 from mcp_gateway import MCPGateway, MCP_PROTOCOL_VERSION

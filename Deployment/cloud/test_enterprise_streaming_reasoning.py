@@ -358,7 +358,11 @@ class TestEssentialMCPServers(unittest.TestCase):
 
 class TestSarembokRpcServer768DimVectorContract(unittest.TestCase):
     def test_768_dim_vector_payload_validation_and_casting(self) -> None:
-        import numpy as np
+        try:
+            import numpy as np
+        except ImportError:
+            np = None
+
         from Runtime.sarembok_rpc_server import (
             SarembokRpcServer,
             VectorValidationError,
@@ -373,8 +377,12 @@ class TestSarembokRpcServer768DimVectorContract(unittest.TestCase):
         # 2. Accept and cast strict 768-dim float32 vector
         raw_768 = [0.05] * VECTOR_DATABASE_DIM
         casted = server.validate_and_cast_vector(raw_768)
-        self.assertEqual(casted.shape, (768,))
-        self.assertEqual(casted.dtype, np.float32)
+        if np is not None:
+            self.assertEqual(casted.shape, (768,))
+            self.assertEqual(casted.dtype, np.float32)
+        else:
+            self.assertEqual(len(casted), 768)
+            self.assertIsInstance(casted, list)
 
         # 3. Test vector_insert_and_query RPC endpoint with 768-dim vector
         res = server.vector_insert_and_query({

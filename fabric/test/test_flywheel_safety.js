@@ -3,9 +3,9 @@
  * Sovereign Protocol [DIRECTIVE-01]
  */
 
-const assert = require('node:assert/strict');
-const WalStore = require('../wal_store');
-const { createHmac } = require('node:crypto');
+import assert from 'node:assert/strict';
+import { WalStore } from '../src/index.js';
+import { createHmac } from 'node:crypto';
 
 console.log('>>> [PHASE C] Running Defensive Safety & Flywheel Tests...');
 

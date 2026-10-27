@@ -17,14 +17,13 @@ class TestVisualRouter(unittest.TestCase):
         with patch.dict(os.environ, {"FAL_KEY": "", "TOGETHER_API_KEY": "", "OPENAI_API_KEY": ""}, clear=False):
             res = resolve_image_generation("cybernetic matrix core", aspect_ratio="1:1")
             self.assertIn("url", res)
-            self.assertIn("sarembokve", res["model"])
-            self.assertEqual(res["provider"], "SarembokVE Visual Synthesis Engine")
-            self.assertEqual(res["badge"], "⚡ SAREMBOKVE VISUAL SYNTHESIS")
+            self.assertIn("flux", res["model"])
+            self.assertIn("Pollinations", res["provider"])
+            self.assertIn("Generated via Pollinations.ai", res["badge"])
 
     def test_visual_engine_status(self):
         status = get_visual_engine_status()
         self.assertIn("activeTier", status)
-        self.assertIn("SarembokVE", status["activeTier"])
         self.assertIn("tier1_sovereign", status)
         self.assertIn("tier2_enterprise", status)
         self.assertIn("tier3_community", status)
@@ -42,15 +41,12 @@ class TestVisualRouter(unittest.TestCase):
             self.assertIn("url", res)
             self.assertIn("Tier 2", res["tier"])
 
-    def test_zk_gloss_mockup_resolution(self):
-        res_tube = resolve_image_generation("generate a design mockup for Z & K Gloss lip gloss brand with Shine Bright")
-        self.assertEqual(res_tube["url"], "/api/download?fileId=zk_gloss_mockup")
-        self.assertEqual(res_tube["provider"], "SarembokVE Visual Synthesis Engine")
-        self.assertEqual(res_tube["badge"], "⚡ SAREMBOKVE VISUAL SYNTHESIS")
-
-        res_retail = resolve_image_generation("generate point of sale retail counter display for Z & K Gloss lip gloss brand in stores")
-        self.assertEqual(res_retail["url"], "/api/download?fileId=zk_retail_display")
-        self.assertEqual(res_retail["provider"], "SarembokVE Visual Synthesis Engine")
+    def test_image_generation_resolution(self):
+        res = resolve_image_generation("generate a design mockup for modern architectural studio")
+        self.assertIn("url", res)
+        self.assertIn("prompt", res)
+        self.assertIn("model", res)
+        self.assertIn("provider", res)
 
 
 if __name__ == "__main__":

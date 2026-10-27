@@ -3,15 +3,17 @@
  * Sovereign Protocol [DIRECTIVE-01]
  */
 
-const assert = require('node:assert/strict');
-const WalStore = require('../wal_store');
-const EntropyEvaluator = require('../entropy_evaluator');
+import assert from 'node:assert/strict';
+import { WalStore, EntropyEvaluator } from '../src/index.js';
 
 console.log('>>> [INTEGRATION] Running Master Fabric Kernel End-to-End Test...');
 
 const wal = new WalStore(':memory:');
 const sessionId = 'session_e2e_001';
 wal.initializeSession(sessionId, 50000);
+wal.registerAgent('STRATEGIST', 'STRATEGIST');
+wal.registerAgent('WORKER', 'WORKER');
+wal.registerAgent('AUDITOR', 'AUDITOR');
 
 // Turn 1: Normal operational task
 const turn1 = wal.commitMicroStep(

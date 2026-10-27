@@ -3,8 +3,8 @@
  * Sovereign Protocol [DIRECTIVE-01]
  */
 
-const assert = require('node:assert/strict');
-const WalStore = require('../wal_store');
+import assert from 'node:assert/strict';
+import { WalStore } from '../src/index.js';
 
 console.log('>>> [PHASE A] Running SQLite-WAL Substrate Verification...');
 

@@ -192,6 +192,5 @@ class EntropyEvaluator {
   }
 }
 
-module.exports = EntropyEvaluator;
-module.exports.EntropyEvaluator = EntropyEvaluator;
-module.exports.default = EntropyEvaluator;
+export { EntropyEvaluator };
+export default EntropyEvaluator;

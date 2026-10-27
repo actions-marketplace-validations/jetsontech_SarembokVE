@@ -21,6 +21,25 @@ export class EntropyEvaluator {
   }
 
   /**
+   * Static evaluation entrypoint for dialogue string arrays
+   * @param {string[]} dialogueArray
+   * @param {number} [threshold=0.88]
+   */
+  static evaluateLoop(dialogueArray, threshold = 0.88) {
+    const evaluator = new EntropyEvaluator({ threshold, windowSize: dialogueArray?.length || 5, consecutiveTurns: 3 });
+    if (!dialogueArray || dialogueArray.length < 2) {
+      return { triggerRollback: false, score: 0.0 };
+    }
+    const turns = dialogueArray.map(text => ({ payload: text }));
+    const result = evaluator.evaluateTurns(turns);
+    return {
+      triggerRollback: result.loopDetected,
+      score: result.maxSimilarity,
+      reason: result.reason
+    };
+  }
+
+  /**
    * Tokenize text into normalized n-grams (1-gram and 2-gram)
    * @param {string} text
    * @returns {Set<string>}

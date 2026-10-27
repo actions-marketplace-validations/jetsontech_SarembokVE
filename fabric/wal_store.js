@@ -5,10 +5,10 @@
  * Supports both CommonJS require() and ESM import.
  */
 
-const { DatabaseSync } = require('node:sqlite');
-const { randomUUID } = require('node:crypto');
-const fs = require('node:fs');
-const path = require('node:path');
+import { DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 class WalStore {
   /**
@@ -375,6 +375,5 @@ class WalStore {
   }
 }
 
-module.exports = WalStore;
-module.exports.WalStore = WalStore;
-module.exports.default = WalStore;
+export { WalStore };
+export default WalStore;

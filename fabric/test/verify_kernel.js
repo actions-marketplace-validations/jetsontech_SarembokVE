@@ -1,16 +1,17 @@
 // verify_kernel.js - End-to-End Fabric Validation Harness
-const WalStore = require('../wal_store');
-const EntropyEvaluator = require('../entropy_evaluator');
+import { WalStore, EntropyEvaluator } from '../src/index.js';
 
 async function runValidationPipeline() {
     console.log(">>> INITIALIZING FABRIC INTEGRATION ASSERTIONS...");
-    const wal = new WalStore('c:/SarembokVE/fabric/test_kernel.db');
+    const wal = new WalStore(':memory:');
     
     // ASSERTION 1: Substrate Integrity
     wal.initializeSession('test_session_001', 5000);
+    wal.registerAgent('STRATEGIST', 'STRATEGIST');
+    wal.registerAgent('WORKER', 'WORKER');
     wal.commitMicroStep('task_01', 'test_session_001', 'STRATEGIST', 'WORKER', {text: "Initialize compilation"}, 100, 0.0, "MOCK_HASH");
     let state = wal.reconstituteState('test_session_001');
-    if (state.length === 1) {
+    if (state.memoryArray && state.memoryArray.length === 1) {
         console.log("  [PASS] Substrate Reconstitution Asserted Successfully.");
     } else {
         throw new Error("FAIL: Substrate Reconstitution Mismatch.");
@@ -39,6 +40,7 @@ async function runValidationPipeline() {
     }
 
     console.log(">>> ALL KERNEL COMPILATION SUITES PASSED. SYSTEM STANDBY.");
+    wal.close();
 }
 
 runValidationPipeline().catch(err => {

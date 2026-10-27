@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -344,6 +345,30 @@ class MicroVMSandboxScheduler:
                 exit_code = proc.returncode if proc.returncode is not None else 0
                 stdout = stdout_bytes.decode("utf-8", "replace")
                 stderr = stderr_bytes.decode("utf-8", "replace")
+
+                if exit_code != 0 and cmd[0] in ("docker", "runsc") and any(
+                    err in stderr.lower() for err in ("daemon is running", "cannot find the file", "failed to connect", "error during connect", "runsc")
+                ):
+                    logger.warning(
+                        f"[MICROVM_FALLBACK] {cmd[0]} runtime unavailable ({stderr.strip()[:100]}); falling back to process isolation."
+                    )
+                    fallback_cmd = (
+                        [sys.executable, "-u", script_path] if language == "python" else ["sh", script_path]
+                    )
+                    proc = await asyncio.create_subprocess_exec(
+                        *fallback_cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        cwd=sandbox_dir,
+                        env=safe_env,
+                    )
+                    stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                        proc.communicate(),
+                        timeout=timeout_sec,
+                    )
+                    exit_code = proc.returncode if proc.returncode is not None else 0
+                    stdout = stdout_bytes.decode("utf-8", "replace")
+                    stderr = stderr_bytes.decode("utf-8", "replace")
             except FileNotFoundError:
                 # Host fallback if runsc binary is not present on developer Windows/macOS host
                 logger.warning(
@@ -351,7 +376,7 @@ class MicroVMSandboxScheduler:
                     "executing in process-isolated fallback container."
                 )
                 fallback_cmd = (
-                    ["python", "-u", script_path] if language == "python" else ["sh", script_path]
+                    [sys.executable, "-u", script_path] if language == "python" else ["sh", script_path]
                 )
                 proc = await asyncio.create_subprocess_exec(
                     *fallback_cmd,

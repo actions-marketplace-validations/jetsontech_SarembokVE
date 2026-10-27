@@ -3,9 +3,8 @@
  * Sovereign Protocol [DIRECTIVE-01]
  */
 
-const assert = require('node:assert/strict');
-const EntropyEvaluator = require('../entropy_evaluator');
-const WalStore = require('../wal_store');
+import assert from 'node:assert/strict';
+import { EntropyEvaluator, WalStore } from '../src/index.js';
 
 console.log('>>> [PHASE B] Running Proactive Semantic Loop Mitigation Test...');
 
