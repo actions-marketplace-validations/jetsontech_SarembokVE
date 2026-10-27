@@ -79,9 +79,9 @@ export class VoiceOrchestrationFabric {
     });
   }
 
-  start() {
+  start(host = '127.0.0.1') {
     return new Promise((resolve) => {
-      this.server.listen(this.port, () => {
+      this.server.listen(this.port, host, () => {
         console.log(`\x1b[1m\x1b[35m[Sarembok Voice Substrate]\x1b[0m Gateway online. Listening on port ${this.port}`);
         resolve(this.port);
       });

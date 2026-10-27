@@ -52,9 +52,9 @@ test('ShannonEntropyEvaluator triggers halt on repetitive loop degradation', asy
 test('VoiceOrchestrationFabric handles WebSocket events and telemetry polling', async () => {
   const testPort = 9055;
   const fabric = new VoiceOrchestrationFabric(testPort);
-  await fabric.start();
+  await fabric.start('127.0.0.1');
 
-  const ws = new WebSocket(`ws://localhost:${testPort}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${testPort}`);
 
   const connected = await new Promise((resolve, reject) => {
     ws.on('open', resolve);
