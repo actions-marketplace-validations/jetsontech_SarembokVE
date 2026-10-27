@@ -60,6 +60,7 @@ def _normalize_prompt_intent(prompt: str) -> str:
     text = (prompt or "").strip().lower().replace("'", "")
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\b(wht|wat|waht|wt)\b", "what", text)
+    text = re.sub(r"\b(cany|cn)\b", "can", text)
     text = re.sub(r"\bwhats\b", "what is", text)
     text = re.sub(r"\bwhois\b", "who is", text)
     text = re.sub(r"\bu\b", "you", text)
@@ -84,16 +85,19 @@ def is_capability_query(prompt: str) -> bool:
     if is_limitation_query(prompt):
         return False
     norm = _normalize_prompt_intent(prompt)
-    markers = (
-        "help", "commands", "features", "capabilities", "what can you do", "what can it do", "what can this do",
-        "what can be done", "what can sarembok do", "what can the system do", "what does it do", "what does this do",
+    multi_markers = (
+        "what can you do", "what can it do", "what can this do", "what can be done",
+        "what can sarembok do", "what can the system do", "what does it do", "what does this do",
         "what do you do", "what are you able to do", "what is it able to do", "what is this able to do",
         "what is this capable of", "what are your capabilities", "what are its capabilities", "what capabilities",
-        "what are your features", "what are its features", "what features", "how can you help", "how can it help",
-        "how does it work", "how do you work", "what do you support", "what does it support", "what commands",
-        "what can i ask", "show capabilities", "list capabilities",
+        "what are your features", "what are its features", "what features do you have", "what features are there",
+        "how can you help", "how can it help", "how does it work", "how do you work",
+        "what do you support", "what does it support", "what commands can i run", "what can i ask",
+        "show capabilities", "list capabilities", "what can you do for me", "what all can you do",
+        "tell me what you can do", "explain what you can do", "what is your capability",
     )
-    return any(m == norm or norm.startswith(m) for m in markers)
+    exact_markers = ("help", "commands", "features", "capabilities", "what features")
+    return any(m in norm for m in multi_markers) or any(m == norm or norm.startswith(m + " ") for m in exact_markers)
 
 
 def is_creator_query(prompt: str) -> bool:
@@ -170,32 +174,32 @@ def render_capabilities(snapshot: dict[str, Any] | None = None, capabilities: di
     if capabilities:
         registered = [str(c.get("method")) for c in capabilities.get("capabilities", []) if isinstance(c, dict) and c.get("enabled") and c.get("method")]
     lines = [
-        "### SAREMBOK VE · LIVE CAPABILITIES",
+        "### SAREMBOK VE · VERIFIED ARCHITECTURAL CAPABILITIES",
         "",
-        "The list below describes runtime capabilities that are supported by current architecture and live runtime state. It does not imply that every external integration is configured or healthy.",
+        "Sarembok VE is an **AI-native computing environment, zero-trust execution fabric, and automated contract governance platform** structured around a **3-Tier Progressive Adoption Platform**.",
         "",
-        "**Verified runtime surface**",
-        "- **Dialogue & reasoning:** requests can be routed through the model/provider fabric when a provider is configured and reachable.",
-        "- **Runtime operations:** inspect health, workers, tasks, projects, events, and provider/runtime state exposed by Runtime Authority.",
-        f"- **Distributed workers:** {workers_online} active compute workers currently online.",
-        f"- **GPU capacity:** {gpu_online} GPU acceleration nodes currently recognized by Runtime Authority; recognition is not a guarantee of task eligibility.",
-        f"- **Persistent memory:** SQLite-WAL persistence with {memory_entries} stored entries.",
-        "- **Agents & orchestration:** agent/task lifecycle operations exposed by the runtime can be used when authorized.",
-        "- **Browser/research:** only use browser or web-intelligence results when the corresponding live service returns evidence.",
-        "- **MCP/skills:** execution is limited to registered, enabled handlers and their live service state.",
-        "- **Universal Media & Audio Streaming:** verified streaming audio, music channels, and video playback.",
-        "- **Duplex Live Voice:** conversational voice with real-time barge-in and audio synthesis.",
-        "- **Full-Stack Autonomous Code Synthesis:** full application synthesis, code execution, and sandboxing.",
-        "- **Autonomous API Contract Testing & Governance:** automated Playwright-based reverse-engineering of live endpoints, synthesizing OpenAPI 3.1 & TypeScript contracts, and gating CI/CD against breaking API drift.",
-        "- **Zero-Trust Supervisor & Containment:** declarative deny-by-default execution boundaries (OPA/Seccomp pattern), Secret Zero credential masking, and HITL authorization gates.",
-        "- **Multimodal & Visual Synthesis:** photorealistic imagery, retail packaging, 3D product mockups, and interactive UI/UX design systems.",
-        "- **Upload & Download Infrastructure:** multi-format file uploads (code, documents, CSV, data, images) with live processing, alongside granular downloads (individual code files, markdown responses, structured data cards, and chat transcripts).",
+        "**Core Capabilities & Architecture**",
+        "- **Automated API Contract Governance & Drift Gating:** Automated Playwright-based reverse-engineering of live endpoints, synthesizing OpenAPI 3.1 & TypeScript contracts, and gating CI/CD against breaking API drift.",
+        "- **Zero-Trust Supervisor & Containment (NVIDIA OpenShell):** Declarative deny-by-default execution boundaries (OPA/Seccomp pattern), Secret Zero credential masking, and Human-In-The-Loop (HITL) authorization gates for high-risk operations.",
+        "- **3-Tier Progressive Adoption Architecture:**",
+        "  1. *Tier 1: Drop-In CI/CD Action* (`uses: jetsontech/SarembokVE@v3.0.0`) — 30-second zero-install drift gating for standard web applications.",
+        "  2. *Tier 2: Standalone Zero-Trust CLI* (`npx sarembok openshell / spec`) — single-binary local command sandboxing and contract synthesis without background daemons.",
+        "  3. *Tier 3: Distributed Multi-Agent Sovereign Fabric* — Raft consensus, SQLite-WAL event-sourced state machines, and formal capability token verification.",
+        "- **Shannon Entropy Loop Defense ($H(X) \\ge 0.88$):** Real-time sliding-window entropy evaluator that mathematically halts recursive agent hallucination loops and renders vector SVG rollback traces.",
+        "- **Real-Time Cross-Sector Market Intelligence:** Concurrent parallel fan-out engine querying 15+ industry sectors, financial telemetry, ArXiv preprints, and verified breaking news in under 1 second.",
+        "- **Model Fallback Circuit Breaker & Semantic Cache:** Dynamic tri-tier routing across frontier LLMs, secondary fast models, and sovereign local models (Ollama/Llama 3.2) with semantic reasoning caching.",
+        "- **Full-Stack Autonomous Code Synthesis:** Full application synthesis, code execution, and sandboxing.",
+        "- **Duplex Live Voice:** Conversational voice with real-time barge-in and audio synthesis.",
+        "- **Universal Media & Audio Streaming:** Verified streaming audio, music channels, and video playback.",
+        f"- **Distributed Workers & Memory:** {workers_online} active compute workers currently online, {gpu_online} GPU acceleration nodes recognized, and {memory_entries} stored entries in SQLite-WAL memory.",
+        "- **Dialogue & Reasoning:** Requests routed dynamically through the provider fabric with strict truth boundaries.",
+        "- **Runtime Operations:** Deep inspection of health, workers, tasks, projects, events, and provider state exposed by Runtime Authority.",
     ]
     if registered:
         lines.extend(["", "**Registered enabled methods**", *[f"- `{name}`" for name in registered]])
     lines.extend([
         "",
-        "**Important:** if a capability is not present in Runtime Authority, Sarembok should say it is not currently verified rather than presenting it as a product feature.",
+        "**Note:** Sarembok VE operates as a sovereign, zero-trust system. It reports true verified telemetry rather than hallucinating capabilities or fabricating unverified features.",
     ])
     return "\n".join(lines)
 

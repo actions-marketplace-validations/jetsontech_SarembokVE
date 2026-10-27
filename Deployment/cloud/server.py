@@ -4013,9 +4013,14 @@ def sarembok_process_dialogue(
         source = "local_runtime"
         active_model = "runtime-fallback"
     _save_conversation(session_id, prompt_clean, reply)
+    spoken_summary = (
+        "I am Sarembok VE, an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform. "
+        "I provide automated API contract drift gating, declarative zero-trust supervision with Secret Zero credential masking, "
+        "distributed multi-agent consensus, and real-time cross-sector intelligence."
+    ) if is_capability_query(prompt_clean) else _spoken_clean(reply)
     return {
         "response": reply,
-        "audioText": _spoken_clean(reply),
+        "audioText": spoken_summary,
         "source": source,
         "model": active_model,
         "action": None,

@@ -105,6 +105,9 @@ def test_capability_and_identity_queries():
     assert not is_identity_query("what can it do")
 
     assert is_capability_query("what can you do?")
+    assert is_capability_query("what cany you do")
+    assert is_capability_query("tell me what can you do")
+    assert is_capability_query("what can you do for me")
     assert is_capability_query("what can u do")
     assert is_capability_query("wht can u do")
     assert is_capability_query("wht can it do")
@@ -148,6 +151,10 @@ def test_limitations():
 def test_capabilities():
     text = render_capabilities(SNAPSHOT)
     assert "SAREMBOK VE" in text
+    assert "Automated API Contract Governance & Drift Gating" in text
+    assert "NVIDIA OpenShell" in text
+    assert "3-Tier Progressive Adoption" in text
+    assert "Shannon Entropy Loop Defense" in text
     assert "Universal Media & Audio Streaming" in text
     assert "Duplex Live Voice" in text
     assert "Full-Stack Autonomous Code Synthesis" in text

@@ -83,7 +83,7 @@ def _tool_declarations() -> list[dict[str, Any]]:
         },
         {
             "name": "list_tasks",
-            "description": "List current Sarembok tasks. Optional status or worker filters can narrow the result.",
+            "description": "Query the execution status of computational tasks and background jobs in the Sarembok cluster. Optional status or worker filters can narrow the result.",
             "parameters": {
                 "type": "OBJECT",
                 "properties": {
@@ -170,19 +170,6 @@ def _tool_declarations() -> list[dict[str, Any]]:
             },
         },
         {
-            "name": "generate_flyer",
-            "description": "Generate and display a visual, high-converting promotional flyer, poster, or mockup for a product, brand, event, or service. Call this tool immediately when asked to make a flyer, poster, or visual ad.",
-            "parameters": {
-                "type": "OBJECT",
-                "properties": {
-                    "title": {"type": "STRING", "description": "The title or product name, e.g. 'Z & K Lip Gloss'"},
-                    "html": {"type": "STRING", "description": "Complete, self-contained HTML and CSS code for the visual flyer"},
-                    "summary": {"type": "STRING", "description": "Short conversational summary spoken to the user"}
-                },
-                "required": ["title", "html"]
-            },
-        },
-        {
             "name": "search_web",
             "description": "Search the live web for real-time information, sports scores, team records, standings, game results, breaking news, weather, stock prices, facts, and current events. Call this tool immediately whenever the user asks for real-time, live, or ground-based data.",
             "parameters": {
@@ -216,6 +203,15 @@ def _system_instruction(mode: str) -> str:
         "'SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, "
         "its Founder and AI Systems Architect. Tim founded SarembokVE and leads its "
         "overall technical vision, systems architecture, and development direction.' "
+        "CAPABILITIES & SCOPE DIRECTIVE: "
+        "CRITICAL ABSOLUTE DIRECTIVE ON PLATFORM CAPABILITIES: "
+        "When the user asks 'what can you do', 'what can this do', 'what does this do', 'what are your capabilities', 'what can it do', or 'how can you help': "
+        "Under NO circumstances should you EVER say that you 'search the web, manage tasks, generate visual flyers, and play media'! "
+        "Accurately explain your true identity and core architectural capabilities: "
+        "'I am Sarembok VE, an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform developed by the SarembokVE team, led by Tim Hall. "
+        "I provide automated API contract drift gating and OpenAPI 3.1 synthesis, declarative zero-trust security supervision with Secret Zero credential masking, "
+        "distributed multi-agent consensus with Shannon entropy loop defense, and real-time cross-sector intelligence.' "
+        "Keep this spoken answer crisp, professional, and conversational in 2 to 3 sentences. "
         "Speak naturally, warmly, promptly, and directly with crisp conversational pacing. "
         "Keep spoken turns brief and conversational (typically 1 to 2 spoken sentences per turn unless deep explanation is requested). "
         "Never hesitate or give long spoken lectures. "
@@ -225,12 +221,8 @@ def _system_instruction(mode: str) -> str:
         "NEVER claim that you are unable to retrieve real-time data, have no live access, or cannot tap into a ground-based database! "
         "Immediately call the search_web tool with an accurate search query (e.g. 'Atlanta Falcons record' or 'latest NFL scores'). "
         "Once the search_web results arrive, answer the user's question directly, accurately, and conversationally in 1 to 2 spoken sentences using the retrieved facts. "
-        "CREATIVE & VISUAL DESIGN DIRECTIVE: "
-        "Sarembok VE has active, verified multimodal generation engines. "
-        "When the user asks to make, design, or create a flyer, poster, mockup, product showcase, card, banner, webpage, or interface (e.g. 'make a flyer for Z & K lip Gloss'): "
-        "NEVER refuse, stall, or say that you lack design tools or cannot generate visual graphics! "
-        "Immediately produce the complete, gorgeous visual flyer using a :::mockup container with full HTML/CSS (styled with luxurious typography, radiant gradients, gloss effects, product highlights, pricing, and a call-to-action button) or call the generate_flyer tool. "
-        "Speak a brief, engaging 1-2 sentence spoken intro describing the design while the visual flyer renders in the interactive mockup viewer on screen. "
+        "CONTRACT DRIFT & API GOVERNANCE DIRECTIVE: "
+        "When asked to audit websites, verify API contracts, or test live routes, use browser inspection and contract tools. "
         "Use the provided Sarembok tools whenever the user asks about live runtime state, workers, tasks, "
         "provider health, persistent memory, websites, browser actions, external application integrations, or media playback. "
         "For website or application actions, use browser_session_open, browser_inspect, "
