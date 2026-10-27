@@ -4,6 +4,12 @@
   "description": "CLI for SarembokVE: autonomous OpenAPI 3.1 / TypeScript synthesis, multi-sector real-time grounding, and CI/CD drift gating.",
   "type": "module",
   "main": "bin/sarembok-cli.js",
+  "exports": {
+    ".": "./bin/sarembok-cli.js",
+    "./openshell": "./Runtime/openshell/index.js",
+    "./fabric": "./fabric/index.js",
+    "./contract": "./Tools/contract/index.js"
+  },
   "bin": {
     "sarembok": "./bin/sarembok-cli.js",
     "sarembok-legacy": "./bin/sarembok.js"
@@ -23,7 +29,9 @@
   },
   "scripts": {
     "start": "node bin/sarembok-cli.js",
-    "test": "node --test test/*.test.js"
+    "quickstart": "node bin/sarembok-cli.js openshell status && node bin/sarembok-cli.js health",
+    "test": "node --test test/*.test.js",
+    "test:fast": "npm test"
   },
   "repository": {
     "type": "git",

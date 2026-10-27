@@ -73,3 +73,16 @@ frontend/index.html.*
 
 *.db-shm
 *.db-wal
+
+pwsh.bat
+pwsh.cmd
+sarembok_memory.db
+sarembok_runtime.db
+showcase/audio/
+showcase/recordings/
+frontend/showcase/
+*.mp4
+*.webm
+*.wav
+*.mp3
+showcase/

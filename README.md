@@ -2,63 +2,159 @@
 
 [![CI](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml/badge.svg)](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Tests: 19 Passing](https://img.shields.io/badge/Tests-19%20Passing-brightgreen.svg)](test/)
+[![Tests: 26 Passing](https://img.shields.io/badge/Tests-26%20Passing-brightgreen.svg)](test/)
 [![Security: NVIDIA OpenShell](https://img.shields.io/badge/Security-NVIDIA%20OpenShell%20Zero--Trust-blueviolet.svg)](Docs/SECURITY.md)
+[![ADR: Documented](https://img.shields.io/badge/Architecture-ADR--001%20Modular-informational.svg)](Docs/ADR.md)
 
-**AI-Native Computing Environment, Autonomous Multi-Sector Intelligence, and NVIDIA OpenShell Zero-Trust Security Control Plane.**
+**Modular AI-Native Computing Environment, Zero-Trust Execution Fabric, and Automated Contract Governance.**
 
-SarembokVE bridges autonomous developer tooling with enterprise-grade runtime security:
-1. **NVIDIA OpenShell Zero-Trust Runtime**: Enforces declarative deny-by-default execution boundaries outside the agent process, eliminates credential leakage via **Secret Zero Injection**, and gates critical mutations behind **Human-In-The-Loop (HITL)** approvals.
-2. **Autonomous Contract Reverse-Engineering**: Loads live target applications in capability-dropped Chromium sandboxes, records network interaction patterns, synthesizes OpenAPI 3.1 contracts and TypeScript types, and gates CI/CD pipelines against breaking API drift.
-3. **Shannon Entropy Loop Defense ($H(X) \ge 0.88$)**: Continuously evaluates state entropy to mathematically detect and halt recursive agent hallucinations and execution loops with real-time vector SVG rollback maps.
-4. **Sovereign Multi-Tier Intelligence & Memory**: Multi-sector real-time grounding, zero-locking SQLite-WAL persistent memory, semantic reasoning cache, model fallback circuit breaker, and high-fidelity digital-human voice fabric.
+SarembokVE is built with a **3-Tier Progressive Adoption Architecture**—ranging from a 30-second drop-in CI/CD GitHub Action for standard React/Next.js/Node web apps to an enterprise distributed agentic mesh with Raft consensus and SQLite-WAL state machines.
 
-[Console](https://sarembok.com) · [Solutions & 12 Use Cases](Docs/SOLUTIONS_AND_USE_CASES.md) · [Docs](https://sarembok.com/docs) · [Status](https://sarembok.com/status) · [Changelog](https://sarembok.com/changelog) · [Security Architecture](Docs/SECURITY.md)
+[Console](https://sarembok.com) · [Quickstart Guide](#quickstart-in-10-seconds) · [Solutions & 12 Use Cases](Docs/SOLUTIONS_AND_USE_CASES.md) · [Architecture Decision Records](Docs/ADR.md) · [Status](https://sarembok.com/status) · [Security Architecture](Docs/SECURITY.md)
 
 ---
 
-## Unified Cross-Platform CLI (`sarembok`)
+## Progressive Adoption (Use Only What You Need)
 
-Requires Node 18+ (tested on Node 20 & 24 across Linux, macOS, and Windows):
+You do **not** need to adopt SarembokVE as an "all-or-nothing" operating system. Choose the tier that matches your project's footprint:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Tier 1: Drop-In CI/CD Action  │ Zero-install OpenAPI 3.1 & drift gating  │ (30 Seconds)
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ Tier 2: Standalone CLI        │ Zero-trust sandbox & policy supervisor   │ (Single Binary)
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ Tier 3: Full Sovereign Mesh   │ Distributed Raft, SQLite-WAL, MCP server │ (Multi-Agent)
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Tier 1: Drop-In GitHub Action (Zero-Install for Standard Web Apps)
+Drop 5 lines of YAML into `.github/workflows/api-drift.yml` of any web repository. Automatically reverse-engineers endpoints, checks schema drift, and fails the pull request if a breaking API change is deployed:
+
+```yaml
+name: API Contract Drift Gate
+on: [push, pull_request]
+jobs:
+  contract-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jetsontech/SarembokVE@v3.0.0
+        with:
+          target: 'https://staging.yourdomain.com'
+          fail_on_drift: 'true'
+```
+*Zero dependencies, no local installation, and 0 maintenance overhead for frontend/fullstack teams.*
+
+### Tier 2: Standalone CLI & Zero-Trust Wrapper (`npx sarembok`)
+Use Sarembok as an isolated local security supervisor (`openshell`) or instant contract synthesizer (`spec`) without spinning up background daemons, Python kernels, or voice engines:
+
+```bash
+# 1. Synthesize OpenAPI 3.1 & TypeScript contracts from any live URL in 5 seconds
+npx sarembok spec https://httpbin.org --out api.json
+
+# 2. Dry-run verify an OS command against deny-by-default zero-trust policies
+npx sarembok openshell verify "npm test"
+npx sarembok openshell verify "rm -rf /"        # ✕ Instantly blocked by mathematical pattern
+
+# 3. Execute an isolated command with Secret Zero credential masking
+npx sarembok openshell run "curl -H 'Authorization: Bearer {{SECRET:GITHUB_TOKEN}}' https://api.github.com/user"
+```
+
+### Tier 3: Full Sovereign Mesh & Enterprise Runtime
+Scale into a fully autonomous, distributed multi-agent swarm when you require state persistence, consensus, and formal verification:
+
+```bash
+# Verify local sandbox and live cluster status in under 3 seconds
+npm run quickstart
+
+# Start distributed Raft consensus and state engine
+node bin/sarembok-cli.js engine start
+
+# Launch high-fidelity real-time digital-human voice fabric (Port 9001)
+node bin/sarembok-cli.js engine voice
+```
+
+---
+
+## Architecture Mental Model (Standard Equivalencies)
+
+To eliminate custom abstraction overhead, SarembokVE modules map directly to familiar industry standards:
+
+| SarembokVE Subsystem | Familiar Industry Standard | Underlying Pattern / Implementation |
+| :--- | :--- | :--- |
+| **`Runtime/openshell`** | **Declarative Zero-Trust Supervisor** | Similar to **Open Policy Agent (OPA) / Docker Seccomp** profiles. Deny-by-default execution boundary with Secret Zero injection outside the child process. |
+| **`Tools/contract` & `bin/`** | **Playwright + OpenAPI 3.1 AST Generator** | Automated contract synthesizer and breaking-drift gate. Compares route fingerprints against committed baseline JSON schemas. |
+| **`fabric/` Micro-Kernel** | **Distributed Raft Consensus & Memory** | Multi-node consensus with log replication, **SQLite-WAL** event-sourced ledger, and state rollback projector. |
+| **`fabric/guardrails`** | **Formal Verification & Capability Tokens** | Z3-style constraint evaluation and cryptographic token delegation (Macaroons pattern) for agent permissions. |
+| **`fabric/protocols`** | **Model Context Protocol (MCP) Server** | Standard Anthropic MCP v1.0.0 JSON-RPC 2.0 interface for interoperability with external IDEs and agents. |
+| **`Deployment/cloud/server.py`** | **OpenAI-Compatible Proxy & Router** | Multi-model fallback circuit breaker (Anthropic Claude, OpenAI GPT-4, Google Gemini, Local Qwen) with semantic caching. |
+| **`labs/unreal`** *(Optional)* | **Embodiment Extension Plugin** | Self-contained Unreal Engine 5.x digital-human bridge (completely isolated from the core Node.js CLI lifecycle). |
+
+---
+
+## Quickstart in 10 Seconds
+
+Verify local zero-trust policies and cluster status with zero configuration and zero external services:
 
 ```bash
 # Clone the repository
 git clone https://github.com/jetsontech/SarembokVE && cd SarembokVE
 
-# Check CLI commands and help
-node bin/sarembok-cli.js --help
+# Fast zero-dependency verification gate
+npm run quickstart
 ```
 
-### 1. NVIDIA OpenShell Zero-Trust Security Commands
+Sample output:
+```text
+🛡️  NVIDIA OpenShell Security Control Plane Status
+  Engine:               NVIDIA OpenShell Safety Runtime v1.0
+  Active Profile:       strict
+  Read-Only Root:       ✔ Enforced
+  Secret Zero Tokens:   3 credentials masked
+  Pending HITL Gates:   0 actions awaiting approval
+  Deny Command Rules:   13 mathematical signatures
+  Allowed Domains:      github.com, api.github.com, sarembok.com, localhost
 
+=======================================================
+   SAREMBOK VE · AUTONOMOUS SYSTEMS VERIFICATION
+=======================================================
+✔ Sarembok Cluster Online: https://sarembok.com
+  Available Scopes: 87 methods enabled
+```
+
+---
+
+## Unified CLI Command Reference (`sarembok`)
+
+The unified CLI provides instant access to all runtime scopes:
+
+### 1. NVIDIA OpenShell Zero-Trust Security Commands
 ```bash
-# Inspect active containment profile & security posture
+# Inspect containment profile and security posture
 node bin/sarembok-cli.js openshell status
 
 # View or switch containment profiles (strict, enterprise, audit, developer)
 node bin/sarembok-cli.js openshell profile strict
 
-# Dry-run verify a command against deny-by-default policies & HITL thresholds
+# Dry-run policy check against deny-patterns and HITL rules
 node bin/sarembok-cli.js openshell verify "npm test"
-node bin/sarembok-cli.js openshell verify "rm -rf /"       # ✕ Blocked immediately
 
-# Execute an isolated command inside the OpenShell sandbox with Secret Zero injection
-node bin/sarembok-cli.js openshell run "curl -H 'Authorization: Bearer {{SECRET:GITHUB_TOKEN}}' https://api.github.com/user"
+# Run command inside supervised sandbox with Secret Zero token injection
+node bin/sarembok-cli.js openshell run "node -v"
 ```
 
 ### 2. Human-In-The-Loop (HITL) Governance
-
 ```bash
-# List all pending high-risk actions awaiting operator authorization
+# List all pending high-risk mutations awaiting operator approval
 node bin/sarembok-cli.js pending
 
-# Approve or reject an authorization request
+# Authorize or reject pending requests
 node bin/sarembok-cli.js approve hitl-xxxx
-node bin/sarembok-cli.js reject hitl-xxxx "Unapproved production mutation"
+node bin/sarembok-cli.js reject hitl-xxxx "Unapproved mutation"
 ```
 
 ### 3. Contract Drift Gating & API Synthesis
-
 ```bash
 # Extract OpenAPI 3.1 & TypeScript contracts from a live web application
 node bin/sarembok-cli.js spec https://httpbin.org --out api.openapi.json --format openapi
@@ -67,12 +163,11 @@ node bin/sarembok-cli.js spec https://httpbin.org --out api.openapi.json --forma
 node bin/sarembok-cli.js audit https://httpbin.org
 node bin/sarembok-cli.js audit https://httpbin.org --update-baseline
 
-# Export compliant, tamper-proof audit trails (SOC 2 / ISO 27001)
+# Export tamper-proof audit trails (SOC 2 / ISO 27001)
 node bin/sarembok-cli.js audit export --format json --out ./audit_log.json
 ```
 
 ### 4. Engine & Substrate Management
-
 ```bash
 # Start backend Python sovereign kernel and state ledgers
 node bin/sarembok-cli.js engine start
@@ -80,15 +175,11 @@ node bin/sarembok-cli.js engine start
 # Start real-time digital-human WebSocket voice fabric (Port 9001)
 node bin/sarembok-cli.js engine voice
 
-# Provision ephemeral capability-dropped Chromium sandbox container
-node bin/sarembok-cli.js engine provision https://httpbin.org
-
 # Check cluster and session broker health
 node bin/sarembok-cli.js health
 ```
 
 ### 5. Cognitive Optimization & Benchmarking
-
 ```bash
 # Run Sarembok-Eval automated agentic regression suite (5 benchmarks)
 node bin/sarembok-cli.js eval
@@ -127,7 +218,7 @@ node bin/sarembok-cli.js router
 
 ---
 
-## Security & Pre-Baked Containment Profiles
+## Security Containment Profiles
 
 Configured via `Config/openshell.policy.yaml` and `Config/openshell.profiles.json`:
 
@@ -140,19 +231,24 @@ Configured via `Config/openshell.policy.yaml` and `Config/openshell.profiles.jso
 
 ---
 
-## Development & Test Suite
+## Test Suite & Verification
 
-All 19 automated unit tests run out-of-the-box:
+All automated tests pass cleanly with 0 external background daemons required:
 
 ```bash
+# Fast Node.js test suite (26 passing tests)
 npm test
+
+# Fast alias
+npm run test:fast
 ```
 
 Test coverage includes:
-* Contract Diffing Engine & Breaking Change Gating (6 tests)
-* Shannon Entropy Evaluator, Voice Fabric & Container Provisioning (4 tests)
-* NVIDIA OpenShell Supervisor, Secret Zero & HITL Authorizations (4 tests)
-* Semantic Cache, Model Fallback Router, Audit Exporter, Sarembok-Eval & HTML Visualizer (5 tests)
+- **Contract Diffing & Drift Gating**: 6 tests verifying breaking vs additive changes and schema synthesis.
+- **Shannon Entropy Evaluator & Voice Fabric**: 4 tests verifying loop defense and vector rollback SVG generation.
+- **NVIDIA OpenShell Supervisor & HITL**: 4 tests verifying deny-patterns, profile switching, and credential masking.
+- **Distributed Fabric & Memory Subsystem**: Raft leader election, WAL replay, capability tokens, and state machine projection.
+- **Cognitive Router & Visualizer**: Multi-provider circuit breakers, semantic caching, and tamper-proof HTML audit reports.
 
 ---
 
