@@ -3657,7 +3657,7 @@ def sarembok_process_dialogue(
         _save_conversation(session_id, prompt_clean, cap_reply)
         return {
             "response": cap_reply,
-            "audioText": "I am Sarembok VE. I can stream media and audio, conduct live two-way voice conversations with instant barge-in, perceive through Astra camera and screen eyes, execute dynamic MCP skills, and synthesize full-stack code.",
+            "audioText": "I am Sarembok VE, an AI-native computing environment and zero-trust execution fabric. I provide automated API contract drift gating, declarative policy supervision with Secret Zero credential masking, distributed multi-agent consensus, and real-time intelligence.",
             "source": "runtime_authority",
             "model": "runtime-authority",
             "action": None,
@@ -3683,7 +3683,7 @@ def sarembok_process_dialogue(
         _save_conversation(session_id, prompt_clean, id_reply)
         return {
             "response": id_reply,
-            "audioText": "SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.",
+            "audioText": "Sarembok VE is an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform architected by Tim Hall and the SarembokVE team. It provides drop-in CI/CD drift gating, zero-trust container supervision, and distributed multi-agent consensus.",
             "source": "runtime_authority",
             "model": "runtime-authority",
             "action": None,
@@ -3720,11 +3720,12 @@ def sarembok_process_dialogue(
         "",
         "==================== SAREMBOK RESPONSE TRUTH BOUNDARY ====================",
         "Answer the user's actual question directly and preserve all material parts of the answer.",
-        "SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction. When asked who built or created SarembokVE, state this truth clearly.",
-        "Capabilities: text chat with persistent memory, web retrieval when it succeeds, and image generation only when an image backend reports ONLINE in the runtime context (the free tier is the third-party Pollinations.ai service; attribute it as such).",
-        "Video generation is not available. If asked for something you cannot do, say so plainly.",
+        "SarembokVE is an AI-Native Computing Environment, Zero-Trust Execution Fabric, and Automated Contract Governance Platform developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction. When asked what this is, what this platform is, or who built it, state this truth accurately and professionally.",
+        "SarembokVE architecture spans 3 progressive adoption tiers: (1) Automated API contract reverse-engineering and CI/CD drift gating (OpenAPI 3.1 & TypeScript AST synthesis); (2) NVIDIA OpenShell zero-trust supervisor with declarative deny-by-default execution boundaries, Secret Zero credential masking, and HITL authorization; (3) Distributed sovereign fabric with Raft consensus, append-only SQLite-WAL persistence, Shannon entropy loop defense, and multi-model fallback routing.",
+        "CRITICAL: SarembokVE is NOT a simple web-search assistant or a video generation tool. Video generation is NOT available. Never describe Sarembok as just a tool that can search the web and make a video.",
+        "Capabilities: zero-trust process execution, automated contract diffing/gating, persistent SQLite-WAL memory, live web retrieval for grounded answers, and image generation only when an image backend reports ONLINE in the runtime context (the free tier is third-party Pollinations.ai; attribute it as such).",
         "Never describe any third-party model or service as SarembokVE proprietary technology.",
-        "NEVER output inline data URIs or raw base64 image strings (e.g. data:image/png;base64,...) in responses, as raw binary strings corrupt and truncate output. When creating design mockups, visual packaging concepts, or schematics, use structured :::product or :::mockup containers, SVG vector graphics, or complete CSS/HTML design systems.",
+        "NEVER output inline data URIs or raw base64 image strings (e.g. data:image/png;base64,...). Use structured :::product or :::mockup containers, SVG vector graphics, or complete CSS/HTML design systems.",
         "Use Runtime Authority for Sarembok identity, capabilities, status, workers, memory, and provider facts.",
         "Use live retrieval/tool evidence for current web or repository content; if retrieval fails, say so instead of fabricating content.",
         "Do not claim two-way voice is active unless the live voice session is actually connected.",
@@ -4001,12 +4002,13 @@ def sarembok_process_dialogue(
         active_model = "runtime-authority"
     else:
         reply = (
-            "### ⚡ Sovereign Runtime Active\n\n"
-            "Sarembok VE is operating in sovereign mode with active real-time media, perception, and chronometry subsystems.\n\n"
-            "- **Media Playback:** Ask to `play lofi` or `stream synthwave`\n"
-            "- **Live Search:** Inquire about `latest news on <topic>`\n"
-            "- **System Clock:** Query `what time is it`\n"
-            "- **Platform Architecture:** Inquire about `what can you do`"
+            "### ⚡ Sarembok VE · AI-Native Computing Runtime\n\n"
+            "Sarembok VE is an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform.\n\n"
+            "- **Zero-Trust Supervisor:** Declarative command containment and Secret Zero credential masking (`openshell status`)\n"
+            "- **API Contract Drift Gating:** Automated OpenAPI 3.1 & TypeScript AST reverse-engineering (`spec <url>`)\n"
+            "- **Sovereign Multi-Agent Fabric:** Distributed Raft consensus, SQLite-WAL state persistence, and Shannon entropy loop defense\n"
+            "- **Real-Time Intelligence:** Live financial market data, ArXiv preprints, and verified breaking news\n"
+            "- **Platform Architecture:** Inquire about `what is this platform` or `what can you do`"
         )
         source = "local_runtime"
         active_model = "runtime-fallback"

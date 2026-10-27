@@ -136,7 +136,7 @@ def _dispatch_chat_with_authority(params: dict) -> dict:
         return {
             **snapshot,
             "response": response,
-            "audioText": "I am Sarembok VE, the sovereign computing environment and AI multimodal runtime.",
+            "audioText": "Sarembok VE is an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform architected by Tim Hall and the SarembokVE team.",
             "source": "runtime_authority",
             "model": "runtime-authority",
             "taskCategory": "AUTHORITY",

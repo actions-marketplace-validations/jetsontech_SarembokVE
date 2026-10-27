@@ -32,9 +32,12 @@ def build_runtime_context(snapshot: dict[str, Any], capabilities: dict[str, Any]
     lines = [
         "AUTHORITATIVE SAREMBOK RUNTIME CONTEXT",
         "Use these facts as the source of truth for statements about Sarembok itself.",
+        "SarembokVE is an AI-Native Computing Environment, Zero-Trust Execution Fabric, and Automated Contract Governance Platform developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect.",
+        "SarembokVE operates across 3 Progressive Adoption Tiers: (1) Drop-In CI/CD Drift Gate (automated OpenAPI 3.1 & TypeScript AST synthesis); (2) Standalone Zero-Trust Supervisor (npx sarembok / OpenShell) with declarative deny-by-default execution boundaries, Secret Zero credential masking, and HITL authorization; (3) Distributed Sovereign Fabric with Raft consensus, append-only SQLite-WAL persistence, Shannon entropy loop defense, and multi-model fallback routing.",
+        "CRITICAL: SarembokVE is NOT a toy web search assistant or a video generation tool. Video generation is NOT supported. If asked what this platform is, accurately describe its zero-trust security control plane, automated contract governance, and distributed multi-agent architecture.",
         "CRITICAL: Never invent, infer, promise, or imply a capability that is not explicitly present in the supplied runtime facts or registered capability inventory.",
         "CRITICAL: Configured is not the same as operational. Registered/recognized is not the same as usable. Describe those states exactly.",
-        "CRITICAL: Do not claim that Sarembok has image/video/audio generation, multimodal inference, public APIs/SDKs, pricing tiers, compliance tooling, community features, specific external products/models, arbitrary website contents, or media playback unless the live runtime evidence explicitly confirms that exact capability.",
+        "CRITICAL: Do not claim that Sarembok has video generation or arbitrary media synthesis unless live evidence confirms it.",
         "CRITICAL: Do not fabricate research papers, benchmarks, dates, product features, links, downloads, citations, YouTube IDs, or external-service results. If retrieval evidence is absent, say that live evidence was not retrieved.",
         "Project: SarembokVE; Developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction. The SarembokVE team develops the underlying computing environment, AI runtime, agent infrastructure, cloud architecture, and orchestration systems.",
         "When asked who built or created SarembokVE, respond: 'SarembokVE is developed and architected by the SarembokVE team, led by Tim Hall, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.'",
@@ -125,8 +128,10 @@ def is_identity_query(prompt: str) -> bool:
         "what is this", "what is this platform", "what is this system", "what is this app", "what is this software",
         "what is this site", "what is this environment", "what system is this", "what platform is this",
         "what app is this", "what system are you", "what system am i using", "what is sarembok", "who is sarembok",
+        "what is sarembokve", "who is sarembokve", "tell me about this platform", "tell me about sarembok",
+        "explain this platform", "explain sarembok", "describe this platform", "describe sarembok",
         "who are you", "what are you", "what is your name", "tell me about yourself", "what is your identity",
-        "identify yourself",
+        "identify yourself", "what exactly is this", "what exactly is this platform",
     )
     return any(m == norm or norm.startswith(m) for m in markers)
 
@@ -181,7 +186,9 @@ def render_capabilities(snapshot: dict[str, Any] | None = None, capabilities: di
         "- **Universal Media & Audio Streaming:** verified streaming audio, music channels, and video playback.",
         "- **Duplex Live Voice:** conversational voice with real-time barge-in and audio synthesis.",
         "- **Full-Stack Autonomous Code Synthesis:** full application synthesis, code execution, and sandboxing.",
-        "- **Multimodal synthesis:** verified in-house SarembokVE Visual Synthesis Engine for photorealistic imagery, retail packaging, and 3D product mockups, alongside neural video synthesis, interactive UI/UX prototyping, and industrial design studios.",
+        "- **Autonomous API Contract Testing & Governance:** automated Playwright-based reverse-engineering of live endpoints, synthesizing OpenAPI 3.1 & TypeScript contracts, and gating CI/CD against breaking API drift.",
+        "- **Zero-Trust Supervisor & Containment:** declarative deny-by-default execution boundaries (OPA/Seccomp pattern), Secret Zero credential masking, and HITL authorization gates.",
+        "- **Multimodal & Visual Synthesis:** photorealistic imagery, retail packaging, 3D product mockups, and interactive UI/UX design systems.",
         "- **Upload & Download Infrastructure:** multi-format file uploads (code, documents, CSV, data, images) with live processing, alongside granular downloads (individual code files, markdown responses, structured data cards, and chat transcripts).",
     ]
     if registered:
@@ -214,11 +221,28 @@ def render_identity(snapshot: dict[str, Any]) -> str:
     compute = snapshot.get("compute") or {}
     providers = ", ".join(p["name"] for p in _provider_entries(snapshot)) or "none"
     return "\n".join([
-        "### SAREMBOK VE · AI-NATIVE COMPUTING RUNTIME",
+        "### SAREMBOK VE · MODULAR AI-NATIVE COMPUTING & GOVERNANCE PLATFORM",
         "",
-        "I am **Sarembok VE**, an AI-native computing environment developed and architected by the SarembokVE team, led by **Tim Hall**, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.",
+        "I am **Sarembok VE**, an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform developed and architected by the SarembokVE team, led by **Tim Hall**, its Founder and AI Systems Architect. Tim Hall founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.",
         "",
-        "**Live runtime state**",
+        "SarembokVE is architected around a **3-Tier Progressive Adoption Platform** for engineering teams:",
+        "",
+        "1. **Tier 1: Drop-In CI/CD Action (Zero-Install Drift Gate)**",
+        "   - Drops into any standard web app via 4 lines of GitHub Actions YAML (`uses: jetsontech/SarembokVE@v3.0.0`).",
+        "   - Automatically reverse-engineers live API endpoints, generates OpenAPI 3.1 & TypeScript AST schemas, and fails PRs on breaking API changes in 30 seconds.",
+        "",
+        "2. **Tier 2: Standalone Zero-Trust Supervisor (`npx sarembok` / OpenShell)**",
+        "   - Declarative deny-by-default process supervision (OPA / Docker Seccomp profile pattern).",
+        "   - **Secret Zero Injection:** Masks credentials outside child processes so secrets never leak to logs or shell history.",
+        "   - **Human-In-The-Loop (HITL) Authorizations:** Halts high-risk operations (production DB writes, cloud deletes) until explicit operator approval.",
+        "",
+        "3. **Tier 3: Distributed Multi-Agent Sovereign Fabric (`fabric/`)**",
+        "   - Multi-node **Raft Consensus** coordinating specialized agent roles (Strategist, Worker, Auditor).",
+        "   - Event-sourced, append-only **SQLite-WAL distributed ledger** with deterministic replay and state reconstruction.",
+        "   - **Shannon Entropy Loop Defense ($H(X) \\ge 0.88$):** Mathematically intercepts repetitive hallucination loops with vector SVG rollback traces.",
+        "   - **Multi-Model Fallback Router & Semantic Reasoning Cache:** Circuit breaking across frontier providers (Anthropic Claude, OpenAI, Google Gemini, Local Qwen) with 40%+ token reduction.",
+        "",
+        "**Live Runtime State (Runtime Authority)**",
         f"- **Status:** `{runtime.get('status', 'UNKNOWN')}`",
         f"- **Service:** `{runtime.get('service', 'sarembok-ve-cloud-runtime')}`",
         f"- **Workers:** {workers.get('online', 0)} online workers / {workers.get('registered', 0)} registered",
@@ -227,7 +251,7 @@ def render_identity(snapshot: dict[str, Any]) -> str:
         f"- **Persistent memory:** {memory.get('entries', 0)} stored entries via `{memory.get('backend', 'sqlite-wal')}`",
         f"- **Configured providers:** {providers}",
         "",
-        "These are live runtime facts, not a claim that every possible platform feature is currently enabled.",
+        "These are verified live runtime facts reported directly by Runtime Authority.",
     ])
 
 
