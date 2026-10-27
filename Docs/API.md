@@ -65,3 +65,26 @@ All RPC requests follow the standard JSON-RPC 2.0 envelope format:
   - Argon visual vector synthesis: Generates responsive SVG technical overlays, performance sparklines, and visual execution cards directly in the streaming HUD.
 * `GetSectorTaxonomy`: Returns the dictionary of supported GICS sectors, benchmark ETF symbols, and search keyword mappings.
 * `FetchAssetQuotesBatch`: Concurrent retrieval of real-time quotes, 24h percentage movements, price ranges, and volume metrics for arbitrary ticker arrays.
+
+---
+
+### NVIDIA OpenShell & Security Control Plane (v0.3.0)
+* `OpenShell.ValidateAction`: Validates a proposed command, filesystem path, or network egress against the active deny-by-default profile.
+* `OpenShell.GetStatus`: Returns active containment profile, memory limits, read-only root status, and registered Secret Zero token count.
+* `OpenShell.SetProfile`: Switches active profile between `strict`, `enterprise`, `audit`, and `developer`.
+* `HITL.RequestApproval`: Creates an immutable authorization request in SQLite-WAL for sensitive operations (DB mutations, financial, cloud destroy).
+* `HITL.Approve`: Authorizes a pending request by ID.
+* `HITL.Reject`: Permanently rejects a pending request with logged reason.
+* `HITL.ListPending`: Retrieves all actions currently awaiting operator sign-off.
+* `SecretZero.Inject`: External credential injection substituting `{{SECRET:KEY}}` outside LLM context.
+* `SecretZero.Sanitize`: Bidirectional redaction scrubbing secrets from responses and error traces.
+
+---
+
+### Cognitive Resilience & Semantic Optimization (v0.3.0)
+* `SemanticCache.Get`: Retrieves cached intermediate reasoning step by prompt/task signature (up to 40% token cost reduction).
+* `SemanticCache.Set`: Stores completed reasoning artifact with token savings tracking.
+* `SemanticCache.GetStats`: Returns cache hit rate, total tokens saved, and estimated cost reduction in USD.
+* `ModelRouter.Execute`: Tri-tier model execution with automatic circuit breaker (Frontier $\to$ Secondary $\to$ Local Sovereign).
+* `Entropy.Evaluate`: Computes Shannon entropy across sliding state window ($H(X) \ge 0.88$ rollback threshold).
+* `Audit.Export`: Exports compliant, tamper-proof audit trails (JSON or CSV) with SHA-256 Merkle seal.
