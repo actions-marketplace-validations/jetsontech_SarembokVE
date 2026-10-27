@@ -6,8 +6,8 @@ The official SDK libraries for interacting with **Sarembok VE Production Edition
 
 ## Supported SDK Languages
 
-- **Python**: [SDK/python/sarembok_sdk.py](file:///c:/Sarembok_VE/SDK/python/sarembok_sdk.py)
-- **TypeScript / JavaScript**: [SDK/typescript/sarembok_sdk.ts](file:///c:/Sarembok_VE/SDK/typescript/sarembok_sdk.ts)
+- **Python**: [python/sarembok_sdk.py](python/sarembok_sdk.py)
+- **TypeScript / JavaScript**: [typescript/sarembok_sdk.ts](typescript/sarembok_sdk.ts)
 
 ---
 

@@ -1,7 +1,25 @@
 # Sarembok VE Architecture Guide
 ## Modular Multi-Agent Kernel & NVIDIA OpenShell Security Architecture
 
-Sarembok VE is designed as a modular, hardware-adaptive AI-native computing platform consisting of seven interconnected architectural layers:
+Sarembok VE is an AI-native computing environment, zero-trust execution fabric, and automated contract governance platform developed and architected by the SarembokVE team, led by **Tim Hall**, its Founder and AI Systems Architect. Tim founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.
+
+Architecture Decision Records (ADRs) are documented in [Docs/ADR.md](ADR.md).
+
+---
+
+## 3-Tier Progressive Adoption Model
+
+To eliminate architectural overkill and high complexity overhead, Sarembok VE is partitioned into three progressive adoption tiers:
+
+1. **Tier 1: Drop-In CI/CD Action (`action.yml`)**: Zero-install OpenAPI 3.1 & TypeScript AST contract drift gating for standard web apps in 30 seconds.
+2. **Tier 2: Standalone Zero-Trust CLI (`npx sarembok`)**: Supervised local command containment with declarative deny-by-default rules and Secret Zero token masking.
+3. **Tier 3: Distributed Multi-Agent Sovereign Mesh (`fabric/`)**: Multi-agent consensus, SQLite-WAL event-sourced state machines, and formal verification.
+
+---
+
+## Seven Architectural Subsystems
+
+Sarembok VE is structured across seven interconnected layers:
 
 1. **Edge Transport Layer (Caddy)**: Public HTTPS and WSS entry point providing automated TLS termination, security header injection, and reverse proxying.
 2. **Web Operator Layer (Frontend)**: Single-page web application serving a public landing showcase and an authenticated operator control plane for real-time monitoring and management.
@@ -19,7 +37,7 @@ Sarembok VE is designed as a modular, hardware-adaptive AI-native computing plat
 6. **Neural Pod Services**:
    - **Voice Pod (`sarembok-voice`)**: Kokoro-82M neural TTS model serving low-latency speech synthesis over internal HTTP.
    - **Browser Pod (`sarembok-browser`)**: Playwright headless Chromium container executing web crawlers, DOM inspection, and automated API specification extraction in capability-dropped sandboxes.
-7. **Engine Client Layer (Unreal Engine 5.8)**: In-engine C++ subsystem plugins (`SarembokBridge`, `SarembokAvatar`, `SarembokVoice`, `SarembokVision`, `SarembokAgent`, `SarembokMemory`) executing real-time morph targets, speech, perception, and reasoning loops.
+7. **Engine Client Layer (Unreal Engine 5.8 Labs Extension)**: Self-contained optional digital-human presence plugins (`labs/unreal`) executing real-time morph targets, speech, perception, and reasoning loops (isolated from the core CLI and CI/CD tools).
 
 ---
 

@@ -1,5 +1,8 @@
 # SarembokVE Unreal Engine Environment (Labs)
 
+> [!NOTE]
+> **Optional Extension Plugin**: `labs/unreal` is a self-contained, optional digital-human embodiment module. It is completely decoupled from the core Node.js CLI lifecycle (`sarembok`), the CI/CD GitHub Action, and the headless contract synthesis engine. Contributors and web applications do not need Unreal Engine installed to run or adopt SarembokVE.
+
 This directory contains the experimental 3D Unreal Engine interactive runtime and MetaHuman visualization pipeline for SarembokVE.
 
 ## Structure

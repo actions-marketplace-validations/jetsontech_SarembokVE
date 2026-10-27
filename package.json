@@ -1,7 +1,7 @@
 {
   "name": "sarembok",
-  "version": "0.3.0",
-  "description": "CLI for SarembokVE: autonomous OpenAPI 3.1 / TypeScript synthesis, multi-sector real-time grounding, and CI/CD drift gating.",
+  "version": "0.3.1",
+  "description": "CLI for SarembokVE: 3-tier progressive adoption platform, NVIDIA OpenShell zero-trust sandbox, OpenAPI 3.1 contract drift gating, and distributed agentic mesh.",
   "type": "module",
   "main": "bin/sarembok-cli.js",
   "exports": {

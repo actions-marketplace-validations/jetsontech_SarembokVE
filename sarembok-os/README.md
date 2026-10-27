@@ -1,5 +1,8 @@
 # Sarembok OS
 
+> [!NOTE]
+> **Experimental Subsystem**: `sarembok-os` is an isolated experimental research substrate for microkernel agent operating systems, decoupled from the core Node.js CLI runtime (`sarembok`) and CI/CD contract gating.
+
 An AI agent operating system where agent **identity, memory, and state** are kernel-level primitives — persistent across process restart, backed by SQLite-WAL, and inspectable in real time.
 
 ![Sarembok Console](console/console.png)

@@ -252,6 +252,12 @@ Test coverage includes:
 
 ---
 
+## Leadership & Architecture
+
+Sarembok VE is developed and architected by the SarembokVE team, led by **Tim Hall**, its Founder and AI Systems Architect. Tim founded SarembokVE and leads its overall technical vision, systems architecture, and development direction.
+
+---
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
