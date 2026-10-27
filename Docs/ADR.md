@@ -13,7 +13,7 @@ Previously, SarembokVE was perceived as an "all-or-nothing" operating system tha
 Decouple SarembokVE into three independent, progressive tiers:
 1. **Tier 1: Drop-In CI/CD GitHub Action (`action.yml`)**: Zero local installation. Standard web applications drop 4 lines of YAML into `.github/workflows` to automate OpenAPI 3.1 contract synthesis and gate breaking API changes.
 2. **Tier 2: Standalone CLI & Zero-Trust Supervisor (`npx sarembok`)**: A standalone developer utility providing declarative command sandboxing (`openshell run`), policy auditing (`policy verify`), and contract diffing (`sarembok spec <url>`) with zero background daemons.
-3. **Tier 3: Distributed Sovereign Fabric (`fabric/`)**: The complete distributed micro-kernel featuring Raft consensus, SQLite-WAL state machine, symbolic formal verification, Model Context Protocol (MCP) server, and eBPF network tracing for multi-agent swarms.
+3. **Tier 3: Distributed Sovereign Fabric (`fabric/`)**: The complete distributed micro-kernel featuring Raft consensus, SQLite-WAL state machine, Deterministic AST Constraint Verification & HMAC-SHA256 Chained Macaroons, Model Context Protocol (MCP) server, and Playwright CDP Network Interception & OpenAPI 3.1 AST Synthesis for multi-agent swarms.
 
 ### Status
 Accepted & Implemented in v0.3.0.
@@ -58,7 +58,7 @@ Standardize documentation and developer error messaging against industry-standar
 | **`Runtime/openshell`** | **Declarative Zero-Trust Policy Engine** | Open Policy Agent (OPA) / Docker Seccomp profile pattern with deny-by-default execution boundaries. |
 | **Autonomous Contract Engine** (`Tools/contract`, `bin/`) | **Automated Contract Testing & AST Generator** | Playwright network capture + OpenAPI 3.1 JSONSchema AST generator + semantic drift breaker. |
 | **`fabric/` Micro-Kernel** | **Distributed Consensus & State Machine** | Raft consensus algorithm + SQLite-WAL event-sourced distributed state mesh. |
-| **`fabric/guardrails`** | **Formal Verification & Capability Security** | Object-capability model (Macaroons / zcap-ld) + Z3-style symbolic constraint solving. |
+| **`fabric/guardrails`** | **Deterministic AST Constraint Verification & HMAC-SHA256 Chained Macaroons** | Object-capability model with nested HMAC-SHA256 Macaroons + deterministic AST/regex constraint verification. |
 | **`Deployment/cloud/server.py`** | **OpenAI-Compatible Multi-Model Proxy** | Reverse proxy router with provider fallback and circuit breaking across Anthropic, OpenAI, and Gemini. |
 | **`labs/unreal`** | **Embodiment & Visual Protocol Adapter** | Optional gRPC / WebSocket bridge for 3D digital human presence. |
 

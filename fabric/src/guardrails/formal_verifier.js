@@ -1,9 +1,11 @@
 /**
- * SarembokVE Formal Policy Verifier & Pre-Dispatch Proof Generator
- * Pillar 3: Transition from Heuristic Guardrails to Formally Verified Policies
+ * SarembokVE Deterministic Constraint & Invariant Verifier & Pre-Dispatch Proof Generator
+ * Pillar 3: Deterministic Constraint & Invariant Verification & HMAC-SHA256 Chained Macaroons
  * 
- * Evaluates state transition invariants and proves capability sufficiency
+ * Statically evaluates state transition invariants and proves capability sufficiency
  * BEFORE any shell command, file write, or network call is dispatched.
+ * Evaluates concrete AST/command invariants (blocking shell injection metacharacters,
+ * unauthorized path traversal '..', unapproved network hosts, and privilege escalation).
  */
 
 import crypto from 'node:crypto';
@@ -41,17 +43,31 @@ export class FormalPolicyVerifier {
         maxExecutionWindowMs: 10000
       }
     };
+
+    // Deterministic Privilege Escalation Signatures
+    this.privilegeEscalationPatterns = [
+      /\bsudo\b/i,
+      /\bsu\b/i,
+      /\bdoas\b/i,
+      /\bchmod\s+[+]?s\b/i,
+      /\bchown\b/i,
+      /\bsetuid\b/i,
+      /\bpkill\b/i,
+      /\bsystemctl\b/i,
+      /\blaunchctl\b/i,
+      /\bvisudo\b/i
+    ];
   }
 
   /**
-   * Statically verify an intended agent action before kernel dispatch
+   * Statically verify an intended agent action before kernel dispatch using deterministic AST & invariant rules
    * @param {Object} params
    * @param {string} params.agentId
    * @param {string} params.actionType - CapabilityType
-   * @param {Object} params.target - Resource target (e.g. { path: '/tmp/test.txt' }, { host: 'api.github.com' })
+   * @param {Object} params.target - Resource target (e.g. { path: '/tmp/test.txt' }, { host: 'api.github.com' }, { command: 'node script.js' })
    * @param {Object} params.token - Capability token presented by agent
-   * @param {Object} [params.context={}] - Environmental context (e.g. session token burn)
-   * @returns {Object} Proof verdict: { verified: boolean, proofHash?: string, error?: string }
+   * @param {Object} [params.context={}] - Environmental context
+   * @returns {Object} Proof verdict: { verified: boolean, proofHash?: string, violatedInvariant?: string, reason?: string, invariantsChecked?: string[] }
    */
   verifyAction({
     agentId,
@@ -60,7 +76,7 @@ export class FormalPolicyVerifier {
     token,
     context = {}
   }) {
-    // 1. Invariant: Token Authenticity & Integrity Proof
+    // 1. Invariant: Token Authenticity & Macaroon Cryptographic Integrity Proof
     if (!token || !this.tokenFactory.verifyToken(token)) {
       return {
         verified: false,
@@ -98,8 +114,15 @@ export class FormalPolicyVerifier {
         };
       }
 
-      // Prohibit directory traversal patterns statically
-      if (targetPath.includes('..') || targetPath.startsWith('/etc') || targetPath.includes('\\Windows\\System32')) {
+      // Prohibit directory traversal, null byte injections, and system root escapes
+      if (
+        targetPath.includes('..') ||
+        targetPath.includes('\0') ||
+        targetPath.startsWith('/etc') ||
+        targetPath.startsWith('/root') ||
+        targetPath.includes('\\Windows\\System32') ||
+        targetPath.includes('~/.ssh')
+      ) {
         return {
           verified: false,
           violatedInvariant: 'INV_SANDBOX_CONFINEMENT',
@@ -143,16 +166,28 @@ export class FormalPolicyVerifier {
       }
     }
 
-    // 6. Invariant: Shell Command Injection & Piping Proof
+    // 6. Invariant: Shell Command Injection, Metacharacters & Privilege Escalation
     if (actionType === CapabilityType.SHELL_EXEC) {
       const cmd = target.command || '';
-      // Reject shell chaining, piping, or backticks
-      if (/[;&|`$]/.test(cmd)) {
+
+      // Block shell chaining, piping, expansion, or subshell metacharacters
+      if (/[;&|`$><()\n\r]/.test(cmd)) {
         return {
           verified: false,
           violatedInvariant: 'INV_SHELL_PIPING_PROHIBITED',
-          reason: 'Shell execution containing piping, chaining, or expansion characters is formally forbidden.'
+          reason: 'Shell execution containing piping, chaining, metacharacters, or subshells is deterministically forbidden.'
         };
+      }
+
+      // Block privilege escalation attempts
+      for (const pattern of this.privilegeEscalationPatterns) {
+        if (pattern.test(cmd)) {
+          return {
+            verified: false,
+            violatedInvariant: 'INV_PRIVILEGE_ESCALATION_PROHIBITED',
+            reason: `Privilege escalation signature detected in command: '${cmd}'.`
+          };
+        }
       }
     }
 
@@ -180,7 +215,8 @@ export class FormalPolicyVerifier {
         'INV_CAPABILITY_SUFFICIENCY',
         'INV_SANDBOX_CONFINEMENT',
         'INV_EGRESS_CONFINEMENT',
-        'INV_SHELL_PIPING_PROHIBITED'
+        'INV_SHELL_PIPING_PROHIBITED',
+        'INV_PRIVILEGE_ESCALATION_PROHIBITED'
       ]
     };
   }

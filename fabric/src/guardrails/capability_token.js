@@ -1,9 +1,14 @@
 /**
- * SarembokVE Unforgeable Capability Token System
- * Pillar 3: Transition from Heuristic Guardrails to Formally Verified Policies
+ * SarembokVE Unforgeable Capability Token & Macaroon Chaining System
+ * Pillar 3: Deterministic Constraint & Invariant Verification
  * 
- * Provides cryptographically-signed, tamper-evident capability tokens granting
+ * Provides cryptographically-signed, tamper-evident Macaroon capability tokens granting
  * granular, least-privilege permissions to autonomous agents.
+ * 
+ * Capability Chaining:
+ * - Root signature: sig_0 = HMAC-SHA256(rootSecret, tokenIdentifier)
+ * - Caveat chaining: sig_i = HMAC-SHA256(sig_{i-1}, caveat_i)
+ * - Constant-time timingSafeEqual verification
  */
 
 import crypto from 'node:crypto';
@@ -27,11 +32,12 @@ export class CapabilityTokenFactory {
   }
 
   /**
-   * Mint a new unforgeable capability token
+   * Mint a new unforgeable capability token using nested HMAC-SHA256 Macaroon chaining
    * @param {Object} params
    * @param {string} params.agentId - Recipient agent ID
    * @param {string[]} params.capabilities - Array of CapabilityType strings
    * @param {Object} [params.constraints={}] - Specific path, domain, or command constraints
+   * @param {string[]} [params.caveats=[]] - Explicit first-party caveats
    * @param {number} [params.ttlMs=60000] - Time-to-live in milliseconds
    * @returns {Object} Signed capability token
    */
@@ -39,67 +45,227 @@ export class CapabilityTokenFactory {
     agentId,
     capabilities = [],
     constraints = {},
+    caveats = [],
     ttlMs = 60000
   }) {
-    const payload = {
-      tokenId: `cap-${crypto.randomUUID()}`,
+    const tokenId = `cap-${crypto.randomUUID()}`;
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + ttlMs;
+    const nonce = crypto.randomBytes(8).toString('hex');
+
+    // Build first-party caveats from parameters
+    const firstPartyCaveats = [...caveats];
+
+    // Standard structural caveats
+    firstPartyCaveats.push(`agent=${agentId}`);
+    firstPartyCaveats.push(`expiresAt=${expiresAt}`);
+    firstPartyCaveats.push(`nonce=${nonce}`);
+
+    if (capabilities.length > 0) {
+      firstPartyCaveats.push(`capabilities=${[...capabilities].sort().join(',')}`);
+    }
+
+    if (constraints.allowedPaths && Array.isArray(constraints.allowedPaths)) {
+      firstPartyCaveats.push(`allowedPaths=${constraints.allowedPaths.join(',')}`);
+    }
+
+    if (constraints.allowedDomains && Array.isArray(constraints.allowedDomains)) {
+      firstPartyCaveats.push(`allowedDomains=${constraints.allowedDomains.join(',')}`);
+    }
+
+    // Compute Macaroon nested HMAC chain
+    // sig_0 = HMAC-SHA256(rootSecret, tokenId)
+    const rootSignature = crypto
+      .createHmac('sha256', this.signingSecret)
+      .update(tokenId)
+      .digest('hex');
+
+    // sig_i = HMAC-SHA256(sig_{i-1}, caveat_i)
+    let currentSignature = rootSignature;
+    for (const caveat of firstPartyCaveats) {
+      currentSignature = crypto
+        .createHmac('sha256', Buffer.from(currentSignature, 'hex'))
+        .update(caveat)
+        .digest('hex');
+    }
+
+    return {
+      tokenId,
       agentId,
       capabilities,
-      constraints, // e.g. { allowedPaths: ['/tmp/sandbox'], allowedDomains: ['api.github.com'] }
-      issuedAt: Date.now(),
-      expiresAt: Date.now() + ttlMs,
-      nonce: crypto.randomBytes(8).toString('hex')
-    };
-
-    const signature = this.signToken(payload);
-    return {
-      ...payload,
-      signature
+      constraints,
+      caveats: firstPartyCaveats,
+      issuedAt,
+      expiresAt,
+      nonce,
+      rootSignature,
+      signature: currentSignature
     };
   }
 
   /**
-   * Compute HMAC SHA-256 signature for token
-   * @param {Object} payload 
+   * Attenuate an existing Macaroon token by appending a first-party caveat and chaining HMAC
+   * @param {Object} token - Existing valid capability token
+   * @param {string} caveat - New first-party caveat (e.g. 'pathPrefix=/workspace')
+   * @returns {Object} Attenuated token
    */
-  signToken(payload) {
-    const canonical = [
-      payload.tokenId,
-      payload.agentId,
-      payload.capabilities.sort().join(','),
-      JSON.stringify(payload.constraints),
-      payload.issuedAt,
-      payload.expiresAt,
-      payload.nonce
-    ].join('|');
+  attenuate(token, caveat) {
+    if (!token || !token.signature) {
+      throw new Error('Cannot attenuate invalid token');
+    }
 
-    return crypto
-      .createHmac('sha256', this.signingSecret)
-      .update(canonical)
+    const newCaveats = [...(token.caveats || []), caveat];
+    const newSignature = crypto
+      .createHmac('sha256', Buffer.from(token.signature, 'hex'))
+      .update(caveat)
       .digest('hex');
+
+    return {
+      ...token,
+      caveats: newCaveats,
+      signature: newSignature
+    };
   }
 
   /**
-   * Verify token authenticity and validity
+   * Compute HMAC SHA-256 signature for token (canonical compatibility)
    * @param {Object} token 
-   * @returns {boolean} True if authentic and not expired
    */
-  verifyToken(token) {
-    if (!token || !token.signature) return false;
+  computeSignature(token) {
+    if (!token || !token.tokenId) return '';
+    let sig = crypto
+      .createHmac('sha256', this.signingSecret)
+      .update(token.tokenId)
+      .digest('hex');
 
-    // Check expiration
-    if (Date.now() > token.expiresAt) {
+    const caveats = token.caveats || [];
+    for (const caveat of caveats) {
+      sig = crypto
+        .createHmac('sha256', Buffer.from(sig, 'hex'))
+        .update(caveat)
+        .digest('hex');
+    }
+    return sig;
+  }
+
+  // Alias for backwards compatibility
+  signToken(token) {
+    return this.computeSignature(token);
+  }
+
+  /**
+   * Verify token authenticity and evaluate all caveats deterministically against context
+   * @param {Object} token - Capability token to verify
+   * @param {Object} [context={}] - Verification context (e.g. { path, host, action, agentId, cost })
+   * @returns {boolean} True if authentic, unexpired, and all caveats satisfy context
+   */
+  verifyToken(token, context = {}) {
+    if (!token || !token.signature || !token.tokenId) {
       return false;
     }
 
-    const expected = this.signToken(token);
+    // 1. Expiration check
+    if (token.expiresAt && Date.now() > token.expiresAt) {
+      return false;
+    }
+
+    // 2. Cryptographic nested HMAC-SHA256 Macaroon chain verification
+    const expectedSig = this.computeSignature(token);
     try {
-      return crypto.timingSafeEqual(
-        Buffer.from(token.signature, 'hex'),
-        Buffer.from(expected, 'hex')
-      );
+      const sigBuf = Buffer.from(token.signature, 'hex');
+      const expBuf = Buffer.from(expectedSig, 'hex');
+
+      if (sigBuf.length !== expBuf.length) {
+        return false;
+      }
+
+      const isMacaroonValid = crypto.timingSafeEqual(sigBuf, expBuf);
+      if (!isMacaroonValid) {
+        return false;
+      }
     } catch {
       return false;
     }
+
+    // 3. Deterministic Caveat Evaluation against execution context
+    if (context && typeof context === 'object' && token.caveats) {
+      for (const caveat of token.caveats) {
+        if (!this.evaluateCaveat(caveat, context, token)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Evaluates a single first-party caveat deterministically
+   * @param {string} caveat 
+   * @param {Object} context 
+   * @param {Object} token 
+   * @returns {boolean}
+   */
+  evaluateCaveat(caveat, context, token) {
+    const eqIdx = caveat.indexOf('=');
+    if (eqIdx === -1) return true;
+
+    const key = caveat.slice(0, eqIdx);
+    const value = caveat.slice(eqIdx + 1);
+
+    switch (key) {
+      case 'agent':
+        if (context.agentId && context.agentId !== value) return false;
+        break;
+
+      case 'expiresAt': {
+        const exp = Number(value);
+        if (!Number.isNaN(exp) && Date.now() > exp) return false;
+        break;
+      }
+
+      case 'pathPrefix':
+        if (context.path && !context.path.startsWith(value)) return false;
+        break;
+
+      case 'allowedPaths': {
+        if (context.path) {
+          const allowed = value.split(',');
+          if (!allowed.some(p => context.path.startsWith(p))) return false;
+        }
+        break;
+      }
+
+      case 'allowedDomains': {
+        if (context.host) {
+          const allowed = value.split(',');
+          if (!allowed.includes(context.host)) return false;
+        }
+        break;
+      }
+
+      case 'maxCost': {
+        const max = Number(value);
+        if (context.cost !== undefined && context.cost > max) return false;
+        break;
+      }
+
+      case 'scope':
+      case 'capabilities': {
+        if (context.action) {
+          const allowedCaps = value.split(',');
+          if (!allowedCaps.includes(context.action)) return false;
+        }
+        break;
+      }
+
+      default:
+        // Generic key match if present in context
+        if (context[key] !== undefined && String(context[key]) !== value) {
+          return false;
+        }
+    }
+
+    return true;
   }
 }

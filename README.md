@@ -55,10 +55,13 @@ npx sarembok spec https://httpbin.org --out api.json
 
 # 2. Dry-run verify an OS command against deny-by-default zero-trust policies
 npx sarembok openshell verify "npm test"
-npx sarembok openshell verify "rm -rf /"        # ✕ Instantly blocked by mathematical pattern
+npx sarembok openshell verify "rm -rf /"        # ✕ Instantly blocked by deterministic policy signature
 
 # 3. Execute an isolated command with Secret Zero credential masking
 npx sarembok openshell run "curl -H 'Authorization: Bearer {{SECRET:GITHUB_TOKEN}}' https://api.github.com/user"
+
+# 4. Mount SarembokVE directly as a live JSON-RPC 2.0 stdio MCP server (Cursor, Claude Desktop, Antigravity)
+npx sarembok mcp
 ```
 
 ### Tier 3: Full Sovereign Mesh & Enterprise Runtime
@@ -86,7 +89,7 @@ To eliminate custom abstraction overhead, SarembokVE modules map directly to fam
 | **`Runtime/openshell`** | **Declarative Zero-Trust Supervisor** | Similar to **Open Policy Agent (OPA) / Docker Seccomp** profiles. Deny-by-default execution boundary with Secret Zero injection outside the child process. |
 | **`Tools/contract` & `bin/`** | **Playwright + OpenAPI 3.1 AST Generator** | Automated contract synthesizer and breaking-drift gate. Compares route fingerprints against committed baseline JSON schemas. |
 | **`fabric/` Micro-Kernel** | **Distributed Raft Consensus & Memory** | Multi-node consensus with log replication, **SQLite-WAL** event-sourced ledger, and state rollback projector. |
-| **`fabric/guardrails`** | **Formal Verification & Capability Tokens** | Z3-style constraint evaluation and cryptographic token delegation (Macaroons pattern) for agent permissions. |
+| **`fabric/guardrails`** | **Deterministic AST Constraint Verification & HMAC-SHA256 Chained Macaroons** | Deterministic AST/regex constraint evaluation and cryptographic token delegation (Macaroons pattern) for agent permissions. |
 | **`fabric/protocols`** | **Model Context Protocol (MCP) Server** | Standard Anthropic MCP v1.0.0 JSON-RPC 2.0 interface for interoperability with external IDEs and agents. |
 | **`Deployment/cloud/server.py`** | **OpenAI-Compatible Proxy & Router** | Multi-model fallback circuit breaker (Anthropic Claude, OpenAI GPT-4, Google Gemini, Local Qwen) with semantic caching. |
 | **`labs/unreal`** *(Optional)* | **Embodiment Extension Plugin** | Self-contained Unreal Engine 5.x digital-human bridge (completely isolated from the core Node.js CLI lifecycle). |
@@ -108,12 +111,12 @@ npm run quickstart
 Sample output:
 ```text
 🛡️  NVIDIA OpenShell Security Control Plane Status
-  Engine:               NVIDIA OpenShell Safety Runtime v1.0
+  Engine:               OpenShell-Compatible Zero-Trust Supervisor v1.0 (NVIDIA OpenShell Policy Schema)
   Active Profile:       strict
   Read-Only Root:       ✔ Enforced
   Secret Zero Tokens:   3 credentials masked
   Pending HITL Gates:   0 actions awaiting approval
-  Deny Command Rules:   13 mathematical signatures
+  Deny Command Rules:   13 deterministic AST & regex signatures
   Allowed Domains:      github.com, api.github.com, sarembok.com, localhost
 
 =======================================================
@@ -189,6 +192,15 @@ node bin/sarembok-cli.js cache stats
 
 # Inspect active Model Fallback circuit breaker routes
 node bin/sarembok-cli.js router
+```
+
+### 6. Model Context Protocol (MCP v1.0.0 JSON-RPC 2.0)
+```bash
+# Launch live JSON-RPC 2.0 stdio MCP server (mount directly into Claude Desktop, Cursor, or Antigravity)
+npx sarembok mcp
+
+# Inspect registered MCP tools (openshell_verify, openshell_status, contract_spec, entropy_evaluate, wal_verify)
+npx sarembok mcp tools
 ```
 
 ---

@@ -77,13 +77,13 @@ const commands = {
     desc: 'Inspect Raft consensus cluster status and state mesh topology'
   },
   mcp: {
-    desc: 'Query or run Model Context Protocol (MCP) JSON-RPC 2.0 interface'
+    desc: 'Launch live JSON-RPC 2.0 stdio Model Context Protocol (MCP) server or inspect tools'
   },
   policy: {
-    desc: 'Evaluate pre-dispatch formal invariant and capability token proofs'
+    desc: 'Evaluate pre-dispatch deterministic AST invariants and HMAC-SHA256 Macaroon proofs'
   },
   registry: {
-    desc: 'Inspect centralized cloud-native API schema registry and eBPF contracts'
+    desc: 'Inspect Playwright CDP network interception, OpenAPI 3.1 contracts & schema registry'
   }
 };
 
@@ -187,7 +187,7 @@ switch (command) {
       console.log(`  Read-Only Root:       ${status.read_only_root ? '✔ Enforced' : '✕ Disabled'}`);
       console.log(`  Secret Zero Tokens:   ${status.secret_zero_registered_tokens} credentials masked`);
       console.log(`  Pending HITL Gates:   ${status.pending_hitl_approvals} actions awaiting approval`);
-      console.log(`  Deny Command Rules:   ${status.deny_patterns_count} mathematical signatures`);
+      console.log(`  Deny Command Rules:   ${status.deny_patterns_count} deterministic AST & regex signatures`);
       console.log(`  Allowed Domains:      ${status.allowed_domains.join(', ')}\n`);
       sandbox.close();
     } else if (sub === 'profile') {
@@ -403,7 +403,7 @@ switch (command) {
   }
 
   case 'mcp': {
-    const sub = args[1] || 'tools';
+    const sub = args[1];
     const kernel = new FabricKernel({ dbPath: ':memory:' });
     if (sub === 'tools') {
       const resp = await kernel.mcpServer.handleJsonRpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
@@ -411,11 +411,15 @@ switch (command) {
       resp.result.tools.forEach(t => {
         console.log(`  \x1b[32m✔ ${t.name}\x1b[0m - ${t.description}`);
       });
-    } else {
+      kernel.close();
+    } else if (sub === 'info') {
       const resp = await kernel.mcpServer.handleJsonRpc({ jsonrpc: '2.0', id: 1, method: 'initialize' });
       console.log(JSON.stringify(resp.result, null, 2));
+      kernel.close();
+    } else {
+      // Launch live JSON-RPC 2.0 stdio server listener for Cursor, Claude Desktop, Antigravity
+      kernel.mcpServer.startStdio();
     }
-    kernel.close();
     break;
   }
 
@@ -437,11 +441,11 @@ switch (command) {
     });
 
     if (verdict.verified) {
-      console.log(`\x1b[32m✔ Formal Invariant Verification PASSED\x1b[0m for command: '${targetCmd}'`);
+      console.log(`\x1b[32m✔ Deterministic Invariant Verification PASSED\x1b[0m for command: '${targetCmd}'`);
       console.log(`  Proof Hash: ${verdict.proofHash}`);
       console.log(`  Invariants Checked: ${verdict.invariantsChecked.join(', ')}`);
     } else {
-      console.log(`\x1b[31m✖ Formal Invariant Violation: ${verdict.violatedInvariant}\x1b[0m`);
+      console.log(`\x1b[31m✖ Deterministic Invariant Violation: ${verdict.violatedInvariant}\x1b[0m`);
       console.log(`  Reason: ${verdict.reason}`);
     }
     break;
@@ -449,8 +453,8 @@ switch (command) {
 
   case 'registry': {
     const registry = new SchemaRegistry();
-    console.log(`\x1b[34m[Sarembok Cloud-Native Schema Registry]\x1b[0m Continuous eBPF & Webhook Mesh`);
-    console.log(`  Registry Status: ACTIVE | Ingestion Sources: eBPF socket tracer, Webhooks, CI Contract Gates`);
+    console.log(`\x1b[34m[Sarembok Cloud-Native Schema Registry]\x1b[0m Playwright CDP & OpenAPI 3.1 Mesh`);
+    console.log(`  Registry Status: ACTIVE | Ingestion Sources: Playwright CDP network interception, Webhooks, CI Contract Gates`);
     console.log(`  Registered Services: 0 active continuous endpoints on local node`);
     break;
   }

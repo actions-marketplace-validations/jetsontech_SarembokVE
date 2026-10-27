@@ -6,7 +6,7 @@
  */
 
 import { DatabaseSync } from 'node:sqlite';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -78,6 +78,13 @@ class WalStore {
     }
 
     this.db.exec(schemaDdl);
+
+    try {
+      this.db.exec('ALTER TABLE transaction_log ADD COLUMN prev_hash TEXT;');
+    } catch {}
+    try {
+      this.db.exec('ALTER TABLE transaction_log ADD COLUMN entry_hash TEXT;');
+    } catch {}
 
     // Seed internal sovereign kernel agents to satisfy foreign keys
     this.db.exec(`
@@ -213,12 +220,36 @@ class WalStore {
 
     const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
+    let prevHash = '0'.repeat(64);
+    let stepIndex = 1;
+    try {
+      const lastRow = this.db.prepare(`
+        SELECT entry_hash, validation_hash FROM transaction_log
+        WHERE session_id = ?
+        ORDER BY rowid DESC LIMIT 1
+      `).get(sessionId);
+
+      if (lastRow) {
+        prevHash = lastRow.entry_hash || lastRow.validation_hash || '0'.repeat(64);
+      }
+
+      const countRow = this.db.prepare('SELECT COUNT(*) as count FROM transaction_log WHERE session_id = ?').get(sessionId);
+      stepIndex = (countRow?.count || 0) + 1;
+    } catch {}
+
+    const entryHash = createHash('sha256')
+      .update(`${0}:${stepIndex}:${prevHash}:${payloadStr}`)
+      .digest('hex');
+
+    const effectiveValidationHash = hash || entryHash;
+
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO transaction_log (
         task_id, session_id, sender_agent_id, recipient_agent_id,
-        payload, tokens_consumed, entropy_score, validation_hash, committed
+        payload, tokens_consumed, entropy_score, validation_hash,
+        prev_hash, entry_hash, committed
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -229,7 +260,9 @@ class WalStore {
       payloadStr,
       tokens,
       entropy,
-      hash,
+      effectiveValidationHash,
+      prevHash,
+      entryHash,
       committed ? 1 : 0
     );
 
@@ -246,7 +279,9 @@ class WalStore {
       payload: payloadStr,
       tokens_consumed: tokens,
       entropy_score: entropy,
-      validation_hash: hash,
+      validation_hash: effectiveValidationHash,
+      prev_hash: prevHash,
+      entry_hash: entryHash,
       committed: committed ? 1 : 0
     };
   }
@@ -368,6 +403,54 @@ class WalStore {
       ORDER BY rowid ASC
     `);
     return stmt.all(sessionId);
+  }
+
+  /**
+   * Replays and verifies the SHA-256 Merkle hash chain from genesis
+   * Throws a cryptographic tamper error if any log frame was modified
+   * @param {string} [sessionId]
+   * @returns {{ verified: boolean, entriesCount: number, headHash: string }}
+   */
+  verifyIntegrity(sessionId = null) {
+    let sql = 'SELECT * FROM transaction_log';
+    const params = [];
+    if (sessionId) {
+      sql += ' WHERE session_id = ?';
+      params.push(sessionId);
+    }
+    sql += ' ORDER BY rowid ASC';
+
+    const rows = this.db.prepare(sql).all(...params);
+    let expectedPrevHash = '0'.repeat(64);
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const stepIndex = i + 1;
+
+      if (row.prev_hash && row.prev_hash !== expectedPrevHash) {
+        throw new Error(
+          `Cryptographic tamper detected in WAL ledger at task_id '${row.task_id}': expected prev_hash ${expectedPrevHash}, got ${row.prev_hash}`
+        );
+      }
+
+      const calculatedHash = createHash('sha256')
+        .update(`${0}:${stepIndex}:${expectedPrevHash}:${row.payload}`)
+        .digest('hex');
+
+      if (row.entry_hash && row.entry_hash !== calculatedHash) {
+        throw new Error(
+          `Cryptographic tamper detected in WAL ledger at task_id '${row.task_id}': expected entry_hash ${calculatedHash}, got ${row.entry_hash}`
+        );
+      }
+
+      expectedPrevHash = row.entry_hash || calculatedHash;
+    }
+
+    return {
+      verified: true,
+      entriesCount: rows.length,
+      headHash: expectedPrevHash
+    };
   }
 
   close() {

@@ -122,11 +122,20 @@ export class RaftNode extends EventEmitter {
       throw new Error(`Cannot propose to non-leader node '${this.nodeId}'. Current leader: ${this.leaderId}`);
     }
 
+    const prevHash = this.log.length > 0 ? this.log[this.log.length - 1].entryHash : '0'.repeat(64);
+    const index = this.log.length + 1;
+    const entryHash = crypto
+      .createHash('sha256')
+      .update(`${this.currentTerm}:${index}:${prevHash}:${JSON.stringify(command)}`)
+      .digest('hex');
+
     const entry = {
       id: crypto.randomUUID(),
       term: this.currentTerm,
-      index: this.log.length + 1,
+      index,
       command,
+      prevHash,
+      entryHash,
       timestamp: Date.now()
     };
 
@@ -491,6 +500,38 @@ export class RaftNode extends EventEmitter {
   }
 
   /**
+   * Replays and verifies the SHA-256 Merkle hash chain from genesis
+   * Throws a cryptographic tamper error if any log frame was modified
+   * @returns {{ verified: boolean, entriesCount: number, headHash: string }}
+   */
+  verifyIntegrity() {
+    let expectedPrevHash = '0'.repeat(64);
+    for (let i = 0; i < this.log.length; i++) {
+      const entry = this.log[i];
+      if (entry.prevHash && entry.prevHash !== expectedPrevHash) {
+        throw new Error(
+          `Raft log chain broken at index ${entry.index}: expected prevHash ${expectedPrevHash}, got ${entry.prevHash}`
+        );
+      }
+      const calculatedHash = crypto
+        .createHash('sha256')
+        .update(`${entry.term}:${entry.index}:${expectedPrevHash}:${JSON.stringify(entry.command)}`)
+        .digest('hex');
+      if (entry.entryHash && entry.entryHash !== calculatedHash) {
+        throw new Error(
+          `Cryptographic tamper detected in Raft log at index ${entry.index}: expected entryHash ${calculatedHash}, got ${entry.entryHash}`
+        );
+      }
+      expectedPrevHash = entry.entryHash || calculatedHash;
+    }
+    return {
+      verified: true,
+      entriesCount: this.log.length,
+      headHash: expectedPrevHash
+    };
+  }
+
+  /**
    * Dispatch message to peer via configured transport
    */
   sendMessage(toNodeId, message) {
@@ -501,3 +542,5 @@ export class RaftNode extends EventEmitter {
     }
   }
 }
+
+

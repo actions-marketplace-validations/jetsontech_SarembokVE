@@ -67,7 +67,7 @@ def verify_webgl_canvas_fallback() -> dict[str, Any]:
         "meshId": CANONICAL_ARKIT_PACKET["MeshId"],
         "topologyNodes": topology_nodes,
         "supportedBlendshapes": arkit_blendshapes,
-        "contractCompliance": "Architecture/METAHUMAN_AVATAR_CONTRACT.md",
+        "contractCompliance": "Docs/architecture/METAHUMAN_AVATAR_CONTRACT.md",
         "presentationActive": True,
     }
     LOG.info("✅ Client-side WebGL Canvas presentation contract verified: 468 vertices, ARKit 52 morph targets ready.")

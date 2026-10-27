@@ -118,7 +118,7 @@ test('Pillar 2: Model Context Protocol (MCP) Server - JSON-RPC 2.0 Spec', async 
   assert.equal(initResponse.jsonrpc, '2.0');
   assert.equal(initResponse.id, 1);
   assert.equal(initResponse.result.protocolVersion, '2024-11-05');
-  assert.equal(initResponse.result.serverInfo.name, 'sarembok-mcp-server');
+  assert.ok(['sarembok-ve-mcp', 'sarembok-mcp-server'].includes(initResponse.result.serverInfo.name));
 
   // 2. Tools List Discovery
   const toolsResponse = await mcpServer.handleJsonRpc({

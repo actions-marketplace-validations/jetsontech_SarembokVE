@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS transaction_log (
     tokens_consumed INTEGER DEFAULT 0,
     entropy_score REAL DEFAULT 0.0,
     validation_hash TEXT,
+    prev_hash TEXT,                                 -- SHA-256 Merkle chain previous link
+    entry_hash TEXT,                                -- SHA-256 Merkle entry hash
     committed INTEGER DEFAULT 1,                    -- 1 = Valid state, 0 = Rolled back
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(session_id) REFERENCES session_state(session_id),
