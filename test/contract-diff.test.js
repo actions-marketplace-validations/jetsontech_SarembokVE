@@ -1,7 +1,6 @@
-'use strict';
-const test = require('node:test');
-const assert = require('node:assert');
-const { fingerprint, diff } = require('../bin/contract-diff');
+import test from 'node:test';
+import assert from 'node:assert';
+import { fingerprint, diff } from '../bin/contract-diff.js';
 
 const spec = (props, extra = {}) => ({
     paths: {

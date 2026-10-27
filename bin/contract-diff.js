@@ -73,4 +73,5 @@ function diff(baseline, current) {
     return { breaking, additive };
 }
 
-module.exports = { fingerprint, diff };
+export { fingerprint, diff };
+export default { fingerprint, diff };

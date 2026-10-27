@@ -1,7 +1,29 @@
 {
+  "$schema": "./Config/sarembok.schema.json",
   "platform": "Sarembok VE",
   "version": "0.3.0",
   "description": "AI-native computing environment, autonomous multi-sector intelligence, and distributed frontier systems engine",
+  "engine": {
+    "mode": "strict",
+    "max_latency_ms": 1000
+  },
+  "entropy_defense": {
+    "shannon_threshold": 0.88,
+    "sliding_window_size": 10,
+    "action_on_halt": "rollback"
+  },
+  "memory": {
+    "db_path": "sarembok_memory.db",
+    "wal_mode": true,
+    "synchronous": "NORMAL"
+  },
+  "openshell": {
+    "enabled": true,
+    "profile": "strict",
+    "policy_path": "./Config/openshell.policy.yaml",
+    "secret_zero": true,
+    "hitl_enabled": true
+  },
   "modules": [
     "Runtime",
     "MultiSectorIntelligence",
@@ -14,6 +36,7 @@
     "Agents",
     "PersistentMemory",
     "Voice",
-    "Vision"
+    "Vision",
+    "OpenShell"
   ]
 }

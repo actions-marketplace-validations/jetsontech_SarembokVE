@@ -1,0 +1,91 @@
+# ==============================================================================
+# SAREMBOK VE · NVIDIA OPENSHELL ZERO-TRUST SECURITY POLICY
+# ARCHITECTURE: DENY-BY-DEFAULT KERNEL BOUNDARY & SUPERVISOR CONTROL PLANE
+# ==============================================================================
+
+version: "1.0"
+profile: "strict"
+
+# 1. File System Isolation Boundary
+filesystem:
+  read_only_root: true
+  allowed_paths:
+    - "/workspace"
+    - "./generated"
+    - "./public"
+    - "./scratch"
+    - "/tmp"
+  deny_paths:
+    - "~/.ssh"
+    - "~/.aws"
+    - ".env"
+    - "**/.env*"
+    - "**/id_rsa*"
+    - "C:/Windows/System32"
+    - "/etc/shadow"
+    - "/etc/sudoers"
+    - "**/credentials.json"
+    - "**/service-account*.json"
+
+# 2. Network Egress Filtering
+network:
+  egress_mode: "whitelist"
+  allowed_domains:
+    - "github.com"
+    - "api.github.com"
+    - "registry.npmjs.org"
+    - "sarembok.com"
+    - "*.sarembok.com"
+    - "*.google.com"
+    - "*.googleapis.com"
+    - "localhost"
+    - "127.0.0.1"
+  denied_ports:
+    - 22    # SSH brute force prevention
+    - 25    # SMTP spam prevention
+    - 3389  # RDP exfiltration
+    - 445   # SMB lateral movement
+    - 135   # RPC exploit defense
+
+# 3. Code & Shell Execution Constraints
+commands:
+  max_memory_mb: 768
+  max_execution_time_ms: 5000
+  drop_capabilities:
+    - "ALL"
+  deny_patterns:
+    - "rm\\s+-rf\\s+[/~]"
+    - "format\\s+[a-z]:"
+    - "mkfs"
+    - "dd\\s+if="
+    - "chmod\\s+777"
+    - "DROP\\s+(TABLE|DATABASE|VIEW|SCHEMA)"
+    - "TRUNCATE\\s+(TABLE)?"
+    - "DELETE\\s+FROM\\s+\\w+\\s*(?!WHERE)"
+    - "shutdown"
+    - "reboot"
+    - "kill\\s+-9\\s+1"
+    - "curl.*\\|.*(sh|bash|powershell)"
+    - "wget.*\\|.*(sh|bash|powershell)"
+
+# 4. Human-In-The-Loop (HITL) Triggers
+hitl_triggers:
+  require_approval:
+    - "production_db_write"
+    - "production_db_migration"
+    - "external_payment"
+    - "financial_transaction"
+    - "privileged_execution"
+    - "cloud_resource_destroy"
+    - "external_email_dispatch"
+  auto_timeout_seconds: 300
+  action_on_timeout: "reject"
+  notification_channel: "ledger" # "ledger" | "webhook" | "console"
+
+# 5. Secret Zero Injection Rules
+secret_zero:
+  enabled: true
+  mask_in_logs: true
+  redact_in_responses: true
+  placeholder_prefix: "{{SECRET:"
+  placeholder_suffix: "}}"

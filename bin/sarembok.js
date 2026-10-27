@@ -11,11 +11,11 @@
  *   npx sarembok worker
  */
 
-const https = require('https');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { fingerprint, diff } = require('./contract-diff');
+import https from 'https';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fingerprint, diff } from './contract-diff.js';
 
 const SAREMBOK_HOST = process.env.SAREMBOK_HOST || 'https://sarembok.com';
 

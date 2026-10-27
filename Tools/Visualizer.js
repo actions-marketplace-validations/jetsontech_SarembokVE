@@ -131,6 +131,90 @@ export function generateDefaultVisualMatrix(options = {}) {
 </svg>`;
 }
 
+/**
+ * Generates an immediate trace vector when an active recursive loop is dropped.
+ */
+export function generateHaltTraceVector(haltEvent = {}) {
+  const entropy = Number(haltEvent.entropy || 0.0).toFixed(4);
+  const action = haltEvent.action || 'rollback';
+  const role = haltEvent.agentRole || 'worker';
+  const timestamp = new Date().toISOString();
+  const message = haltEvent.message || 'Entropy defense threshold breach';
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="100%" height="100%" style="background:#090d16; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
+  <defs>
+    <linearGradient id="haltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a0b12" />
+      <stop offset="50%" stop-color="#2a0818" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+    <filter id="haltGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="520" fill="url(#haltGrad)" rx="8" stroke="#f43f5e" stroke-width="1.5" />
+
+  <!-- Header HUD -->
+  <text x="50" y="48" fill="#f43f5e" font-size="14" font-weight="700" letter-spacing="1.5">SAREMBOKVE // SHANNON ENTROPY DEFENSE HALT VECTOR</text>
+  <text x="850" y="48" fill="#fca5a5" font-size="11" text-anchor="end">ACTION: ${action.toUpperCase()}</text>
+  <line x1="50" y1="62" x2="850" y2="62" stroke="#f43f5e" stroke-width="1.5" opacity="0.8" />
+
+  <!-- Halt Diagnostics Box -->
+  <g transform="translate(60, 90)">
+    <rect width="780" height="150" rx="6" fill="#0f172a" stroke="#f43f5e" stroke-width="1.2" filter="url(#haltGlow)" />
+    <circle cx="30" cy="35" r="8" fill="#f43f5e" />
+    <text x="50" y="40" fill="#f87171" font-size="14" font-weight="700">LOOP ABORT TRIGGERED (ENTROPY DEGRADATION)</text>
+    <text x="30" y="75" fill="#94a3b8" font-size="12">AGENT ROLE: <tspan fill="#f1f5f9">${role}</tspan></text>
+    <text x="30" y="100" fill="#94a3b8" font-size="12">MEASURED ENTROPY: <tspan fill="#f43f5e" font-weight="700">${entropy}</tspan> (Threshold: H(X) &gt;= 0.88)</text>
+    <text x="30" y="125" fill="#94a3b8" font-size="12">REASON: <tspan fill="#e2e8f0">${message}</tspan></text>
+  </g>
+
+  <!-- State Rollback Node Map -->
+  <g transform="translate(60, 270)">
+    <rect width="780" height="200" rx="6" fill="#0a101d" stroke="#334155" stroke-width="1" />
+    <text x="25" y="35" fill="#38bdf8" font-size="12" font-weight="600">ROLLBACK EXECUTION GRAPH</text>
+    <text x="755" y="35" fill="#64748b" font-size="11" text-anchor="end">${timestamp}</text>
+
+    <!-- Checkpoint States -->
+    <rect x="50" y="65" width="180" height="70" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+    <text x="65" y="95" fill="#34d399" font-size="11" font-weight="700">CHECKPOINT [VERIFIED]</text>
+    <text x="65" y="115" fill="#a7f3d0" font-size="10">Target: Last Stable Ledger</text>
+
+    <line x1="230" y1="100" x2="310" y2="100" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4,4" />
+    <text x="270" y="90" fill="#f87171" font-size="9" text-anchor="middle">&lt;&lt; REWIND</text>
+
+    <rect x="310" y="65" width="180" height="70" rx="4" fill="#450a0a" stroke="#f43f5e" stroke-width="1.5" />
+    <text x="325" y="95" fill="#f87171" font-size="11" font-weight="700">DEGRADED NODE</text>
+    <text x="325" y="115" fill="#fca5a5" font-size="10">Shannon Entropy &lt;= 0.12</text>
+
+    <line x1="490" y1="100" x2="570" y2="100" stroke="#475569" stroke-width="2" />
+
+    <rect x="570" y="65" width="180" height="70" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1" />
+    <text x="585" y="95" fill="#94a3b8" font-size="11" font-weight="600">NEW STRATEGY FORK</text>
+    <text x="585" y="115" fill="#64748b" font-size="10">Auditor State Re-seeded</text>
+
+    <!-- Bottom Message -->
+    <text x="25" y="175" fill="#94a3b8" font-size="11">Automated State Recovery Action: <tspan fill="#38bdf8">${action}</tspan> executed with zero SQLite-WAL database corruption.</text>
+  </g>
+</svg>`;
+}
+
+export function commitHaltVisualAsset(haltEvent) {
+  const targetDir = path.join(process.cwd(), 'public', 'generated', 'visuals');
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+  const svg = generateHaltTraceVector(haltEvent);
+  const outPath = path.join(targetDir, 'halt_trace_map.svg');
+  fs.writeFileSync(outPath, svg, 'utf8');
+  console.log(`\x1b[35m[Visualizer]\x1b[0m Halt trace vector compiled to: ${outPath}`);
+  return outPath;
+}
+
 // Direct CLI Invocation (e.g., node Tools/Visualizer.js in CI/CD)
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
 
@@ -160,3 +244,4 @@ if (isMain || process.argv.includes('--execute')) {
 
   commitVisualAsset({ visual_svg: generatedSvg });
 }
+

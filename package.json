@@ -2,12 +2,19 @@
   "name": "sarembok",
   "version": "0.3.0",
   "description": "CLI for SarembokVE: autonomous OpenAPI 3.1 / TypeScript synthesis, multi-sector real-time grounding, and CI/CD drift gating.",
-  "main": "bin/sarembok.js",
+  "type": "module",
+  "main": "bin/sarembok-cli.js",
   "bin": {
-    "sarembok": "./bin/sarembok.js"
+    "sarembok": "./bin/sarembok-cli.js",
+    "sarembok-legacy": "./bin/sarembok.js"
   },
   "files": [
     "bin/",
+    "Runtime/",
+    "Tools/",
+    "fabric/",
+    "Config/",
+    "sarembok.config.json",
     "LICENSE",
     "README.md"
   ],
@@ -15,8 +22,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node bin/sarembok.js",
-    "test": "node --test test/contract-diff.test.js"
+    "start": "node bin/sarembok-cli.js",
+    "test": "node --test test/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -37,5 +44,11 @@
   ],
   "author": "Jetson Technologies",
   "license": "Apache-2.0",
-  "dependencies": {}
+  "devDependencies": {
+    "playwright": "^1.64.1"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "ws": "^8.22.0"
+  }
 }
