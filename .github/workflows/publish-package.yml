@@ -25,10 +25,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Pre-publish verification gate (Unit Tests & Quickstart)
+      - name: Pre-publish verification gate (Unit Tests & Control Plane Status)
         run: |
           npm test
-          npm run quickstart
+          node bin/sarembok-cli.js openshell status
+          node bin/sarembok-cli.js cluster
+          node bin/sarembok-cli.js mcp info
 
       - name: Publish to GitHub Packages
         run: |

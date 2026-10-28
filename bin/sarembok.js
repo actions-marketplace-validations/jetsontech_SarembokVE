@@ -35,6 +35,7 @@ function fetchJson(url, postData = null, extraHeaders = {}) {
             port: urlObj.port || (url.startsWith('https') ? 443 : 80),
             path: urlObj.pathname + urlObj.search,
             method: postData ? 'POST' : 'GET',
+            timeout: 5000,
             headers: {
                 'User-Agent': 'SarembokCLI/1.0 (Node.js)',
                 ...(postData ? { 'Content-Type': 'application/json' } : {}),
@@ -54,7 +55,10 @@ function fetchJson(url, postData = null, extraHeaders = {}) {
                     resolve(data);
                 }
             });
-        }).on('error', reject);
+        }).on('error', reject)
+          .on('timeout', () => {
+              req.destroy(new Error('Request timed out after 5000ms'));
+          });
         if (postData) {
             req.write(JSON.stringify(postData));
         }
