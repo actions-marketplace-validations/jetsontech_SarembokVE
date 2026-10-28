@@ -24,8 +24,12 @@
     "Config/",
     "sarembok.config.json",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22"
   },
