@@ -1,0 +1,141 @@
+name: SarembokVE IP & BSL-1.1 Lockdown
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/ip-lockdown.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enforce-ip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply BSL-1.1 LICENSE, TRADEMARK.md, package.json & Per-File Headers
+        run: |
+          python3 - << 'EOF'
+          import os, json, pathlib
+
+          # 1. Write Business Source License 1.1 (LICENSE)
+          license_text = """Business Source License 1.1
+
+          Parameters:
+          Licensor:                 Timothy Hall Jr. / Jetsontech
+          Development Object:       SarembokVE (including all source code, manifests, and configurations)
+          Change Date:              2030-10-28
+          Additional Use Grant:     You may use the Licensed Work for non-commercial purpose, testing, 
+                                    academic research, evaluation, and local development. Running the 
+                                    Licensed Work on a single local development machine for individual 
+                                    testing is fully permitted under this grant.
+          Change License:           Apache License, Version 2.0
+
+          Terms:
+
+          1. The Licensor hereby grants you the right to copy, modify, create derivative works, redistribute, and make the Licensed Work available for any purpose that complies with the Additional Use Grant specified above.
+
+          2. Any use of the Licensed Work that does not comply with the Additional Use Grant is a commercial use and requires a separate, explicit commercial license from the Licensor. 
+
+          3. You must retain all copyright, trademark, and attribution notices inside all copies or modifications of the Licensed Work.
+
+          4. On the Change Date specified above, this License shall automatically convert into the Change License, and your rights shall be governed entirely by the terms of the Apache License, Version 2.0.
+
+          5. THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY.
+          """
+          # Remove leading indentation
+          license_lines = [line[10:] if line.startswith("          ") else line for line in license_text.splitlines()]
+          pathlib.Path("LICENSE").write_text("\n".join(license_lines) + "\n", encoding="utf-8")
+
+          # 2. Write TRADEMARK.md
+          trademark_text = """# Trademark Policy and Brand Protection
+
+          The names **SarembokVE**, **Sarembok**, **Virtual Evolution**, and all associated logos, visual identity designs, and marketplace graphics are the exclusive trademarks of **Timothy Hall Jr. / Jetsontech**.
+
+          ### Permitted Use
+          * Referencing the official repository in documentation, articles, or educational content.
+          * Linking directly to the official GitHub Marketplace listing or the official website (sarembok.com).
+
+          ### Prohibited Use
+          * You **cannot** use the name SarembokVE or Sarembok for any forks, distributions, or modified versions of this software.
+          * You **cannot** publish a modified version of this software to the GitHub Marketplace, npm, Docker Hub, PyPI, or any other registry using the name SarembokVE or implying official endorsement.
+          * Any commercial deployment or repackaging of this system under the project's original name without an explicit enterprise license is a violation of trademark law and will be met with immediate legal action.
+
+          If you fork this repository for personal evaluation or permitted non-commercial modifications, you **must** entirely remove all references to "SarembokVE" and "Sarembok" from user-facing assets, titles, logos, and descriptions before publishing.
+          """
+          trademark_lines = [line[10:] if line.startswith("          ") else line for line in trademark_text.splitlines()]
+          pathlib.Path("TRADEMARK.md").write_text("\n".join(trademark_lines) + "\n", encoding="utf-8")
+
+          # 3. Update package.json license to BSL-1.1
+          pkg_path = pathlib.Path("package.json")
+          if pkg_path.exists():
+              pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
+              pkg["license"] = "BSL-1.1"
+              pkg_path.write_text(json.dumps(pkg, indent=2) + "\n", encoding="utf-8")
+
+          # 4. Prepend BSL-1.1 Copyright Header to source files
+          slash_header = (
+              "// ============================================================================\n"
+              "// Copyright (c) 2026 Timothy Hall Jr. / Jetsontech. All rights reserved.\n"
+              "//\n"
+              "// This source code is licensed under the Business Source License 1.1 (BSL).\n"
+              "// Commercial use, deployment in production environments, or redistribution \n"
+              "// for profit is strictly prohibited without a valid commercial license.\n"
+              "//\n"
+              "// For commercial inquiries, licensing, or partnerships, contact the Licensor.\n"
+              "// ============================================================================\n\n"
+          )
+
+          hash_header = (
+              "# ============================================================================\n"
+              "# Copyright (c) 2026 Timothy Hall Jr. / Jetsontech. All rights reserved.\n"
+              "#\n"
+              "# This source code is licensed under the Business Source License 1.1 (BSL).\n"
+              "# Commercial use, deployment in production environments, or redistribution \n"
+              "# for profit is strictly prohibited without a valid commercial license.\n"
+              "#\n"
+              "# For commercial inquiries, licensing, or partnerships, contact the Licensor.\n"
+              "# ============================================================================\n\n"
+          )
+
+          skip_dirs = {".git", "node_modules", "venv", ".venv", "dist", "build"}
+          slash_exts = {".js", ".ts", ".cpp", ".h", ".hpp", ".c"}
+          hash_exts = {".py", ".ps1", ".sh"}
+
+          for root, dirs, files in os.walk("."):
+              dirs[:] = [d for d in dirs if d not in skip_dirs]
+              for fname in files:
+                  fpath = pathlib.Path(root) / fname
+                  ext = fpath.suffix.lower()
+                  if ext not in slash_exts and ext not in hash_exts:
+                      continue
+                  try:
+                      content = fpath.read_text(encoding="utf-8")
+                  except Exception:
+                      continue
+                  if "Business Source License 1.1" in content:
+                      continue
+                  header = slash_header if ext in slash_exts else hash_header
+                  if content.startswith("#!"):
+                      first_nl = content.find("\n")
+                      if first_nl != -1:
+                          new_content = content[:first_nl+1] + header + content[first_nl+1:]
+                      else:
+                          new_content = content + "\n" + header
+                  else:
+                      new_content = header + content
+                  fpath.write_text(new_content, encoding="utf-8")
+          EOF
+
+      - name: Commit and Push IP Lockdown
+        run: |
+          git config user.name "Timothy Hall Jr. (Jetsontech)"
+          git config user.email "jetsontech@gmail.com"
+          git add .
+          git diff --staged --quiet || git commit -m "chore(legal): enforce Business Source License 1.1 (BSL-1.1), TRADEMARK.md, and IP file headers"
+          git push origin HEAD:main
