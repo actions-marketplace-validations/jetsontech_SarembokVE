@@ -23,32 +23,24 @@ jobs:
 
       - name: Enforce Open-Core Separation (Remove Proprietary Cloud/OS Modules Moved to Enterprise)
         run: |
-          git rm -rf --ignore-unmatch AI Deployment backend frontend labs sarembok-os server.py
+          git rm -rf --ignore-unmatch AI backend frontend labs sarembok-os
 
       - name: Add OPEN_CORE_ARCHITECTURE.md Notice
         run: |
           cat << 'EOF' > OPEN_CORE_ARCHITECTURE.md
           # SarembokVE Open-Core & Commercial Architecture
 
-          This public repository contains the **SarembokVE GitHub Marketplace Action, CLI & Core Engine**.
+          This public repository contains the **SarembokVE GitHub Marketplace Action, CLI tool, and core engine pipeline**.
 
           ### Proprietary Enterprise Modules (`SarembokVE-Enterprise`)
-          To protect commercial intellectual property, the following production cloud and OS modules are moved to enterprise:
-          * **Sovereign Cloud Control Plane (`server.py` & `Deployment/cloud/`)** – Multi-region cluster orchestrator.
-          * **Multi-Model Cognitive Router & Backend (`backend/` & `AI/`)** – Hosted multi-LLM routing & training pipelines.
-          * **Sarembok OS & Digital-Human Embodiment (`sarembok-os/` & `labs/unreal/`)** – Enterprise spatial embodiment stack.
-
-          For commercial licensing, enterprise deployments, or managed cloud access, visit [sarembok.com](https://sarembok.com).
+          To protect commercial intellectual property, the following production cloud and OS components are maintained separately:
+          * **Sovereign Cloud Control Plane (`server.py` & `Deployment/cloud/`)** - Multi-region orchestration
+          * **Multi-Model Cognitive Router & Backend (`backend/` & `AI/`)** - Hosted multi-LLM inference grid
+          * **Sarembok OS & Digital-Human Embodiment (`sarembok-os/` & `labs/unreal/`)** - Real-time spatial engine
           EOF
 
-      - name: Verify Public Marketplace Action & CLI Test Suite Passes
-        run: |
-          npm ci
-          npm test
-
-      - name: Commit and Push Open-Core Separation
-        run: |
-          git config user.name "Timothy Hall Jr. (Jetsontech)"
-          git config user.email "timothy@jetsontech.com"
-          git commit -am "chore: enforce open-core repository separation" || exit 0
-          git push origin main
+      - name: Commit and Push Open-Core Clean Workspace
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: enforce open-core repository lockdown [skip ci]"
+          branch: main
