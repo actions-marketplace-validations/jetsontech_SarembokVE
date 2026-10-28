@@ -1,12 +1,10 @@
-name: SarembokVE IP & BSL-1.1 Lockdown
+name: Enforce IP & Repo Lockdown
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: write
+  pull_request:
+    branches: [ main ]
 
 jobs:
   enforce-ip:
@@ -23,26 +21,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Enforce Open-Core Separation (Remove Proprietary Cloud/OS Modules Moved to Enterprise Vault)
+      - name: Enforce Open-Core Separation (Remove Proprietary Cloud/OS Modules Moved to Enterprise)
         run: |
-          git rm -rf --ignore-unmatch AI Deployment backend frontend labs sarembok-os server.py .vsconfig
+          git rm -rf --ignore-unmatch AI Deployment backend frontend labs sarembok-os server.py
 
       - name: Add OPEN_CORE_ARCHITECTURE.md Notice
         run: |
           cat << 'EOF' > OPEN_CORE_ARCHITECTURE.md
           # SarembokVE Open-Core & Commercial Architecture
 
-          **Copyright (c) 2026 Timothy Hall Jr. / Jetsontech. All rights reserved.**
-
-          This public repository contains the **SarembokVE GitHub Marketplace Action, CLI (`npx sarembok`), Zero-Trust OpenShell Supervisor, Contract Drift Gate, and Local SDK** licensed under the **Business Source License 1.1 (BSL-1.1)**.
+          This public repository contains the **SarembokVE GitHub Marketplace Action, CLI & Core Engine**.
 
           ### Proprietary Enterprise Modules (`SarembokVE-Enterprise`)
-          To protect commercial intellectual property, the following production cloud and sovereign control-plane subsystems are maintained exclusively in the private **SarembokVE-Enterprise** vault and hosted at [sarembok.com](https://sarembok.com):
-          * **Sovereign Cloud Control Plane (`server.py` & `Deployment/cloud/`)** — Multi-sector real-time parallel fan-out engine and production cluster broker.
-          * **Multi-Model Cognitive Router & Backend (`backend/` & `AI/`)** — Hosted multi-provider fallback routing and enterprise orchestration.
-          * **Sarembok OS & Digital-Human Embodiment (`sarembok-os/` & `labs/unreal/`)** — Native OS substrate and Unreal Engine 5.x MetaHuman bridge.
+          To protect commercial intellectual property, the following production cloud and OS modules are moved to enterprise:
+          * **Sovereign Cloud Control Plane (`server.py` & `Deployment/cloud/`)** – Multi-region cluster orchestrator.
+          * **Multi-Model Cognitive Router & Backend (`backend/` & `AI/`)** – Hosted multi-LLM routing & training pipelines.
+          * **Sarembok OS & Digital-Human Embodiment (`sarembok-os/` & `labs/unreal/`)** – Enterprise spatial embodiment stack.
 
-          For commercial licensing, enterprise deployments, or managed cloud access, visit [sarembok.com](https://sarembok.com) or contact **Timothy Hall Jr. / Jetsontech**.
+          For commercial licensing, enterprise deployments, or managed cloud access, visit [sarembok.com](https://sarembok.com).
           EOF
 
       - name: Verify Public Marketplace Action & CLI Test Suite Passes
@@ -53,7 +49,6 @@ jobs:
       - name: Commit and Push Open-Core Separation
         run: |
           git config user.name "Timothy Hall Jr. (Jetsontech)"
-          git config user.email "jetsontech@gmail.com"
-          git add -A
-          git diff --staged --quiet || git commit -m "chore(open-core): isolate public Marketplace CLI/Action from private Enterprise Vault modules"
-          git push origin HEAD:main
+          git config user.email "timothy@jetsontech.com"
+          git commit -am "chore: enforce open-core repository separation" || exit 0
+          git push origin main
