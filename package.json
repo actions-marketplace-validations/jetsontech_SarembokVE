@@ -57,7 +57,7 @@
     "reverse-engineering"
   ],
   "author": "Tim Hall (@jetsontech)",
-  "license": "Apache-2.0",
+  "license": "BSL-1.1",
   "devDependencies": {
     "playwright": "^1.64.1"
   },

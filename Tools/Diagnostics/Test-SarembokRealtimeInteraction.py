@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2026 Timothy Hall Jr. / Jetsontech. All rights reserved.
+#
+# This source code is licensed under the Business Source License 1.1 (BSL).
+# Commercial use, deployment in production environments, or redistribution 
+# for profit is strictly prohibited without a valid commercial license.
+#
+# For commercial inquiries, licensing, or partnerships, contact the Licensor.
+# ============================================================================
+
 """
 Test-SarembokRealtimeInteraction.py
 Automated Acceptance Suite for Checks 116 to 140 (Sarembok_VE v1.8 Real-Time Cognition).
