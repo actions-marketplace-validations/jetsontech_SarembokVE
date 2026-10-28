@@ -5,12 +5,18 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { CapabilityTokenFactory, CapabilityType } from '../fabric/src/guardrails/capability_token.js';
 import { FormalPolicyVerifier } from '../fabric/src/guardrails/formal_verifier.js';
 import { WalStore } from '../fabric/src/memory/wal_store.js';
 import { RaftNode } from '../fabric/src/consensus/raft_consensus.js';
 import { SarembokMcpServer, MCP_VERSION } from '../fabric/src/protocols/mcp_server.js';
 import { OpenShellSandbox } from '../Runtime/OpenShellSandbox.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 test('Cryptographic Hardening: Nested HMAC-SHA256 Macaroon Token Chaining & Tamper Detection', () => {
   const rootSecret = 'SOVEREIGN_ROOT_SECRET_TEST_9981';
@@ -282,3 +288,113 @@ test('OpenShell Sandbox: Secret Zero Stream Redaction & Working Directory Jailin
 
   sandbox.close();
 });
+
+test('Raft HTTP RPC Network Transport: Multi-Node Localhost Peer Replication & Merkle Hash Parity', async () => {
+  const leader = new RaftNode({ nodeId: 'leader-node' });
+  const follower = new RaftNode({ nodeId: 'follower-node' });
+
+  const leaderPort = await leader.startRpcServer(0);
+  const followerPort = await follower.startRpcServer(0);
+
+  try {
+    assert.ok(leaderPort > 0, 'Leader RPC server must bind to ephemeral port');
+    assert.ok(followerPort > 0, 'Follower RPC server must bind to ephemeral port');
+
+    // Designate leader with term 1
+    leader.role = 'LEADER';
+    leader.currentTerm = 1;
+    follower.currentTerm = 1;
+
+    // Propose an entry on leader
+    const proposalRes = await leader.propose({
+      type: 'STATE_TRANSITION',
+      payload: { cluster_event: 'node_join', version: '3.0.0' }
+    });
+
+    const entry = proposalRes.entry || proposalRes;
+    assert.ok(entry.entryHash, 'Leader entry must have SHA-256 Merkle hash');
+
+    // Replicate entry to follower over HTTP RPC
+    const followerUrl = `http://127.0.0.1:${followerPort}`;
+    const result = await leader.replicateToPeer(followerUrl, entry);
+
+    assert.equal(result.success, true, 'Follower must accept append-entries over HTTP RPC');
+    assert.equal(result.matchIndex, 1);
+
+    // Verify both nodes have identical log length and identical SHA-256 Merkle hashes
+    assert.equal(leader.log.length, 1);
+    assert.equal(follower.log.length, 1);
+    assert.equal(leader.getLastLogHash(), follower.getLastLogHash(), 'SHA-256 Merkle log hashes must match identically');
+
+    // Verify cryptographic integrity on both nodes
+    assert.equal(leader.verifyIntegrity().verified, true);
+    assert.equal(follower.verifyIntegrity().verified, true);
+  } finally {
+    await leader.stopRpcServer();
+    await follower.stopRpcServer();
+  }
+});
+
+test('OpenShell Macaroon CLI Enforcement: Token Mint & Execution Verification / Rejection', async () => {
+  const rootDir = path.resolve(__dirname, '..');
+  const cliPath = path.join(rootDir, 'bin', 'sarembok-cli.js');
+
+  const stripAnsi = (str) => str.replace(/\x1b\[[0-9;]*m/g, '');
+
+  // 1. Mint valid capability token via CLI
+  const mintOutput = execSync(`node "${cliPath}" token mint --scope execute --ttl 60`, {
+    encoding: 'utf8',
+    cwd: rootDir
+  });
+
+  const cleanMint = stripAnsi(mintOutput);
+  assert.ok(cleanMint.includes('Minted Sovereign Capability Macaroon Token'));
+  const b64Match = cleanMint.match(/Base64 Encoded Token:\s*\n+([A-Za-z0-9+/=]+)/);
+  assert.ok(b64Match, 'Must output base64 token');
+  const validTokenB64 = b64Match[1].trim();
+
+  // 2. Execute command with valid token -> Must succeed
+  const runOutput = execSync(`node "${cliPath}" openshell run "echo macaroon_verified_success" --token "${validTokenB64}"`, {
+    encoding: 'utf8',
+    cwd: rootDir
+  });
+  assert.ok(runOutput.includes('macaroon_verified_success'), 'Command must execute when token is valid');
+
+  // 3. Tampered token -> Must reject with exit code 1
+  assert.throws(
+    () => {
+      execSync(`node "${cliPath}" openshell run "echo should_fail" --token "tampered_invalid_token_xyz"`, {
+        encoding: 'utf8',
+        cwd: rootDir,
+        stdio: 'pipe'
+      });
+    },
+    (err) => {
+      return err.status !== 0;
+    }
+  );
+
+  // 4. Expired token -> Must reject with exit code 1
+  const expiredOutput = execSync(`node "${cliPath}" token mint --scope execute --ttl -10`, {
+    encoding: 'utf8',
+    cwd: rootDir
+  });
+  const cleanExpired = stripAnsi(expiredOutput);
+  const expiredB64Match = cleanExpired.match(/Base64 Encoded Token:\s*\n+([A-Za-z0-9+/=]+)/);
+  assert.ok(expiredB64Match, 'Must output expired base64 token');
+  const expiredTokenB64 = expiredB64Match[1].trim();
+
+  assert.throws(
+    () => {
+      execSync(`node "${cliPath}" openshell run "echo should_fail_expired" --token "${expiredTokenB64}"`, {
+        encoding: 'utf8',
+        cwd: rootDir,
+        stdio: 'pipe'
+      });
+    },
+    (err) => {
+      return err.status !== 0;
+    }
+  );
+});
+

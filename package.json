@@ -1,6 +1,6 @@
 {
   "name": "sarembok",
-  "version": "0.3.1",
+  "version": "3.0.0",
   "description": "CLI for SarembokVE: 3-tier progressive adoption platform, NVIDIA OpenShell zero-trust sandbox, OpenAPI 3.1 contract drift gating, and distributed agentic mesh.",
   "type": "module",
   "main": "bin/sarembok-cli.js",
@@ -8,7 +8,8 @@
     ".": "./bin/sarembok-cli.js",
     "./openshell": "./Runtime/openshell/index.js",
     "./fabric": "./fabric/index.js",
-    "./contract": "./Tools/contract/index.js"
+    "./contract": "./Tools/contract/index.js",
+    "./sdk": "./SDK/index.js"
   },
   "bin": {
     "sarembok": "./bin/sarembok-cli.js",
@@ -19,6 +20,7 @@
     "Runtime/",
     "Tools/",
     "fabric/",
+    "SDK/",
     "Config/",
     "sarembok.config.json",
     "LICENSE",
@@ -50,7 +52,7 @@
     "playwright",
     "reverse-engineering"
   ],
-  "author": "Jetson Technologies",
+  "author": "Tim Hall (@jetsontech)",
   "license": "Apache-2.0",
   "devDependencies": {
     "playwright": "^1.64.1"

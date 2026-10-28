@@ -12,6 +12,7 @@
  */
 
 import crypto from 'node:crypto';
+import path from 'node:path';
 
 export const CapabilityType = {
   FS_READ: 'FS:READ',
@@ -200,6 +201,34 @@ export class CapabilityTokenFactory {
   }
 
   /**
+   * Static convenience verifier
+   */
+  static verify(token, context = {}, secret = 'SOVEREIGN_CAPABILITY_SIGNING_KEY_DIRECTIVE_01') {
+    const factory = new CapabilityTokenFactory(secret);
+    return factory.verify(token, context);
+  }
+
+  /**
+   * Alias for verifyToken that supports Object, JSON string, or Base64 string
+   */
+  verify(token, context = {}) {
+    let tokenObj = token;
+    if (typeof token === 'string') {
+      try {
+        const trimmed = token.trim();
+        if (trimmed.startsWith('{')) {
+          tokenObj = JSON.parse(trimmed);
+        } else {
+          tokenObj = JSON.parse(Buffer.from(trimmed, 'base64').toString('utf8'));
+        }
+      } catch {
+        return false;
+      }
+    }
+    return this.verifyToken(tokenObj, context);
+  }
+
+  /**
    * Evaluates a single first-party caveat deterministically
    * @param {string} caveat 
    * @param {Object} context 
@@ -224,14 +253,21 @@ export class CapabilityTokenFactory {
         break;
       }
 
-      case 'pathPrefix':
-        if (context.path && !context.path.startsWith(value)) return false;
+      case 'path':
+      case 'pathPrefix': {
+        if (context.path) {
+          const normContext = path.resolve(context.path).toLowerCase().replace(/\\/g, '/');
+          const normVal = path.resolve(value).toLowerCase().replace(/\\/g, '/');
+          if (!normContext.startsWith(normVal)) return false;
+        }
         break;
+      }
 
       case 'allowedPaths': {
         if (context.path) {
+          const normContext = path.resolve(context.path).toLowerCase().replace(/\\/g, '/');
           const allowed = value.split(',');
-          if (!allowed.some(p => context.path.startsWith(p))) return false;
+          if (!allowed.some(p => normContext.startsWith(path.resolve(p).toLowerCase().replace(/\\/g, '/')))) return false;
         }
         break;
       }
@@ -250,11 +286,25 @@ export class CapabilityTokenFactory {
         break;
       }
 
-      case 'scope':
+      case 'scope': {
+        if (context.scope) {
+          const allowedScopes = value.split(',');
+          if (!allowedScopes.includes(context.scope)) return false;
+        }
+        break;
+      }
+
       case 'capabilities': {
         if (context.action) {
           const allowedCaps = value.split(',');
           if (!allowedCaps.includes(context.action)) return false;
+        }
+        break;
+      }
+
+      case 'command': {
+        if (context.command && context.command !== value && !context.command.startsWith(value)) {
+          return false;
         }
         break;
       }

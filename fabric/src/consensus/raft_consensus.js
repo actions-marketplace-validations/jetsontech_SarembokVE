@@ -11,6 +11,7 @@
 
 import { EventEmitter } from 'node:events';
 import crypto from 'node:crypto';
+import http from 'node:http';
 
 export const RaftRole = {
   LEADER: 'LEADER',
@@ -36,6 +37,8 @@ export class RaftNode extends EventEmitter {
     this.minElectionTimeout = options.minElectionTimeout || 150;
     this.maxElectionTimeout = options.maxElectionTimeout || 300;
     this.transportSend = options.transportSend || null;
+    this.rpcServer = null;
+    this.rpcPort = null;
 
     // Persistent state on all servers
     this.currentTerm = 0;
@@ -75,6 +78,7 @@ export class RaftNode extends EventEmitter {
   stop() {
     this.clearElectionTimer();
     this.clearHeartbeatTimer();
+    this.stopRpcServer();
     this.role = RaftRole.FOLLOWER;
     this.emit('stopped', { nodeId: this.nodeId });
   }
@@ -109,6 +113,14 @@ export class RaftNode extends EventEmitter {
   getQuorumSize() {
     const totalNodes = this.peers.size + 1;
     return Math.floor(totalNodes / 2) + 1;
+  }
+
+  /**
+   * Get the SHA-256 Merkle hash of the latest log entry (or genesis zeros)
+   * @returns {string} 64-char hex SHA-256 hash
+   */
+  getLastLogHash() {
+    return this.log.length > 0 ? this.log[this.log.length - 1].entryHash : '0'.repeat(64);
   }
 
   /**
@@ -540,6 +552,282 @@ export class RaftNode extends EventEmitter {
     } else {
       this.emit('sendRpc', { toNodeId, message });
     }
+  }
+
+  /**
+   * Start a lightweight, zero-dependency Node HTTP RPC listener for multi-node Raft clusters
+   * Handles POST /raft/request-vote and POST /raft/append-entries
+   * @param {number} [port=0] Port to listen on (0 for dynamic port)
+   * @returns {Promise<number>} Bound port
+   */
+  startRpcServer(port = 0) {
+    if (this.rpcServer) return Promise.resolve(this.rpcPort);
+
+    return new Promise((resolve, reject) => {
+      this.rpcServer = http.createServer((req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          let payload;
+          try {
+            payload = body ? JSON.parse(body) : {};
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+            return;
+          }
+
+          if (req.url === '/raft/request-vote') {
+            const result = this.processRequestVoteHttp(payload);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } else if (req.url === '/raft/append-entries') {
+            const result = this.processAppendEntriesHttp(payload);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } else {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Not Found' }));
+          }
+        });
+      });
+
+      this.rpcServer.on('error', reject);
+      this.rpcServer.listen(port, '127.0.0.1', () => {
+        const addr = this.rpcServer.address();
+        this.rpcPort = typeof addr === 'object' && addr ? addr.port : port;
+        resolve(this.rpcPort);
+      });
+    });
+  }
+
+  /**
+   * Stop the HTTP RPC listener and clean up timers and sockets
+   */
+  stopRpcServer() {
+    this.clearElectionTimer();
+    this.clearHeartbeatTimer();
+    return new Promise((resolve) => {
+      if (!this.rpcServer) return resolve();
+      try {
+        if (typeof this.rpcServer.closeAllConnections === 'function') {
+          this.rpcServer.closeAllConnections();
+        }
+      } catch {}
+      this.rpcServer.close(() => {
+        this.rpcServer = null;
+        this.rpcPort = null;
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * Process incoming HTTP RequestVote RPC
+   * @param {Object} payload 
+   * @returns {Object} { term, voteGranted, candidateId }
+   */
+  processRequestVoteHttp(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return { term: this.currentTerm, voteGranted: false, reason: 'Invalid payload' };
+    }
+
+    if (payload.term > this.currentTerm) {
+      this.currentTerm = payload.term;
+      this.role = RaftRole.FOLLOWER;
+      this.votedFor = null;
+      this.clearHeartbeatTimer();
+      this.resetElectionTimeout();
+    }
+
+    let voteGranted = false;
+    if (payload.term < this.currentTerm) {
+      voteGranted = false;
+    } else {
+      const canVote = (this.votedFor === null || this.votedFor === payload.candidateId);
+      const lastLogIndex = this.log.length;
+      const lastLogTerm = lastLogIndex > 0 ? this.log[lastLogIndex - 1].term : 0;
+
+      const logOk = (payload.lastLogTerm > lastLogTerm) ||
+        (payload.lastLogTerm === lastLogTerm && (payload.lastLogIndex || 0) >= lastLogIndex);
+
+      if (canVote && logOk) {
+        voteGranted = true;
+        this.votedFor = payload.candidateId;
+        this.resetElectionTimeout();
+      }
+    }
+
+    return {
+      term: this.currentTerm,
+      voteGranted,
+      candidateId: payload.candidateId
+    };
+  }
+
+  /**
+   * Process incoming HTTP AppendEntries RPC with SHA-256 Merkle chain verification
+   * @param {Object} payload 
+   * @returns {Object} { term, success, matchIndex, lastEntryHash }
+   */
+  processAppendEntriesHttp(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return { term: this.currentTerm, success: false, reason: 'Invalid payload' };
+    }
+
+    // 1. Reply false if term < currentTerm
+    if (payload.term < this.currentTerm) {
+      return {
+        term: this.currentTerm,
+        success: false,
+        matchIndex: this.log.length,
+        lastEntryHash: this.log.length > 0 ? this.log[this.log.length - 1].entryHash : '0'.repeat(64),
+        reason: 'Leader term is stale'
+      };
+    }
+
+    // 2. Rule: If RPC term > currentTerm, update currentTerm and step down
+    if (payload.term > this.currentTerm) {
+      this.currentTerm = payload.term;
+      this.role = RaftRole.FOLLOWER;
+      this.votedFor = null;
+      this.clearHeartbeatTimer();
+      this.resetElectionTimeout();
+    }
+
+    this.leaderId = payload.leaderId;
+    this.role = RaftRole.FOLLOWER;
+    this.resetElectionTimeout();
+
+    // 3. Merkle Chain & Log Verification
+    if (payload.prevLogIndex > 0) {
+      const prevEntry = this.log[payload.prevLogIndex - 1];
+      if (!prevEntry || prevEntry.term !== payload.prevLogTerm) {
+        return {
+          term: this.currentTerm,
+          success: false,
+          matchIndex: this.log.length,
+          lastEntryHash: this.log.length > 0 ? this.log[this.log.length - 1].entryHash : '0'.repeat(64),
+          reason: 'prevLogIndex/term mismatch'
+        };
+      }
+      if (payload.prevLogHash && prevEntry.entryHash && prevEntry.entryHash !== payload.prevLogHash) {
+        return {
+          term: this.currentTerm,
+          success: false,
+          matchIndex: this.log.length,
+          lastEntryHash: prevEntry.entryHash,
+          reason: 'prevLogHash Merkle link mismatch'
+        };
+      }
+    }
+
+    // 4. Append entries with Merkle verification
+    if (payload.entries && Array.isArray(payload.entries) && payload.entries.length > 0) {
+      for (let i = 0; i < payload.entries.length; i++) {
+        const rawEntry = payload.entries[i];
+        const logIndex = (payload.prevLogIndex || 0) + 1 + i;
+
+        const prevHash = this.log.length > 0
+          ? this.log[this.log.length - 1].entryHash
+          : (payload.prevLogHash || '0'.repeat(64));
+
+        const expectedHash = crypto
+          .createHash('sha256')
+          .update(`${rawEntry.term}:${logIndex}:${prevHash}:${JSON.stringify(rawEntry.command)}`)
+          .digest('hex');
+
+        const entry = {
+          id: rawEntry.id || crypto.randomUUID(),
+          term: rawEntry.term,
+          index: logIndex,
+          command: rawEntry.command,
+          prevHash: rawEntry.prevHash || prevHash,
+          entryHash: rawEntry.entryHash || expectedHash,
+          timestamp: rawEntry.timestamp || Date.now()
+        };
+
+        if (this.log.length >= logIndex) {
+          if (this.log[logIndex - 1].term !== entry.term) {
+            this.log = this.log.slice(0, logIndex - 1);
+            this.log.push(entry);
+          } else {
+            this.log[logIndex - 1] = entry;
+          }
+        } else {
+          this.log.push(entry);
+        }
+      }
+    }
+
+    // 5. Verify local log integrity
+    this.verifyIntegrity();
+
+    // 6. Update commit index
+    if (payload.leaderCommit !== undefined && payload.leaderCommit > this.commitIndex) {
+      this.commitIndex = Math.min(payload.leaderCommit, this.log.length);
+      this.applyLogs();
+    }
+
+    const lastEntryHash = this.log.length > 0
+      ? this.log[this.log.length - 1].entryHash
+      : '0'.repeat(64);
+
+    return {
+      term: this.currentTerm,
+      success: true,
+      matchIndex: this.log.length,
+      lastEntryHash
+    };
+  }
+
+  /**
+   * Replicate proposed Merkle log entry to a live peer over HTTP
+   * @param {string} peerUrl Base URL (e.g. 'http://127.0.0.1:9091') or endpoint URL
+   * @param {Object} [entry] Entry to replicate (defaults to latest log entry)
+   * @returns {Promise<Object>} Peer response
+   */
+  async replicateToPeer(peerUrl, entry = null) {
+    const entries = entry ? [entry] : (this.log.length > 0 ? [this.log[this.log.length - 1]] : []);
+    const prevLogIndex = this.log.length - entries.length;
+    const prevEntry = prevLogIndex > 0 && prevLogIndex <= this.log.length ? this.log[prevLogIndex - 1] : null;
+    const prevLogTerm = prevEntry ? prevEntry.term : 0;
+    const prevLogHash = prevEntry ? prevEntry.entryHash : '0'.repeat(64);
+
+    const payload = {
+      term: this.currentTerm,
+      leaderId: this.nodeId,
+      prevLogIndex,
+      prevLogTerm,
+      prevLogHash,
+      entries,
+      leaderCommit: this.commitIndex
+    };
+
+    const targetUrl = peerUrl.endsWith('/raft/append-entries')
+      ? peerUrl
+      : `${peerUrl.replace(/\/$/, '')}/raft/append-entries`;
+
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Connection': 'close'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Replication failed to ${peerUrl} with HTTP ${res.status}`);
+    }
+
+    return await res.json();
   }
 }
 

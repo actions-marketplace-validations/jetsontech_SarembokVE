@@ -19,7 +19,8 @@ class TestFrontendRendering(unittest.TestCase):
     def setUp(self) -> None:
         self.cockpit_path = REPO_ROOT / "public" / "components" / "UnifiedCockpit.html"
         self.cockpit_frontend_path = REPO_ROOT / "frontend" / "components" / "UnifiedCockpit.html"
-        self.index_html_path = REPO_ROOT / "frontend" / "index.html"
+        legacy_html = REPO_ROOT / "frontend" / "legacy.html"
+        self.index_html_path = legacy_html if legacy_html.exists() else (REPO_ROOT / "frontend" / "index.html")
 
     def test_01_unified_cockpit_elements_and_pipeline_switcher(self) -> None:
         self.assertTrue(self.cockpit_path.exists(), "public/components/UnifiedCockpit.html must exist")
@@ -47,7 +48,7 @@ class TestFrontendRendering(unittest.TestCase):
         self.assertIn("SHANNON ENTROPY", content)
 
     def test_02_frontend_index_metahuman_canvas_and_controls(self) -> None:
-        self.assertTrue(self.index_html_path.exists(), "frontend/index.html must exist")
+        self.assertTrue(self.index_html_path.exists(), "frontend index/legacy html must exist")
         content = self.index_html_path.read_text(encoding="utf-8")
 
         # Check canvas and HUD overlay
@@ -64,7 +65,9 @@ class TestFrontendRendering(unittest.TestCase):
         self.assertIn("FACE_TOPOLOGY", content)
 
     def test_03_avatar_contract_compliance(self) -> None:
-        contract_path = REPO_ROOT / "Architecture" / "METAHUMAN_AVATAR_CONTRACT.md"
+        doc_contract = REPO_ROOT / "Docs" / "architecture" / "METAHUMAN_AVATAR_CONTRACT.md"
+        legacy_contract = REPO_ROOT / "Architecture" / "METAHUMAN_AVATAR_CONTRACT.md"
+        contract_path = doc_contract if doc_contract.exists() else legacy_contract
         self.assertTrue(contract_path.exists(), "METAHUMAN_AVATAR_CONTRACT.md must exist")
         contract = contract_path.read_text(encoding="utf-8")
         self.assertIn("presentation implementation, not the intelligence layer", contract)

@@ -85,6 +85,26 @@ export class SarembokClient {
         return this.call("RestoreState", { agentId, walEntries });
     }
 
+    // ==========================================
+    // MCP TOOL CALL WRAPPERS (v3.0.0)
+    // ==========================================
+
+    public async openshellVerify(command: string, agentId?: string) {
+        return this.call("openshell_verify", { command, agentId });
+    }
+
+    public async contractSpec(serviceName?: string) {
+        return this.call("contract_spec", { serviceName });
+    }
+
+    public async entropyEvaluate(output: string, history: string[] = []) {
+        return this.call("entropy_evaluate", { output, history });
+    }
+
+    public async walVerify(dbPath?: string, verifySignatures: boolean = true) {
+        return this.call("wal_verify", { dbPath, verifySignatures });
+    }
+
     public close() {
         this.ws?.close();
     }

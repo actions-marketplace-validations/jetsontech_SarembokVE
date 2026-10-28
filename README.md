@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml/badge.svg)](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Tests: 26 Passing](https://img.shields.io/badge/Tests-26%20Passing-brightgreen.svg)](test/)
+[![Tests: 32+ Passing](https://img.shields.io/badge/Tests-32%2B%20Passing-brightgreen.svg)](test/)
 [![Security: NVIDIA OpenShell](https://img.shields.io/badge/Security-NVIDIA%20OpenShell%20Zero--Trust-blueviolet.svg)](Docs/SECURITY.md)
 [![ADR: Documented](https://img.shields.io/badge/Architecture-ADR--001%20Modular-informational.svg)](Docs/ADR.md)
 
@@ -57,10 +57,14 @@ npx sarembok spec https://httpbin.org --out api.json
 npx sarembok openshell verify "npm test"
 npx sarembok openshell verify "rm -rf /"        # ✕ Instantly blocked by deterministic policy signature
 
-# 3. Execute an isolated command with Secret Zero credential masking
+# 3. Mint an unforgeable HMAC-SHA256 Macaroon capability token and execute with proof
+npx sarembok token mint --scope execute --ttl 3600
+npx sarembok openshell run "npm test" --token <base64Macaroon>
+
+# 4. Execute an isolated command with Secret Zero credential masking
 npx sarembok openshell run "curl -H 'Authorization: Bearer {{SECRET:GITHUB_TOKEN}}' https://api.github.com/user"
 
-# 4. Mount SarembokVE directly as a live JSON-RPC 2.0 stdio MCP server (Cursor, Claude Desktop, Antigravity)
+# 5. Mount SarembokVE directly as a live JSON-RPC 2.0 stdio MCP server (Cursor, Claude Desktop, Antigravity)
 npx sarembok mcp
 ```
 

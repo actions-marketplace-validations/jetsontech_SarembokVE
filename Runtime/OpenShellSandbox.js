@@ -13,6 +13,7 @@ import { exec } from 'node:child_process';
 import path from 'node:path';
 import { OpenShellSupervisor } from './OpenShellSupervisor.js';
 import { ContainerProvisioner } from '../Tools/Provisioner.js';
+import { CapabilityTokenFactory } from '../fabric/src/guardrails/capability_token.js';
 
 export class OpenShellSandbox {
   constructor(options = {}) {
@@ -28,6 +29,7 @@ export class OpenShellSandbox {
    * @param {string} [options.agentId='worker']
    * @param {string} [options.approvalId]
    * @param {string} [options.cwd]
+   * @param {string|Object} [options.token] - Optional HMAC-SHA256 Macaroon capability token
    * @returns {Promise<{ stdout: string, stderr: string, exitCode: number }>}
    */
   async runCommand(cmd, options = {}) {
@@ -44,6 +46,20 @@ export class OpenShellSandbox {
       const relative = path.relative(this.workspaceRoot, targetCwd);
       if (relative.startsWith('..') || path.isAbsolute(relative)) {
         throw new Error(`Execution directory '${targetCwd}' escapes jailed workspace root '${this.workspaceRoot}'`);
+      }
+
+      // 1.1 Macaroon capability verification (if token provided)
+      if (options.token) {
+        const signingSecret = options.signingSecret || process.env.SAREMBOK_CAPABILITY_SECRET || 'SOVEREIGN_CAPABILITY_SIGNING_KEY_DIRECTIVE_01';
+        const context = {
+          scope: 'execute',
+          path: process.cwd(),
+          command: cmd
+        };
+        const isValid = CapabilityTokenFactory.verify(options.token, context, signingSecret);
+        if (!isValid) {
+          throw new Error('Macaroon capability token verification failed: invalid signature, expired TTL, or caveat violation');
+        }
       }
 
       // 2. Minimal sanitized environment (never leak host process.env)

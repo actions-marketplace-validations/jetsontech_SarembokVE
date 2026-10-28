@@ -82,6 +82,9 @@ const commands = {
   policy: {
     desc: 'Evaluate pre-dispatch deterministic AST invariants and HMAC-SHA256 Macaroon proofs'
   },
+  token: {
+    desc: 'Mint, attenuate, or verify HMAC-SHA256 Macaroon capability tokens (--scope, --path, --ttl)'
+  },
   registry: {
     desc: 'Inspect Playwright CDP network interception, OpenAPI 3.1 contracts & schema registry'
   }
@@ -99,7 +102,8 @@ function printHelp() {
   console.log(`  \x1b[36mopenshell status\x1b[0m         ${commands.openshell.subcommands.status}`);
   console.log(`  \x1b[36mopenshell profile [name]\x1b[0m ${commands.openshell.subcommands.profile}`);
   console.log(`  \x1b[36mopenshell verify <cmd>\x1b[0m   ${commands.openshell.subcommands.verify}`);
-  console.log(`  \x1b[36mopenshell run <cmd>\x1b[0m      ${commands.openshell.subcommands.run}\n`);
+  console.log(`  \x1b[36mopenshell run <cmd>\x1b[0m      ${commands.openshell.subcommands.run} [--token <macaroon>]`);
+  console.log(`  \x1b[36mtoken mint [options]\x1b[0m     ${commands.token.desc}\n`);
 
   console.log(`\x1b[1mFrontier Multi-Agent & Distributed Infrastructure:\x1b[0m`);
   console.log(`  \x1b[34mcluster status\x1b[0m           ${commands.cluster.desc}`);
@@ -232,12 +236,23 @@ switch (command) {
       }
       sandbox.close();
     } else if (sub === 'run') {
-      const targetCmd = args.slice(2).join(' ');
+      const rawArgs = args.slice(2);
+      let token = null;
+      const cmdParts = [];
+      for (let i = 0; i < rawArgs.length; i++) {
+        if (rawArgs[i] === '--token' && i + 1 < rawArgs.length) {
+          token = rawArgs[i + 1];
+          i++;
+        } else {
+          cmdParts.push(rawArgs[i]);
+        }
+      }
+      const targetCmd = cmdParts.join(' ');
       if (!targetCmd) {
         console.error('\x1b[31mError:\x1b[0m Command argument required for execution.');
         process.exit(1);
       }
-      sandbox.runCommand(targetCmd, { agentId: 'cli_runner' }).then(res => {
+      sandbox.runCommand(targetCmd, { agentId: 'cli_runner', token }).then(res => {
         if (res.stdout) console.log(res.stdout);
         if (res.stderr) console.error(res.stderr);
         process.exit(res.exitCode);
@@ -247,6 +262,64 @@ switch (command) {
       });
     } else {
       console.error('\x1b[31mError:\x1b[0m Unknown openshell subcommand. Use "status", "profile", "verify", or "run".');
+      process.exit(1);
+    }
+    break;
+  }
+
+  case 'token': {
+    const sub = args[1] || 'mint';
+    if (sub === 'mint') {
+      let scope = 'execute';
+      let pathPrefix = process.cwd();
+      let ttl = 3600;
+      let agentId = 'worker';
+      let secret = process.env.SAREMBOK_CAPABILITY_SECRET || 'SOVEREIGN_CAPABILITY_SIGNING_KEY_DIRECTIVE_01';
+
+      for (let i = 2; i < args.length; i++) {
+        if (args[i] === '--scope' && i + 1 < args.length) {
+          scope = args[i + 1];
+          i++;
+        } else if (args[i] === '--path' && i + 1 < args.length) {
+          pathPrefix = path.resolve(args[i + 1]);
+          i++;
+        } else if (args[i] === '--ttl' && i + 1 < args.length) {
+          ttl = Number(args[i + 1]) || 3600;
+          i++;
+        } else if (args[i] === '--agent' && i + 1 < args.length) {
+          agentId = args[i + 1];
+          i++;
+        } else if (args[i] === '--secret' && i + 1 < args.length) {
+          secret = args[i + 1];
+          i++;
+        }
+      }
+
+      const factory = new CapabilityTokenFactory(secret);
+      const token = factory.mintToken({
+        agentId,
+        capabilities: [scope],
+        caveats: [
+          `scope=${scope}`,
+          `pathPrefix=${pathPrefix}`
+        ],
+        ttlMs: ttl * 1000
+      });
+
+      const tokenJson = JSON.stringify(token);
+      const tokenBase64 = Buffer.from(tokenJson).toString('base64');
+
+      console.log('\x1b[1m\x1b[36m🔑 Minted Sovereign Capability Macaroon Token\x1b[0m\n');
+      console.log(`  Token ID:    \x1b[33m${token.tokenId}\x1b[0m`);
+      console.log(`  Agent ID:    ${token.agentId}`);
+      console.log(`  Scope:       \x1b[32m${scope}\x1b[0m`);
+      console.log(`  Path Prefix: ${pathPrefix}`);
+      console.log(`  TTL:         ${ttl}s (expires: ${new Date(token.expiresAt).toISOString()})`);
+      console.log(`  HMAC Sig:    ${token.signature.slice(0, 16)}...`);
+      console.log(`\n\x1b[1mBase64 Encoded Token:\x1b[0m\n${tokenBase64}\n`);
+      console.log(`\x1b[1mJSON Encoded Token:\x1b[0m\n${tokenJson}\n`);
+    } else {
+      console.error('\x1b[31mError:\x1b[0m Unknown token subcommand. Use "mint".');
       process.exit(1);
     }
     break;
