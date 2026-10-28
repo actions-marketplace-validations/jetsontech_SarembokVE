@@ -1,2 +1,0 @@
-add_library(sarembok_agent_process STATIC agent_process.c)
-target_include_directories(sarembok_agent_process PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

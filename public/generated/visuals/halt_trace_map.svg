@@ -25,7 +25,7 @@
     <rect width="780" height="150" rx="6" fill="#0f172a" stroke="#f43f5e" stroke-width="1.2" filter="url(#haltGlow)" />
     <circle cx="30" cy="35" r="8" fill="#f43f5e" />
     <text x="50" y="40" fill="#f87171" font-size="14" font-weight="700">LOOP ABORT TRIGGERED (ENTROPY DEGRADATION)</text>
-    <text x="30" y="75" fill="#94a3b8" font-size="12">AGENT ROLE: <tspan fill="#f1f5f9">worker_test</tspan></text>
+    <text x="30" y="75" fill="#94a3b8" font-size="12">AGENT ROLE: <tspan fill="#f1f5f9">eval_agent_1793177921545</tspan></text>
     <text x="30" y="100" fill="#94a3b8" font-size="12">MEASURED ENTROPY: <tspan fill="#f43f5e" font-weight="700">0.0000</tspan> (Threshold: H(X) &gt;= 0.88)</text>
     <text x="30" y="125" fill="#94a3b8" font-size="12">REASON: <tspan fill="#e2e8f0">Halt triggered: Core degradation detected. State stability dropped below threshold.</tspan></text>
   </g>
@@ -34,7 +34,7 @@
   <g transform="translate(60, 270)">
     <rect width="780" height="200" rx="6" fill="#0a101d" stroke="#334155" stroke-width="1" />
     <text x="25" y="35" fill="#38bdf8" font-size="12" font-weight="600">ROLLBACK EXECUTION GRAPH</text>
-    <text x="755" y="35" fill="#64748b" font-size="11" text-anchor="end">2026-10-28T01:59:30.488Z</text>
+    <text x="755" y="35" fill="#64748b" font-size="11" text-anchor="end">2026-10-28T08:58:41.546Z</text>
 
     <!-- Checkpoint States -->
     <rect x="50" y="65" width="180" height="70" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
