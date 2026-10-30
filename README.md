@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml/badge.svg)](https://github.com/jetsontech/SarembokVE/actions/workflows/ci.yml)
 [![License: BSL-1.1](https://img.shields.io/badge/License-BSL--1.1-blue.svg)](LICENSE)
-[![Tests: 32+ Passing](https://img.shields.io/badge/Tests-32%2B%20Passing-brightgreen.svg)](test/)
+[![Tests: 34 Passing](https://img.shields.io/badge/Tests-34%20Passing-brightgreen.svg)](test/)
 [![Security: NVIDIA OpenShell](https://img.shields.io/badge/Security-NVIDIA%20OpenShell%20Zero--Trust-blueviolet.svg)](Docs/SECURITY.md)
 [![ADR: Documented](https://img.shields.io/badge/Architecture-ADR--001%20Modular-informational.svg)](Docs/ADR.md)
 
@@ -10,7 +10,7 @@
 
 SarembokVE is built with a **3-Tier Progressive Adoption Architecture**—ranging from a 30-second drop-in CI/CD GitHub Action for standard React/Next.js/Node web apps to an enterprise distributed agentic mesh with Raft consensus and SQLite-WAL state machines.
 
-[Console](https://sarembok.com) · [Quickstart Guide](#quickstart-in-10-seconds) · [Solutions & 12 Use Cases](Docs/SOLUTIONS_AND_USE_CASES.md) · [Architecture Decision Records](Docs/ADR.md) · [Status](https://sarembok.com/status) · [Security Architecture](Docs/SECURITY.md)
+[Console](https://sarembok.com) · [Live Terminal Simulator](public/demo_terminal.html) · [Quickstart Guide](#quickstart-in-10-seconds) · [Solutions & 12 Use Cases](Docs/SOLUTIONS_AND_USE_CASES.md) · [Architecture Decision Records](Docs/ADR.md) · [Status](https://sarembok.com/status) · [Security Architecture](Docs/SECURITY.md)
 
 ---
 
@@ -42,6 +42,16 @@ jobs:
           profile: strict
           audit-report: true
 ```
+
+---
+
+## Live Interactive Simulation & Video Tour
+
+Watch the full automated walkthrough of all 16 commands in action with real-time zero-trust policy checks, Macaroon token minting, and SQLite-WAL state machines:
+
+[![SarembokVE Live CLI & Troubleshooting Demo](public/videos/sarembok_cli_troubleshooting_demo.webp)](public/demo_terminal.html)
+
+> 💡 **Try it live**: Launch the [Interactive Terminal Simulator](public/demo_terminal.html) directly in your browser with automated playback and failure troubleshooting modes.
 
 ---
 
