@@ -45,6 +45,16 @@ jobs:
 
 ---
 
+## Live Interactive Simulation & Video Tour
+
+Watch the full automated walkthrough of all 16 commands in action with real-time zero-trust policy checks, Macaroon token minting, and SQLite-WAL state machines:
+
+[![SarembokVE Live CLI & Troubleshooting Demo](public/videos/sarembok_cli_troubleshooting_demo.webp)](public/demo_terminal.html)
+
+> 💡 **Try it live**: Launch the [Interactive Terminal Simulator](public/demo_terminal.html) directly in your browser with automated playback and failure troubleshooting modes.
+
+---
+
 ## Key Capabilities
 
 * **Zero-Trust Execution Fabric:** Enforces least-privilege capability tokens for local and cloud environments.
